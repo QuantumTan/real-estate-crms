@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
@@ -38,6 +38,7 @@ namespace CRMS_Peguit.api.Controllers
 
             deal.TenantId = tenantResolver.GetTenantId();
             deal.CreatedAt = DateTime.UtcNow;
+            deal.AgentId = null; // R23. Default state is Unassigned
 
             _db.Deals.Add(deal);
             await _db.SaveChangesAsync();

@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.winforms.Models.Services;
+using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Controls
 {
@@ -12,6 +12,10 @@ namespace CRMS_Peguit.winforms.Controls
         public bool IsSelected { get; private set; }
 
         private readonly Color _accentColor;
+
+        public KpiCard() : this("KPI", "all", Color.FromArgb(15, 91, 158))
+        {
+        }
 
         public KpiCard(string title, string filterKey, Color accentColor)
         {
@@ -28,7 +32,8 @@ namespace CRMS_Peguit.winforms.Controls
                 Font = new Font("Segoe UI", 22, FontStyle.Bold),
                 ForeColor = accentColor,
                 Location = new Point(16, 10),
-                AutoSize = true
+                AutoSize = true,
+                Cursor = Cursors.Hand
             };
 
             _lblTitle = new Label
@@ -37,7 +42,8 @@ namespace CRMS_Peguit.winforms.Controls
                 Font = new Font("Segoe UI", 9.5f),
                 ForeColor = Theme.TextPrimary,
                 Location = new Point(16, 58),
-                AutoSize = true
+                AutoSize = true,
+                Cursor = Cursors.Hand
             };
 
             Controls.Add(_lblValue);
@@ -46,6 +52,14 @@ namespace CRMS_Peguit.winforms.Controls
             // Bubble clicks from the child labels up to the card itself
             _lblValue.Click += (_, _) => OnClick(EventArgs.Empty);
             _lblTitle.Click += (_, _) => OnClick(EventArgs.Empty);
+
+            // Hover effects
+            MouseEnter += (_, _) => BackColor = Color.FromArgb(241, 245, 249);
+            MouseLeave += (_, _) => BackColor = Color.White;
+            _lblValue.MouseEnter += (_, _) => BackColor = Color.FromArgb(241, 245, 249);
+            _lblValue.MouseLeave += (_, _) => BackColor = Color.White;
+            _lblTitle.MouseEnter += (_, _) => BackColor = Color.FromArgb(241, 245, 249);
+            _lblTitle.MouseLeave += (_, _) => BackColor = Color.White;
 
             Paint += KpiCard_Paint;
         }

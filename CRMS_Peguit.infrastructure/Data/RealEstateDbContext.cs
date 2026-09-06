@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -45,9 +45,13 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<User>(entity =>
             {
                 entity.HasKey(x => x.UserId);
-                entity.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+                entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
+                entity.Property(x => x.MiddleName).HasMaxLength(100);
+                entity.Property(x => x.LastName).HasMaxLength(100).IsRequired();
+                entity.Property(x => x.Suffix).HasMaxLength(20);
+                entity.Ignore(x => x.FullName);
                 entity.Property(x => x.Email).HasMaxLength(200).IsRequired();
-                entity.HasIndex(x => x.Email).IsUnique();
+                entity.HasIndex(x => new { x.TenantId, x.Email }).IsUnique();
                 entity.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
                 entity.Property(x => x.Status).HasMaxLength(50);
 
@@ -81,6 +85,8 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.Email).HasMaxLength(255);
                 entity.Property(x => x.Type).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.AssignmentStatus).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.AssignmentReviewNotes).HasMaxLength(1000);
 
                 entity.Ignore(x => x.FullName);
 
@@ -114,6 +120,9 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.PropertyType).HasMaxLength(100);
                 entity.Property(x => x.Price).HasColumnType("decimal(18,2)");
                 entity.Property(x => x.Status).HasMaxLength(50);
+                entity.Property(x => x.ListedByAgentId).IsRequired(false);
+                entity.Property(x => x.AssignmentStatus).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.AssignmentReviewNotes).HasMaxLength(1000);
 
                 entity.HasOne<Customer>()
                     .WithMany()
@@ -139,12 +148,15 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.Email).HasMaxLength(255);
                 entity.Property(x => x.Source).HasMaxLength(100);
                 entity.Property(x => x.Stage).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.ExpectedValue).HasColumnType("decimal(18,2)");
 
                 entity.Property(x => x.Notes)
     .HasMaxLength(2000);
 
                 entity.Property(x => x.Priority)
                     .HasMaxLength(20);
+                entity.Property(x => x.AssignmentStatus).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.AssignmentReviewNotes).HasMaxLength(1000);
 
                 entity.Ignore(x => x.FullName);
 

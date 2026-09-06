@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
@@ -38,6 +38,7 @@ namespace CRMS_Peguit.api.Controllers
 
             ticket.TenantId = tenantResolver.GetTenantId();
             ticket.CreatedAt = DateTime.UtcNow;
+            ticket.AssignedToUserId = null; // R23. Default state is Unassigned
 
             _db.SupportTickets.Add(ticket);
             await _db.SaveChangesAsync();

@@ -1,9 +1,14 @@
+using System.Net;
 using System.Net.Mail;
+using System.Text.Json;
 
 namespace CRMS_Peguit.winforms.Models.Services
 {
     public static class ContactEmailService
     {
+        private const string SmtpHost = "smtp.gmail.com";
+        private const int SmtpPort = 587;
+
         public static bool IsValidEmail(string? email)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -22,7 +27,83 @@ namespace CRMS_Peguit.winforms.Models.Services
             }
         }
 
-        public static EmailSendResult SendPlaceholder(string recipientEmail, string subject, string body)
+        public static async Task<EmailSendResult> SendAsync(
+            string recipientEmail,
+            string subject,
+            string body)
+        {
+            var validation = ValidateMessage(recipientEmail, subject, body);
+            if (!validation.Success)
+            {
+                return validation;
+            }
+
+            var config = SmtpSettings.Load();
+            if (!config.IsConfigured)
+            {
+                return EmailSendResult.Failed(
+                    "Google SMTP is not configured. Add smtp.local.json beside the WinForms project or set CRMS_SMTP_USERNAME and CRMS_SMTP_APP_PASSWORD, then restart the app.");
+            }
+
+            try
+            {
+                using var mail = new MailMessage
+                {
+                    From = new MailAddress(config.Username!, "NEXA CRMS"),
+                    Subject = subject.Trim(),
+                    Body = body.Trim(),
+                    IsBodyHtml = false
+                };
+                mail.To.Add(recipientEmail.Trim());
+
+                using var client = new SmtpClient(SmtpHost, SmtpPort)
+                {
+                    EnableSsl = true,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(
+                        config.Username,
+                        config.AppPassword)
+                };
+
+                await client.SendMailAsync(mail);
+
+                return EmailSendResult.Succeeded("Email sent successfully.");
+            }
+            catch (SmtpException ex)
+            {
+                return EmailSendResult.Failed($"SMTP failed: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return EmailSendResult.Failed($"Email failed: {ex.Message}");
+            }
+        }
+
+        public static Task<EmailSendResult> SendForgotPasswordAsync(
+            string recipientEmail,
+            string companyId)
+        {
+            string subject = "NEXA password reset request";
+            string body =
+                "We received a password reset request for your NEXA CRMS account." +
+                Environment.NewLine +
+                Environment.NewLine +
+                $"Company ID: {companyId}" +
+                Environment.NewLine +
+                Environment.NewLine +
+                "The secure reset-link workflow is still pending backend integration. Please contact your administrator to reset your password." +
+                Environment.NewLine +
+                Environment.NewLine +
+                "If you did not request this, you can ignore this email.";
+
+            return SendAsync(recipientEmail, subject, body);
+        }
+
+        private static EmailSendResult ValidateMessage(
+            string recipientEmail,
+            string subject,
+            string body)
         {
             if (!IsValidEmail(recipientEmail))
             {
@@ -39,9 +120,96 @@ namespace CRMS_Peguit.winforms.Models.Services
                 return EmailSendResult.Failed("Message is required.");
             }
 
-            return EmailSendResult.Succeeded(
-                "SMTP is not configured yet. This message is ready to send once SMTP settings are connected.");
+            return EmailSendResult.Succeeded(string.Empty);
         }
+    }
+
+    internal sealed class SmtpSettings
+    {
+        public string? Username { get; private init; }
+        public string? AppPassword { get; private init; }
+
+        public bool IsConfigured =>
+            !string.IsNullOrWhiteSpace(Username) &&
+            !string.IsNullOrWhiteSpace(AppPassword);
+
+        public static SmtpSettings Load()
+        {
+            var localSettings = FromLocalFile();
+            if (localSettings.IsConfigured)
+            {
+                return localSettings;
+            }
+
+            return FromEnvironment();
+        }
+
+        private static SmtpSettings FromEnvironment()
+        {
+            return new SmtpSettings
+            {
+                Username = Environment.GetEnvironmentVariable("CRMS_SMTP_USERNAME"),
+                AppPassword = Environment.GetEnvironmentVariable("CRMS_SMTP_APP_PASSWORD")
+            };
+        }
+
+        private static SmtpSettings FromLocalFile()
+        {
+            foreach (string path in GetCandidatePaths())
+            {
+                if (!File.Exists(path))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var json = File.ReadAllText(path);
+                    var settings = JsonSerializer.Deserialize<SmtpSettingsFile>(
+                        json,
+                        new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+
+                    if (settings is null)
+                    {
+                        continue;
+                    }
+
+                    return new SmtpSettings
+                    {
+                        Username = settings.Username,
+                        AppPassword = settings.AppPassword
+                    };
+                }
+                catch
+                {
+                    return new SmtpSettings();
+                }
+            }
+
+            return new SmtpSettings();
+        }
+
+        private static IEnumerable<string> GetCandidatePaths()
+        {
+            yield return Path.Combine(AppContext.BaseDirectory, "smtp.local.json");
+            yield return Path.Combine(Environment.CurrentDirectory, "smtp.local.json");
+
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory is not null)
+            {
+                yield return Path.Combine(directory.FullName, "smtp.local.json");
+                directory = directory.Parent;
+            }
+        }
+    }
+
+    internal sealed class SmtpSettingsFile
+    {
+        public string? Username { get; set; }
+        public string? AppPassword { get; set; }
     }
 
     public sealed class EmailSendResult

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.infrastructure.data;
 
 namespace CRMS_Peguit.winforms.Models.Services
@@ -6,7 +6,8 @@ namespace CRMS_Peguit.winforms.Models.Services
     public static class LocalDb
     {
         public static string ConnectionString =>
-            "Server=localhost\\SQLEXPRESS;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
+            Environment.GetEnvironmentVariable("CRMS_CONNECTION") ??
+            "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
 
         public static RealEstateDbContext CreateContext()
         {

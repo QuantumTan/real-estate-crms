@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
@@ -10,29 +10,26 @@ namespace CRMS_Peguit.winforms.Views.Leads
     {
         private static readonly string[] PipelineStages =
             { "new", "contacted", "qualified", "converted" };
-        // "lost" is shown separately since it's a dead-end, not a pipeline step
 
-        private readonly Lead _lead;
-        private readonly LeadController _controller;
+        private readonly Lead? _lead;
+        private readonly LeadController? _controller;
+
+        public LeadDetailForm()
+        {
+            InitializeComponent();
+        }
 
         public LeadDetailForm(Lead lead, LeadController controller)
         {
             _lead = lead;
             _controller = controller;
+            InitializeComponent();
             BuildUi();
         }
 
         private void BuildUi()
         {
-            Width = 620;
-            Height = 680;
-            StartPosition = FormStartPosition.CenterParent;
-            BackColor = Theme.Background;
-            ForeColor = Theme.TextPrimary;
-            Font = new Font("Segoe UI", 10);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
+            if (_lead == null || _controller == null) return;
             Text = $"Lead - {_lead.FullName}";
 
             int y = 20;
@@ -45,21 +42,22 @@ namespace CRMS_Peguit.winforms.Views.Leads
             AddField("Email", string.IsNullOrWhiteSpace(_lead.Email) ? "-" : _lead.Email, ref y);
             AddField("Phone", string.IsNullOrWhiteSpace(_lead.Phone) ? "-" : _lead.Phone, ref y);
             AddField("Source", string.IsNullOrWhiteSpace(_lead.Source) ? "-" : _lead.Source, ref y);
+            AddField("Priority", string.IsNullOrWhiteSpace(_lead.Priority) ? "-" : _lead.Priority, ref y);
+            AddField("Expected Value", _lead.ExpectedValue?.ToString("C") ?? "-", ref y);
             var agentName = _controller.GetAssignedAgentName(_lead.AssignedAgentId);
             AddField("Assigned Agent", agentName ?? "Unassigned", ref y);
+            AddField("Assignment Review", _lead.AssignmentStatus, ref y);
 
             y += 10;
             AddSectionTitle("Notes", ref y);
-            // NOTE: Lead.Notes doesn't exist on the entity yet - see the
-            // separate snippet for adding Notes/Priority to Lead.cs first.
-            AddPlainText("(Notes field pending - add to Lead.cs, see Lead_AddFields_Snippet.cs)", ref y);
+            AddPlainText(string.IsNullOrWhiteSpace(_lead.Notes) ? "No notes yet." : _lead.Notes, ref y);
 
             y += 10;
             AddSectionTitle("Pipeline Summary", ref y);
             AddPipelineSummary(ref y);
 
             y += 10;
-            AddSectionTitle("Activity History", ref y);
+            AddSectionTitle("Recent Activities", ref y);
             var activities = _controller.GetActivityHistory(_lead.LeadId);
             if (activities.Count == 0)
             {

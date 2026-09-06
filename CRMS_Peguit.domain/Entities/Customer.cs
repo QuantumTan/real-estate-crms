@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -35,7 +35,12 @@ namespace CRMS_Peguit.domain.entities
         public string Type { get; set; } = "buyer";
         public string Status { get; set; } = "active";
 
+        public int? CreatedByUserId { get; set; }
         public int? AssignedAgentId { get; set; }
+        public string AssignmentStatus { get; set; } = "pending_review";
+        public int? AssignmentReviewedByUserId { get; set; }
+        public DateTime? AssignmentReviewedAt { get; set; }
+        public string? AssignmentReviewNotes { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

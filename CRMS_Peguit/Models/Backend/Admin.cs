@@ -1,4 +1,4 @@
-﻿using NEXA.Model;
+using NEXA.Model;
 using System.Collections.Generic;
 
 namespace CRMS_Peguit.Models.Backend
@@ -21,20 +21,18 @@ namespace CRMS_Peguit.Models.Backend
         {
             return new List<string>
             {
-                "UserManagement",
-                "Managers",
-                "SalesStaff",
-
                 "Dashboard",
-                "Customers",
                 "Leads",
+                "Customers",
                 "Properties",
                 "Deals",
-
+                "Activities",
+                "TasksReminders",
+                "Approvals",
+                "Managers",
+                "SalesStaff",
                 "Reports",
-                "SupportTickets",
-                "ImportExport",
-                "Settings"
+                "SupportTickets"
             };
         }
 

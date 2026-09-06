@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
@@ -38,6 +38,10 @@ namespace CRMS_Peguit.api.Controllers
 
             property.TenantId = tenantResolver.GetTenantId();
             property.CreatedAt = DateTime.UtcNow;
+            property.ListedByAgentId = null; // R23. Default state is Unassigned
+            property.AssignmentStatus = string.IsNullOrWhiteSpace(property.AssignmentStatus)
+                ? "pending_review"
+                : property.AssignmentStatus;
 
             _db.Properties.Add(property);
             await _db.SaveChangesAsync();
@@ -57,6 +61,10 @@ namespace CRMS_Peguit.api.Controllers
             item.Status = updated.Status;
             item.OwnerCustomerId = updated.OwnerCustomerId;
             item.ListedByAgentId = updated.ListedByAgentId;
+            item.AssignmentStatus = updated.AssignmentStatus;
+            item.AssignmentReviewedByUserId = updated.AssignmentReviewedByUserId;
+            item.AssignmentReviewedAt = updated.AssignmentReviewedAt;
+            item.AssignmentReviewNotes = updated.AssignmentReviewNotes;
 
             await _db.SaveChangesAsync();
             return Ok(item);

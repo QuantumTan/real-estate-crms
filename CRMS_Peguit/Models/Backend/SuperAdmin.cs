@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 namespace CRMS_Peguit.Models.Backend
 {
+    // CHILD CLASS - SuperAdmin
+
     public class SuperAdmin : User
     {
         public SuperAdmin(
@@ -19,23 +21,14 @@ namespace CRMS_Peguit.Models.Backend
         {
             return new List<string>
             {
+                "Dashboard",
                 "Administrators",
                 "Roles",
                 "SystemAccess",
-                "SystemData",
-                "Backup",
-                "Settings",
+                "SystemDataBackup",
+                "SystemSettings",
                 "Policies",
-                "Subscription",
-
-                "Dashboard",
-                "Reports",
-                "Customers",
-                "Leads",
-                "Properties",
-                "Deals",
-                "Activities",
-                "SupportTickets"
+                "Subscription"
             };
         }
 
