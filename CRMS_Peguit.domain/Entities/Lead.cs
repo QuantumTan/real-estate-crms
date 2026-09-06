@@ -33,9 +33,15 @@ namespace CRMS_Peguit.domain.entities
         public string? Email { get; set; }
         public string? Source { get; set; }
 
-        public int? AssignedAgentId { get; set; }
+        public string? Notes { get; set; }
+
+
 
         public string Stage { get; set; } = "new";
+
+        public string? Priority { get; set; }
+
+        public int? AssignedAgentId { get; set; }
 
         public int? ConvertedCustomerId { get; set; }
 

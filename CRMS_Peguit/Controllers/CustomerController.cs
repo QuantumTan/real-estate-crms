@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
+using CRMS_Peguit.winforms.Auth;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRMS_Peguit.winforms.Controllers
@@ -11,8 +12,8 @@ namespace CRMS_Peguit.winforms.Controllers
     {
         private readonly RealEstateDbContext _db;
 
-        // TODO: replace with the logged-in user's tenant id (from session).
-        private readonly int _tenantId = 1;
+        // FIXED: was hardcoded to 1 - now uses whoever is actually logged in.
+        private int TenantId => CurrentSession.TenantId;
 
         public CustomerController()
         {
@@ -25,7 +26,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 .UseSqlServer(connectionString)
                 .Options;
 
-            _db = new RealEstateDbContext(options, _tenantId);
+            _db = new RealEstateDbContext(options, TenantId);
         }
 
         public List<Customer> GetAll()
@@ -46,7 +47,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Customer Add(Customer customer)
         {
-            customer.TenantId = _tenantId;
+            customer.TenantId = TenantId;
             customer.CreatedAt = DateTime.UtcNow;
             customer.IsDeleted = false;
             customer.DeletedAt = null;
@@ -86,8 +87,6 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.SaveChanges();
         }
 
-        // Restore needs IgnoreQueryFilters, because the global filter
-        // hides IsDeleted == true rows.
         public void Restore(Customer customer)
         {
             var item = _db.Customers
@@ -100,9 +99,62 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.SaveChanges();
         }
 
-        // Kept as an alias in case older code still calls Delete().
         public void Delete(Customer customer) => SoftDelete(customer);
 
+        // ---- NEW: for the customer detail view ----
+
+        public string? GetAssignedAgentName(int? assignedAgentId)
+        {
+            if (assignedAgentId is null) return null;
+            return _db.Users
+                .AsNoTracking()
+                .Where(u => u.UserId == assignedAgentId)
+                .Select(u => u.FullName)
+                .SingleOrDefault();
+        }
+
+        // Only meaningful when Customer.Type is "seller" or "both"
+        public List<Property> GetOwnedProperties(int customerId)
+        {
+            return _db.Properties
+                .AsNoTracking()
+                .Where(p => p.OwnerCustomerId == customerId)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToList();
+        }
+
+        public List<Activity> GetActivityHistory(int customerId)
+        {
+            return _db.Activities
+                .AsNoTracking()
+                .Where(a => a.RelatedCustomerId == customerId)
+                .OrderByDescending(a => a.ActivityDate)
+                .ToList();
+        }
+
+        // KPI counts - computed here so CustomersView doesn't need its own queries
+        public CustomerKpiCounts GetKpiCounts()
+        {
+            var all = _db.Customers.AsNoTracking().ToList();
+            var now = DateTime.UtcNow;
+
+            return new CustomerKpiCounts
+            {
+                Total = all.Count,
+                Active = all.Count(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase)),
+                Inactive = all.Count(c => string.Equals(c.Status, "inactive", StringComparison.OrdinalIgnoreCase)),
+                ThisMonth = all.Count(c => c.CreatedAt.Year == now.Year && c.CreatedAt.Month == now.Month)
+            };
+        }
+
         public void Dispose() => _db.Dispose();
+    }
+
+    public class CustomerKpiCounts
+    {
+        public int Total { get; set; }
+        public int Active { get; set; }
+        public int Inactive { get; set; }
+        public int ThisMonth { get; set; }
     }
 }

@@ -140,6 +140,12 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.Source).HasMaxLength(100);
                 entity.Property(x => x.Stage).HasMaxLength(50).IsRequired();
 
+                entity.Property(x => x.Notes)
+    .HasMaxLength(2000);
+
+                entity.Property(x => x.Priority)
+                    .HasMaxLength(20);
+
                 entity.Ignore(x => x.FullName);
 
                 entity.HasIndex(x => x.TenantId);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
+using CRMS_Peguit.winforms.Auth;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRMS_Peguit.winforms.Controllers
@@ -11,8 +12,8 @@ namespace CRMS_Peguit.winforms.Controllers
     {
         private readonly RealEstateDbContext _db;
 
-        // TODO: replace with the logged-in user's tenant id (from session).
-        private readonly int _tenantId = 1;
+        // FIXED: was hardcoded to 1 - now uses whoever is actually logged in.
+        private int TenantId => CurrentSession.TenantId;
 
         public LeadController()
         {
@@ -25,7 +26,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 .UseSqlServer(connectionString)
                 .Options;
 
-            _db = new RealEstateDbContext(options, _tenantId);
+            _db = new RealEstateDbContext(options, TenantId);
         }
 
         public List<Lead> GetAll()
@@ -46,7 +47,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Lead Add(Lead lead)
         {
-            lead.TenantId = _tenantId;
+            lead.TenantId = TenantId;
             lead.CreatedAt = DateTime.UtcNow;
             lead.IsDeleted = false;
             lead.DeletedAt = null;
@@ -70,6 +71,8 @@ namespace CRMS_Peguit.winforms.Controllers
             item.Source = lead.Source;
             item.Stage = lead.Stage;
             item.AssignedAgentId = lead.AssignedAgentId;
+            // NOTE: Notes / Priority not persisted here yet - see the
+            // separate note about adding those two fields to Lead.cs first.
 
             _db.SaveChanges();
         }
@@ -84,8 +87,6 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.SaveChanges();
         }
 
-        // Restore needs IgnoreQueryFilters, because the global filter
-        // hides IsDeleted == true rows.
         public void Restore(Lead lead)
         {
             var item = _db.Leads
@@ -104,10 +105,8 @@ namespace CRMS_Peguit.winforms.Controllers
             if (item is null)
                 throw new InvalidOperationException("Lead not found.");
 
-            if (string.Equals(item.Stage, "converted",
-                    StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException(
-                    "This lead has already been converted.");
+            if (string.Equals(item.Stage, "converted", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("This lead has already been converted.");
 
             var customer = new Customer
             {
@@ -134,6 +133,27 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.SaveChanges();
 
             return customer;
+        }
+
+        // ---- NEW: for the lead detail view ----
+
+        public string? GetAssignedAgentName(int? assignedAgentId)
+        {
+            if (assignedAgentId is null) return null;
+            return _db.Users
+                .AsNoTracking()
+                .Where(u => u.UserId == assignedAgentId)
+                .Select(u => u.FullName)
+                .SingleOrDefault();
+        }
+
+        public List<Activity> GetActivityHistory(int leadId)
+        {
+            return _db.Activities
+                .AsNoTracking()
+                .Where(a => a.RelatedLeadId == leadId)
+                .OrderByDescending(a => a.ActivityDate)
+                .ToList();
         }
 
         public void Dispose() => _db.Dispose();

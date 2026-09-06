@@ -9,9 +9,7 @@ namespace CRMS_Peguit.winforms.Auth
     public class AuthResult
     {
         public bool Success { get; init; }
-
         public string? ErrorMessage { get; init; }
-
         public bool WasOffline { get; init; }
     }
 
@@ -20,194 +18,69 @@ namespace CRMS_Peguit.winforms.Auth
         private readonly HttpClient _httpClient;
         private readonly LocalAuthCache _localCache;
 
+        // Point this at your monsterASP-hosted API, e.g. "https://your-app.runasp.net/"
         public AuthService(string apiBaseUrl)
         {
             _httpClient = new HttpClient
             {
                 BaseAddress = new Uri(apiBaseUrl),
-                Timeout = TimeSpan.FromSeconds(6)
+                Timeout = TimeSpan.FromSeconds(6) // fail fast so offline fallback doesn't hang the UI
             };
-
             _localCache = new LocalAuthCache();
         }
 
-        public async Task<AuthResult> LoginAsync(
-            string companyId,
-            string email,
-            string password)
+        public async Task<AuthResult> LoginAsync(string companyId, string email, string password)
         {
             try
             {
-                // ==========================================
-                // LOGIN REQUEST
-                // ==========================================
-
-                // Login does not have a JWT yet.
-                // Therefore Company ID is sent through the
-                // X-Company-Id header.
-                var request = new HttpRequestMessage(
-                    HttpMethod.Post,
-                    "api/auth/login"
-                )
+                // Login has no JWT yet, so the tenant must be sent explicitly -
+                // this is the one request HttpTenantResolver trusts the header for.
+                var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/login")
                 {
-                    Content = JsonContent.Create(
-                        new
-                        {
-                            email,
-                            password
-                        }
-                    )
+                    Content = JsonContent.Create(new { email, password })
                 };
+                request.Headers.Add("X-Company-Id", companyId);
 
-                request.Headers.Add(
-                    "X-Company-Id",
-                    companyId
-                );
-
-                // ==========================================
-                // SEND REQUEST
-                // ==========================================
-
-                var response =
-                    await _httpClient.SendAsync(request);
-
-                // ==========================================
-                // LOGIN SUCCESS
-                // ==========================================
+                var response = await _httpClient.SendAsync(request);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var result =
-                        await response.Content
-                            .ReadFromJsonAsync<LoginApiResponse>();
-
+                    var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>();
                     if (result is null)
-                    {
-                        return new AuthResult
-                        {
-                            Success = false,
-                            ErrorMessage =
-                                "Unexpected response from server."
-                        };
-                    }
+                        return new AuthResult { Success = false, ErrorMessage = "Unexpected response from server." };
 
-                    // ======================================
-                    // CACHE LOGIN FOR OFFLINE USE
-                    // ======================================
-
-                    var localHash =
-                        PasswordHasher.Hash(password);
-
-                    _localCache.SaveSuccessfulLogin(
-                        companyId,
-                        result.UserId,
-                        result.FullName,
-                        result.Email,
-                        localHash,
-                        result.RoleName
-                    );
-
-                    // ======================================
-                    // CREATE CURRENT SESSION
-                    // ======================================
+                    // Cache this success for offline use later. We hash the
+                    // password ourselves right here (never send the server's
+                    // hash back to the client) so offline login can verify
+                    // against it next time.
+                    var localHash = PasswordHasher.Hash(password);
+                    _localCache.SaveSuccessfulLogin(companyId, result.UserId, result.FullName, result.Email, localHash, result.RoleName);
 
                     CurrentSession.Start(
                         result.UserId,
+                        result.TenantId,
                         result.FullName,
                         result.Email,
                         result.RoleName,
                         result.Token,
-                        isOffline: false
-                    );
-
-                    return new AuthResult
-                    {
-                        Success = true,
-                        WasOffline = false
-                    };
+                        isOffline: false);
+                    return new AuthResult { Success = true };
                 }
 
-                // ==========================================
-                // INVALID CREDENTIALS
-                // ==========================================
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    return new AuthResult { Success = false, ErrorMessage = "Invalid email or password." };
 
-                if (response.StatusCode ==
-                    System.Net.HttpStatusCode.Unauthorized)
-                {
-                    return new AuthResult
-                    {
-                        Success = false,
-                        ErrorMessage =
-                            "Invalid email or password."
-                    };
-                }
-
-                // ==========================================
-                // OTHER SERVER ERROR
-                // ==========================================
-
-                return new AuthResult
-                {
-                    Success = false,
-                    ErrorMessage =
-                        $"Server error ({(int)response.StatusCode})."
-                };
+                return new AuthResult { Success = false, ErrorMessage = $"Server error ({(int)response.StatusCode})." };
             }
-            catch (HttpRequestException)
+            catch (Exception) // network unreachable, monsterASP down, timeout, etc.
             {
-                // ==========================================
-                // NETWORK FAILURE
-                // ==========================================
-                //
-                // Only network-related failures should
-                // trigger offline login.
-                //
-                return TryOfflineLogin(
-                    companyId,
-                    email,
-                    password
-                );
-            }
-            catch (TaskCanceledException)
-            {
-                // Timeout
-                return TryOfflineLogin(
-                    companyId,
-                    email,
-                    password
-                );
-            }
-            catch (Exception ex)
-            {
-                // ==========================================
-                // REAL PROGRAMMING / DATA ERROR
-                // ==========================================
-                //
-                // Don't silently treat this as offline.
-                //
-                return new AuthResult
-                {
-                    Success = false,
-                    ErrorMessage =
-                        $"Login error: {ex.Message}"
-                };
+                return TryOfflineLogin(companyId, email, password);
             }
         }
 
-        private AuthResult TryOfflineLogin(
-            string companyId,
-            string email,
-            string password)
+        private AuthResult TryOfflineLogin(string companyId, string email, string password)
         {
-            // ==========================================
-            // FIND CACHED ACCOUNT
-            // ==========================================
-
-            var cached =
-                _localCache.TryGetCachedLogin(
-                    companyId,
-                    email
-                );
+            var cached = _localCache.TryGetCachedLogin(companyId, email);
 
             if (cached is null)
             {
@@ -215,22 +88,13 @@ namespace CRMS_Peguit.winforms.Auth
                 {
                     Success = false,
                     WasOffline = true,
-                    ErrorMessage =
-                        "No internet connection, and no previous login found on this device."
+                    ErrorMessage = "No internet connection, and no previous login found on this device."
                 };
             }
 
-            // ==========================================
-            // VERIFY PASSWORD
-            // ==========================================
-
             bool passwordMatches =
-                !string.IsNullOrEmpty(cached.PasswordHash)
-                &&
-                PasswordHasher.Verify(
-                    password,
-                    cached.PasswordHash
-                );
+                !string.IsNullOrWhiteSpace(cached.PasswordHash)
+                && PasswordHasher.Verify(password, cached.PasswordHash);
 
             if (!passwordMatches)
             {
@@ -238,23 +102,29 @@ namespace CRMS_Peguit.winforms.Auth
                 {
                     Success = false,
                     WasOffline = true,
-                    ErrorMessage =
-                        "No internet connection, and offline credentials didn't match."
+                    ErrorMessage = "No internet connection, and offline credentials didn't match."
                 };
             }
 
-            // ==========================================
-            // CREATE OFFLINE SESSION
-            // ==========================================
+            // Company ID is also the Tenant ID in the current design.
+            if (!int.TryParse(companyId, out int tenantId) || tenantId <= 0)
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    WasOffline = true,
+                    ErrorMessage = "The Company ID must be a valid numeric Tenant ID."
+                };
+            }
 
             CurrentSession.Start(
                 cached.UserId,
+                tenantId,
                 cached.FullName,
                 cached.Email,
                 cached.RoleName,
                 jwtToken: null,
-                isOffline: true
-            );
+                isOffline: true);
 
             return new AuthResult
             {
@@ -263,16 +133,6 @@ namespace CRMS_Peguit.winforms.Auth
             };
         }
 
-        // ==============================================
-        // API LOGIN RESPONSE
-        // ==============================================
-
-        private record LoginApiResponse(
-            string Token,
-            int UserId,
-            string FullName,
-            string Email,
-            string RoleName
-        );
+        private record LoginApiResponse(string Token, int UserId, int TenantId, string FullName, string Email, string RoleName);
     }
 }

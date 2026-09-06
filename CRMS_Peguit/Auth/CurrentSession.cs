@@ -16,6 +16,12 @@ namespace CRMS_Peguit.winforms.Auth
             private set;
         }
 
+        public static int TenantId
+        {
+            get;
+            private set;
+        }
+
         public static string? JwtToken
         {
             get;
@@ -40,13 +46,51 @@ namespace CRMS_Peguit.winforms.Auth
 
         public static void Start(
             int userId,
+            int tenantId,
             string fullName,
             string email,
             string roleName,
             string? jwtToken,
             bool isOffline)
         {
+            if (userId <= 0)
+            {
+                throw new ArgumentException(
+                    "A valid UserId is required.",
+                    nameof(userId));
+            }
+
+            if (tenantId <= 0)
+            {
+                throw new ArgumentException(
+                    "A valid TenantId is required.",
+                    nameof(tenantId));
+            }
+
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                throw new ArgumentException(
+                    "Full name is required.",
+                    nameof(fullName));
+            }
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new ArgumentException(
+                    "Email is required.",
+                    nameof(email));
+            }
+
+            if (string.IsNullOrWhiteSpace(roleName))
+            {
+                throw new ArgumentException(
+                    "Role is required.",
+                    nameof(roleName));
+            }
+
             UserId = userId;
+
+            TenantId = tenantId;
 
             JwtToken = jwtToken;
 
@@ -87,9 +131,13 @@ namespace CRMS_Peguit.winforms.Auth
         // CHECK MODULE ACCESS
         // ==============================================
 
-        public static bool CanAccess(
-            string moduleName)
+        public static bool CanAccess(string moduleName)
         {
+            if (string.IsNullOrWhiteSpace(moduleName))
+            {
+                return false;
+            }
+
             return CurrentUser?
                 .GetAccessibleModules()
                 .Contains(moduleName)
@@ -103,6 +151,8 @@ namespace CRMS_Peguit.winforms.Auth
         public static void SignOut()
         {
             UserId = 0;
+
+            TenantId = 0;
 
             JwtToken = null;
 

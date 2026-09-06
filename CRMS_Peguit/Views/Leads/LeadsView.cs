@@ -42,15 +42,12 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             txtSearch = new TextBox
             {
-                PlaceholderText =
-                    "Search first name, last name, email, phone...",
-
+                PlaceholderText = "Search first name, last name, email, phone...",
                 Font = new Font("Segoe UI", 11),
                 BackColor = Theme.Surface,
                 ForeColor = Theme.TextPrimary,
                 BorderStyle = BorderStyle.FixedSingle
             };
-
             txtSearch.TextChanged += (_, _) => RefreshGrid();
 
             cmbFilter = new ComboBox
@@ -60,41 +57,21 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 BackColor = Theme.Surface,
                 ForeColor = Theme.TextPrimary
             };
-
-            cmbFilter.Items.AddRange(
-                new[]
-                {
-                    "All Stages",
-                    "new",
-                    "contacted",
-                    "qualified",
-                    "converted",
-                    "lost"
-                });
-
+            cmbFilter.Items.AddRange(new[] { "All Stages", "new", "contacted", "qualified", "converted", "lost" });
             cmbFilter.SelectedIndex = 0;
             cmbFilter.SelectedIndexChanged += (_, _) => RefreshGrid();
 
-            btnAdd = CreateButton(
-                "+ Add Lead",
-                Theme.Primary,
-                Theme.Surface);
-
+            btnAdd = CreateButton("+ Add Lead", Theme.Primary, Theme.Surface);
             btnAdd.Click += BtnAddClick;
 
             grid = new DataGridView
             {
-                AutoSizeColumnsMode =
-                    DataGridViewAutoSizeColumnsMode.Fill,
-
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 ReadOnly = true,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
                 MultiSelect = false,
-
-                SelectionMode =
-                    DataGridViewSelectionMode.FullRowSelect,
-
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 BackgroundColor = Theme.Surface,
                 ForeColor = Theme.TextPrimary,
                 GridColor = Theme.Border,
@@ -102,29 +79,27 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 RowHeadersVisible = false,
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersHeight = 45,
-                ColumnHeadersBorderStyle =
-                    DataGridViewHeaderBorderStyle.None
+                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None
             };
 
             grid.RowTemplate.Height = 45;
-
             grid.DefaultCellStyle.BackColor = Theme.Surface;
             grid.DefaultCellStyle.ForeColor = Theme.TextPrimary;
             grid.DefaultCellStyle.SelectionBackColor = Theme.Border;
             grid.DefaultCellStyle.SelectionForeColor = Theme.TextPrimary;
             grid.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
             grid.DefaultCellStyle.Font = new Font("Segoe UI", 10);
-
-            grid.ColumnHeadersDefaultCellStyle.BackColor =
-                Theme.Background;
-
-            grid.ColumnHeadersDefaultCellStyle.ForeColor =
-                Theme.TextPrimary;
-
-            grid.ColumnHeadersDefaultCellStyle.Font =
-                new Font("Segoe UI", 10, FontStyle.Bold);
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Theme.Background;
+            grid.ColumnHeadersDefaultCellStyle.ForeColor = Theme.TextPrimary;
+            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
 
             grid.CellContentClick += GridCellContentClick;
+            grid.CellDoubleClick += (_, e) =>
+            {
+                if (e.RowIndex < 0) return;
+                var lead = GetLeadAtRow(e.RowIndex);
+                if (lead is not null) ViewLead(lead);
+            };
 
             Controls.Add(txtSearch);
             Controls.Add(cmbFilter);
@@ -132,10 +107,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
             Controls.Add(grid);
         }
 
-        private static Button CreateButton(
-            string text,
-            Color backColor,
-            Color foregroundColor)
+        private static Button CreateButton(string text, Color backColor, Color foregroundColor)
         {
             var button = new Button
             {
@@ -143,16 +115,10 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 FlatStyle = FlatStyle.Flat,
                 BackColor = backColor,
                 ForeColor = foregroundColor,
-                Font = new Font(
-                    "Segoe UI",
-                    10,
-                    FontStyle.Bold),
-
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
-
             button.FlatAppearance.BorderSize = 0;
-
             return button;
         }
 
@@ -162,26 +128,16 @@ namespace CRMS_Peguit.winforms.Views.Leads
             int x = 30;
 
             txtSearch.Location = new Point(x, 75);
-            txtSearch.Size = new Size(
-                Math.Max(200, (int)(availableWidth * 0.35)),
-                36);
+            txtSearch.Size = new Size(Math.Max(200, (int)(availableWidth * 0.35)), 36);
 
-            cmbFilter.Location = new Point(
-                x + txtSearch.Width + 15,
-                75);
-
+            cmbFilter.Location = new Point(x + txtSearch.Width + 15, 75);
             cmbFilter.Size = new Size(150, 36);
 
-            btnAdd.Location = new Point(
-                x + txtSearch.Width + cmbFilter.Width + 30,
-                73);
-
+            btnAdd.Location = new Point(x + txtSearch.Width + cmbFilter.Width + 30, 73);
             btnAdd.Size = new Size(140, 38);
 
             grid.Location = new Point(x, 130);
-            grid.Size = new Size(
-                availableWidth,
-                Math.Max(0, Height - 160));
+            grid.Size = new Size(availableWidth, Math.Max(0, Height - 160));
         }
 
         private void RefreshGrid()
@@ -191,7 +147,6 @@ namespace CRMS_Peguit.winforms.Views.Leads
             IEnumerable<Lead> query = _controller.GetAll();
 
             string search = txtSearch.Text.Trim();
-
             if (!string.IsNullOrWhiteSpace(search))
             {
                 query = query.Where(lead =>
@@ -205,44 +160,25 @@ namespace CRMS_Peguit.winforms.Views.Leads
             }
 
             string? filter = cmbFilter.SelectedItem?.ToString();
-
-            if (!string.IsNullOrWhiteSpace(filter) &&
-                filter != "All Stages")
+            if (!string.IsNullOrWhiteSpace(filter) && filter != "All Stages")
             {
-                query = query.Where(lead =>
-                    string.Equals(
-                        lead.Stage,
-                        filter,
-                        StringComparison.OrdinalIgnoreCase));
+                query = query.Where(lead => string.Equals(lead.Stage, filter, StringComparison.OrdinalIgnoreCase));
             }
 
             grid.DataSource = query
                 .Select(lead => new
                 {
                     lead.LeadId,
-
                     Name = lead.FullName,
-
-                    Email = string.IsNullOrWhiteSpace(lead.Email)
-                        ? "-"
-                        : lead.Email,
-
-                    Phone = string.IsNullOrWhiteSpace(lead.Phone)
-                        ? "-"
-                        : lead.Phone,
-
-                    Source = string.IsNullOrWhiteSpace(lead.Source)
-                        ? "-"
-                        : lead.Source,
-
+                    Email = string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email,
+                    Phone = string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone,
+                    Source = string.IsNullOrWhiteSpace(lead.Source) ? "-" : lead.Source,
                     lead.Stage
                 })
                 .ToList();
 
             if (grid.Columns["LeadId"] is not null)
-            {
                 grid.Columns["LeadId"].Visible = false;
-            }
 
             if (grid.Columns["Name"] is not null)
             {
@@ -253,50 +189,31 @@ namespace CRMS_Peguit.winforms.Views.Leads
             grid.Columns.Add(new ActionsColumn());
         }
 
-        private Lead? GetSelectedLead()
+        private Lead? GetLeadAtRow(int rowIndex)
         {
-            if (grid.CurrentRow is null)
-            {
+            object? idValue = grid.Rows[rowIndex].Cells["LeadId"].Value;
+            if (idValue is null || !int.TryParse(idValue.ToString(), out int leadId))
                 return null;
-            }
 
-            object? idValue =
-                grid.CurrentRow.Cells["LeadId"].Value;
-
-            if (idValue is null ||
-                !int.TryParse(idValue.ToString(), out int leadId))
-            {
-                return null;
-            }
-
-            return _controller
-                .GetAll()
-                .FirstOrDefault(lead => lead.LeadId == leadId);
+            return _controller.GetAll().FirstOrDefault(lead => lead.LeadId == leadId);
         }
 
-        private void GridCellContentClick(
-            object? sender,
-            DataGridViewCellEventArgs e)
+        private Lead? GetSelectedLead()
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0)
-            {
-                return;
-            }
+            if (grid.CurrentRow is null) return null;
+            return GetLeadAtRow(grid.CurrentRow.Index);
+        }
 
-            if (grid.Columns[e.ColumnIndex] is not ActionsColumn)
-            {
-                return;
-            }
+        private void GridCellContentClick(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (grid.Columns[e.ColumnIndex] is not ActionsColumn) return;
 
             grid.Rows[e.RowIndex].Selected = true;
             grid.CurrentCell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
 
             Lead? lead = GetSelectedLead();
-
-            if (lead is null)
-            {
-                return;
-            }
+            if (lead is null) return;
 
             var menu = new ContextMenuStrip
             {
@@ -305,46 +222,38 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 Font = new Font("Segoe UI", 10)
             };
 
+            var viewItem = new ToolStripMenuItem("View");
+            viewItem.Click += (_, _) => ViewLead(lead);
+            menu.Items.Add(viewItem);
+
             var editItem = new ToolStripMenuItem("Edit");
             editItem.Click += (_, _) => EditLead(lead);
-
             menu.Items.Add(editItem);
 
-            if (!string.Equals(
-                    lead.Stage,
-                    "converted",
-                    StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(lead.Stage, "converted", StringComparison.OrdinalIgnoreCase))
             {
-                var convertItem =
-                    new ToolStripMenuItem("Convert to Customer");
-
-                convertItem.Click += (_, _) =>
-                    ConvertLead(lead);
-
+                var convertItem = new ToolStripMenuItem("Convert to Customer");
+                convertItem.Click += (_, _) => ConvertLead(lead);
                 menu.Items.Add(convertItem);
             }
 
-            // Archived leads disappear because of the global
-            // IsDeleted query filter. Restoration should be handled
-            // from a separate Archived Leads screen.
             var archiveItem = new ToolStripMenuItem("Archive");
-
-            archiveItem.Click += (_, _) =>
-                ArchiveLead(lead);
-
+            archiveItem.Click += (_, _) => ArchiveLead(lead);
             menu.Items.Add(archiveItem);
 
-            menu.Show(
-                grid,
-                grid.PointToClient(Cursor.Position));
+            menu.Show(grid, grid.PointToClient(Cursor.Position));
+        }
+
+        private void ViewLead(Lead lead)
+        {
+            using var form = new LeadDetailForm(lead, _controller);
+            form.ShowDialog();
         }
 
         private void EditLead(Lead lead)
         {
             using var form = new LeadInputForm(lead);
-
-            if (form.ShowDialog() == DialogResult.OK &&
-                form.Result is not null)
+            if (form.ShowDialog() == DialogResult.OK && form.Result is not null)
             {
                 _controller.Update(form.Result);
                 RefreshGrid();
@@ -353,16 +262,11 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
         private void ArchiveLead(Lead lead)
         {
-            DialogResult confirmation = MessageBox.Show(
-                $"Archive '{lead.FullName}'?",
-                "Archive Lead",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
+            var confirmation = MessageBox.Show(
+                $"Archive '{lead.FullName}'?", "Archive Lead",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
-            if (confirmation != DialogResult.Yes)
-            {
-                return;
-            }
+            if (confirmation != DialogResult.Yes) return;
 
             _controller.SoftDelete(lead);
             RefreshGrid();
@@ -371,9 +275,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
         private void BtnAddClick(object? sender, EventArgs e)
         {
             using var form = new LeadInputForm();
-
-            if (form.ShowDialog() == DialogResult.OK &&
-                form.Result is not null)
+            if (form.ShowDialog() == DialogResult.OK && form.Result is not null)
             {
                 _controller.Add(form.Result);
                 RefreshGrid();
@@ -382,51 +284,31 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
         private void ConvertLead(Lead lead)
         {
-            DialogResult confirmation = MessageBox.Show(
+            var confirmation = MessageBox.Show(
                 $"Convert '{lead.FullName}' into a customer?\n\n" +
-                "A new customer record will be created and this " +
-                "lead will be marked as converted.",
+                "A new customer record will be created and this lead will be marked as converted.",
+                "Convert Lead", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
-                "Convert Lead",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
+            if (confirmation != DialogResult.Yes) return;
 
-            if (confirmation != DialogResult.Yes)
-            {
-                return;
-            }
-
-            Customer customer =
-                _controller.ConvertToCustomer(lead);
+            Customer customer = _controller.ConvertToCustomer(lead);
 
             MessageBox.Show(
-                $"'{lead.FullName}' is now customer " +
-                $"#{customer.CustomerId}.",
-
-                "Conversion Complete",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+                $"'{lead.FullName}' is now customer #{customer.CustomerId}.",
+                "Conversion Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             RefreshGrid();
         }
 
-        private static bool ContainsText(
-            string? value,
-            string search)
+        private static bool ContainsText(string? value, string search)
         {
             return !string.IsNullOrWhiteSpace(value) &&
-                   value.Contains(
-                       search,
-                       StringComparison.OrdinalIgnoreCase);
+                   value.Contains(search, StringComparison.OrdinalIgnoreCase);
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                _controller.Dispose();
-            }
-
+            if (disposing) _controller.Dispose();
             base.Dispose(disposing);
         }
     }
