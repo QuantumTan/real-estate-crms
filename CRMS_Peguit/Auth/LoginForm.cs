@@ -11,12 +11,18 @@ namespace CRMS_Peguit.winforms
     {
         private readonly AuthService _authService;
 
-        private TextBox txtCompanyId;
-        private TextBox txtEmail;
-        private TextBox txtPassword;
-        private Button btnLogin;
-        private Label lblError;
-        private Label lblLogo;
+        private TextBox txtCompanyId = null!;
+        private TextBox txtEmail = null!;
+        private TextBox txtPassword = null!;
+        private Button btnLogin = null!;
+        private CheckBox chkShowPassword = null!;
+        private LinkLabel lnkForgotPassword = null!;
+        private Label lblError = null!;
+        private Label lblLogo = null!;
+
+        // Store main form and its FormClosed handler.
+        private Form1? _mainForm;
+        private FormClosedEventHandler? _mainFormClosedHandler;   // <-- fixed type
 
         // ==========================================================
         // DEFAULT CONSTRUCTOR
@@ -34,7 +40,6 @@ namespace CRMS_Peguit.winforms
         public LoginForm(string apiBaseUrl)
         {
             _authService = new AuthService(apiBaseUrl);
-
             BuildUi();
         }
 
@@ -44,224 +49,128 @@ namespace CRMS_Peguit.winforms
 
         private void BuildUi()
         {
-            ClientSize = new Size(420, 440);
-
-            StartPosition =
-                FormStartPosition.CenterScreen;
-
+            ClientSize = new Size(420, 475);
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "NEXA - Sign In";
+            BackColor = Theme.Background;
 
-            BackColor =
-                Theme.Background;
-
-            // ======================================================
-            // LOGO
-            // ======================================================
-
+            // Logo
             lblLogo = new Label
             {
                 Text = "NEXA",
-
-                ForeColor =
-                    Theme.Primary,
-
-                Font =
-                    new Font(
-                        "Segoe UI",
-                        26,
-                        FontStyle.Bold
-                    ),
-
+                ForeColor = Theme.Primary,
+                Font = new Font("Segoe UI", 26, FontStyle.Bold),
                 AutoSize = true,
-
-                Location =
-                    new Point(150, 30)
+                Location = new Point(150, 30)
             };
 
-            // ======================================================
-            // COMPANY ID LABEL
-            // ======================================================
-
+            // Company ID
             var lblCompanyId = new Label
             {
                 Text = "Company ID",
-
-                ForeColor =
-                    Theme.TextPrimary,
-
-                Location =
-                    new Point(50, 100),
-
+                ForeColor = Theme.TextPrimary,
+                Location = new Point(50, 100),
                 AutoSize = true
             };
-
-            // ======================================================
-            // COMPANY ID INPUT
-            // ======================================================
 
             txtCompanyId = new TextBox
             {
-                Location =
-                    new Point(50, 120),
-
-                Size =
-                    new Size(320, 28),
-
-                Font =
-                    new Font(
-                        "Segoe UI",
-                        10.5f
-                    )
+                Location = new Point(50, 120),
+                Size = new Size(320, 28),
+                Font = new Font("Segoe UI", 10.5f)
             };
 
-            // ======================================================
-            // EMAIL LABEL
-            // ======================================================
-
+            // Email
             var lblEmail = new Label
             {
                 Text = "Email",
-
-                ForeColor =
-                    Theme.TextPrimary,
-
-                Location =
-                    new Point(50, 160),
-
+                ForeColor = Theme.TextPrimary,
+                Location = new Point(50, 160),
                 AutoSize = true
             };
-
-            // ======================================================
-            // EMAIL INPUT
-            // ======================================================
 
             txtEmail = new TextBox
             {
-                Location =
-                    new Point(50, 180),
-
-                Size =
-                    new Size(320, 28),
-
-                Font =
-                    new Font(
-                        "Segoe UI",
-                        10.5f
-                    )
+                Location = new Point(50, 180),
+                Size = new Size(320, 28),
+                Font = new Font("Segoe UI", 10.5f),
+                PlaceholderText = "name@example.com"
             };
 
-            // ======================================================
-            // PASSWORD LABEL
-            // ======================================================
-
+            // Password
             var lblPassword = new Label
             {
                 Text = "Password",
-
-                ForeColor =
-                    Theme.TextPrimary,
-
-                Location =
-                    new Point(50, 220),
-
+                ForeColor = Theme.TextPrimary,
+                Location = new Point(50, 220),
                 AutoSize = true
             };
 
-            // ======================================================
-            // PASSWORD INPUT
-            // ======================================================
-
             txtPassword = new TextBox
             {
-                Location =
-                    new Point(50, 240),
-
-                Size =
-                    new Size(320, 28),
-
-                Font =
-                    new Font(
-                        "Segoe UI",
-                        10.5f
-                    ),
-
+                Location = new Point(50, 240),
+                Size = new Size(320, 28),
+                Font = new Font("Segoe UI", 10.5f),
                 UseSystemPasswordChar = true
             };
 
-            // ======================================================
-            // ERROR LABEL
-            // ======================================================
-
-            lblError = new Label
+            chkShowPassword = new CheckBox
             {
-                ForeColor =
-                    Color.IndianRed,
-
-                Location =
-                    new Point(50, 275),
-
-                Size =
-                    new Size(320, 40),
-
-                Font =
-                    new Font(
-                        "Segoe UI",
-                        9f
-                    )
+                Text = "Show password",
+                ForeColor = Theme.TextPrimary,
+                BackColor = Theme.Background,
+                Location = new Point(50, 273),
+                AutoSize = true
+            };
+            chkShowPassword.CheckedChanged += (_, _) =>
+            {
+                txtPassword.UseSystemPasswordChar = !chkShowPassword.Checked;
             };
 
-            // ======================================================
-            // LOGIN BUTTON
-            // ======================================================
+            lnkForgotPassword = new LinkLabel
+            {
+                Text = "Forgot password?",
+                Location = new Point(263, 273),
+                AutoSize = true,
+                LinkColor = Theme.Primary,
+                ActiveLinkColor = Theme.Primary
+            };
+            lnkForgotPassword.Click += LnkForgotPasswordClick;
 
+            // Error label
+            lblError = new Label
+            {
+                ForeColor = Color.IndianRed,
+                Location = new Point(50, 305),
+                Size = new Size(320, 40),
+                Font = new Font("Segoe UI", 9f)
+            };
+
+            // Login button
             btnLogin = new Button
             {
                 Text = "Sign In",
-
-                BackColor =
-                    Theme.Primary,
-
-                ForeColor =
-                    Color.White,
-
-                FlatStyle =
-                    FlatStyle.Flat,
-
-                Location =
-                    new Point(50, 325),
-
-                Size =
-                    new Size(320, 40),
-
-                Cursor =
-                    Cursors.Hand,
-
-                FlatAppearance =
-                {
-                    BorderSize = 0
-                }
+                BackColor = Theme.Primary,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(50, 360),
+                Size = new Size(320, 40),
+                Cursor = Cursors.Hand,
+                FlatAppearance = { BorderSize = 0 }
             };
+            btnLogin.Click += BtnLogin_Click;
 
-            btnLogin.Click +=
-                BtnLogin_Click;
-
-            // ======================================================
-            // ADD CONTROLS
-            // ======================================================
-
+            // Add controls
             Controls.Add(lblLogo);
-
             Controls.Add(lblCompanyId);
             Controls.Add(txtCompanyId);
-
             Controls.Add(lblEmail);
             Controls.Add(txtEmail);
-
             Controls.Add(lblPassword);
             Controls.Add(txtPassword);
-
+            Controls.Add(chkShowPassword);
+            Controls.Add(lnkForgotPassword);
             Controls.Add(lblError);
-
             Controls.Add(btnLogin);
         }
 
@@ -269,89 +178,51 @@ namespace CRMS_Peguit.winforms
         // LOGIN BUTTON
         // ==========================================================
 
-        private async void BtnLogin_Click(
-            object? sender,
-            EventArgs e)
+        private async void BtnLogin_Click(object? sender, EventArgs e)
         {
             lblError.Text = "";
 
-            // ======================================================
-            // VALIDATE COMPANY ID
-            // ======================================================
-
-            if (string.IsNullOrWhiteSpace(
-                txtCompanyId.Text))
+            if (string.IsNullOrWhiteSpace(txtCompanyId.Text))
             {
-                lblError.Text =
-                    "Company ID is required.";
-
+                lblError.Text = "Company ID is required.";
                 return;
             }
 
-            // ======================================================
-            // VALIDATE EMAIL
-            // ======================================================
-
-            if (string.IsNullOrWhiteSpace(
-                txtEmail.Text))
+            if (string.IsNullOrWhiteSpace(txtEmail.Text))
             {
-                lblError.Text =
-                    "Email is required.";
-
+                lblError.Text = "Email is required.";
                 return;
             }
 
-            // ======================================================
-            // VALIDATE PASSWORD
-            // ======================================================
-
-            if (string.IsNullOrWhiteSpace(
-                txtPassword.Text))
+            if (!ContactEmailService.IsValidEmail(txtEmail.Text))
             {
-                lblError.Text =
-                    "Password is required.";
-
+                lblError.Text = "Enter a valid email address.";
+                txtEmail.Focus();
                 return;
             }
 
-            // ======================================================
-            // DISABLE BUTTON
-            // ======================================================
+            if (string.IsNullOrWhiteSpace(txtPassword.Text))
+            {
+                lblError.Text = "Password is required.";
+                return;
+            }
 
             btnLogin.Enabled = false;
-
-            btnLogin.Text =
-                "Signing in...";
+            btnLogin.Text = "Signing in...";
 
             try
             {
-                // ==================================================
-                // CALL AUTH SERVICE
-                // ==================================================
-
-                var result =
-                    await _authService.LoginAsync(
-                        txtCompanyId.Text.Trim(),
-                        txtEmail.Text.Trim(),
-                        txtPassword.Text
-                    );
-
-                // ==================================================
-                // LOGIN FAILED
-                // ==================================================
+                var result = await _authService.LoginAsync(
+                    txtCompanyId.Text.Trim(),
+                    txtEmail.Text.Trim(),
+                    txtPassword.Text
+                );
 
                 if (!result.Success)
                 {
-                    lblError.Text =
-                        result.ErrorMessage ??
-                        "Login failed.";
-
+                    lblError.Text = result.ErrorMessage ?? "Login failed.";
                     return;
                 }
-
-                // ==================================================
-                // OFFLINE LOGIN
-                // ==================================================
 
                 if (result.WasOffline)
                 {
@@ -363,47 +234,61 @@ namespace CRMS_Peguit.winforms
                     );
                 }
 
-                // ==================================================
-                // CREATE MAIN FORM
-                // ==================================================
+                // Create main form and store it.
+                _mainForm = new Form1();
 
-                var main =
-                    new Form1();
+                // Store the handler – type now matches FormClosedEventHandler.
+                _mainFormClosedHandler = (s, args) => Close();
 
-                // ==================================================
-                // CLOSE APPLICATION WHEN MAIN FORM CLOSES
-                // ==================================================
+                _mainForm.FormClosed += _mainFormClosedHandler;
 
-                main.FormClosed +=
-                    (s, args) =>
-                    {
-                        Close();
-                    };
-
-                // ==================================================
-                // SHOW MAIN FORM
-                // ==================================================
-
-                main.Show();
-
-                // ==================================================
-                // HIDE LOGIN FORM
-                // ==================================================
-
+                _mainForm.Show();
                 Hide();
             }
             catch (Exception ex)
             {
-                lblError.Text =
-                    $"Unexpected error: {ex.Message}";
+                lblError.Text = $"Unexpected error: {ex.Message}";
             }
             finally
             {
                 btnLogin.Enabled = true;
-
-                btnLogin.Text =
-                    "Sign In";
+                btnLogin.Text = "Sign In";
             }
+        }
+
+        private void LnkForgotPasswordClick(object? sender, EventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(txtEmail.Text) &&
+                !ContactEmailService.IsValidEmail(txtEmail.Text))
+            {
+                lblError.Text = "Enter a valid email before requesting a reset.";
+                txtEmail.Focus();
+                return;
+            }
+
+            MessageBox.Show(
+                "Password reset email is ready for SMTP integration. Once SMTP settings are configured, NEXA will send a reset link to the account email.",
+                "Forgot Password",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
+        }
+
+        // ==========================================================
+        // Called by Form1 during logout to detach and show login form.
+        // ==========================================================
+
+        public void PrepareForLogout()
+        {
+            if (_mainForm != null && _mainFormClosedHandler != null)
+            {
+                _mainForm.FormClosed -= _mainFormClosedHandler;
+                _mainForm = null;
+                _mainFormClosedHandler = null;
+            }
+
+            Show();
+            Activate();
         }
     }
 }

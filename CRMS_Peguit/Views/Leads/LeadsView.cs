@@ -226,20 +226,32 @@ namespace CRMS_Peguit.winforms.Views.Leads
             viewItem.Click += (_, _) => ViewLead(lead);
             menu.Items.Add(viewItem);
 
-            var editItem = new ToolStripMenuItem("Edit");
-            editItem.Click += (_, _) => EditLead(lead);
-            menu.Items.Add(editItem);
+            var messageItem = new ToolStripMenuItem("Message");
+            messageItem.Click += (_, _) => MessageLead(lead);
+            messageItem.Enabled = CRMS_Peguit.winforms.Models.Services.ContactEmailService.IsValidEmail(lead.Email);
+            menu.Items.Add(messageItem);
 
-            if (!string.Equals(lead.Stage, "converted", StringComparison.OrdinalIgnoreCase))
+            if (CRMS_Peguit.winforms.Auth.RbacService.CanEditAssignedRecord(lead.AssignedAgentId))
+            {
+                var editItem = new ToolStripMenuItem("Edit");
+                editItem.Click += (_, _) => EditLead(lead);
+                menu.Items.Add(editItem);
+            }
+
+            if (CRMS_Peguit.winforms.Auth.RbacService.CanEditAssignedRecord(lead.AssignedAgentId) &&
+                !string.Equals(lead.Stage, "converted", StringComparison.OrdinalIgnoreCase))
             {
                 var convertItem = new ToolStripMenuItem("Convert to Customer");
                 convertItem.Click += (_, _) => ConvertLead(lead);
                 menu.Items.Add(convertItem);
             }
 
-            var archiveItem = new ToolStripMenuItem("Archive");
-            archiveItem.Click += (_, _) => ArchiveLead(lead);
-            menu.Items.Add(archiveItem);
+            if (CRMS_Peguit.winforms.Auth.RbacService.CanArchiveAssignedRecord(lead.AssignedAgentId))
+            {
+                var archiveItem = new ToolStripMenuItem("Archive");
+                archiveItem.Click += (_, _) => ArchiveLead(lead);
+                menu.Items.Add(archiveItem);
+            }
 
             menu.Show(grid, grid.PointToClient(Cursor.Position));
         }
@@ -277,9 +289,25 @@ namespace CRMS_Peguit.winforms.Views.Leads
             using var form = new LeadInputForm();
             if (form.ShowDialog() == DialogResult.OK && form.Result is not null)
             {
+                if (CRMS_Peguit.winforms.Auth.RbacService.ShouldAutoAssignCreatedRecord)
+                {
+                    form.Result.AssignedAgentId = CRMS_Peguit.winforms.Auth.CurrentSession.UserId;
+                    MessageBox.Show(
+                        "This lead will be assigned to you. Manager approval workflow is marked as pending until the approval backend is added.",
+                        "Assignment Approval Placeholder",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+
                 _controller.Add(form.Result);
                 RefreshGrid();
             }
+        }
+
+        private void MessageLead(Lead lead)
+        {
+            using var form = new CRMS_Peguit.winforms.Views.Shared.EmailMessageForm(lead.FullName, lead.Email);
+            form.ShowDialog();
         }
 
         private void ConvertLead(Lead lead)

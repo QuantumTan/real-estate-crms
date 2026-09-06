@@ -102,6 +102,12 @@ namespace CRMS_Peguit.winforms.Auth
 
             CurrentUser = role switch
             {
+                "superadmin" or "super admin" or "super_admin" =>
+                    new SuperAdmin(
+                        fullName,
+                        email
+                    ),
+
                 "admin" =>
                     new Admin(
                         fullName,

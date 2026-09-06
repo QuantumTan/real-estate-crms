@@ -1,19 +1,17 @@
-﻿using NEXA.Model;
+using NEXA.Model;
 using System.Collections.Generic;
 
 namespace CRMS_Peguit.Models.Backend
 {
-    // CHILD CLASS - Admin
-
-    public class Admin : User
+    public class SuperAdmin : User
     {
-        public Admin(
+        public SuperAdmin(
             string fullName,
             string email)
             : base(
                 fullName,
                 email,
-                UserRole.Admin)
+                UserRole.SuperAdmin)
         {
         }
 
@@ -21,26 +19,29 @@ namespace CRMS_Peguit.Models.Backend
         {
             return new List<string>
             {
-                "UserManagement",
-                "Managers",
-                "SalesStaff",
+                "Administrators",
+                "Roles",
+                "SystemAccess",
+                "SystemData",
+                "Backup",
+                "Settings",
+                "Policies",
+                "Subscription",
 
                 "Dashboard",
+                "Reports",
                 "Customers",
                 "Leads",
                 "Properties",
                 "Deals",
-
-                "Reports",
-                "SupportTickets",
-                "ImportExport",
-                "Settings"
+                "Activities",
+                "SupportTickets"
             };
         }
 
         public override string GetDashboardType()
         {
-            return "AdminDashboard";
+            return "SuperAdminDashboard";
         }
     }
 }

@@ -268,6 +268,16 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(txtEmail.Text) &&
+                !ContactEmailService.IsValidEmail(txtEmail.Text))
+            {
+                ShowValidationError(
+                    "Enter a valid email address.",
+                    txtEmail);
+
+                return;
+            }
+
             if (_existingLead is not null)
             {
                 _existingLead.FirstName = firstName;

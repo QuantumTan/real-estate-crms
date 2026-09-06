@@ -7,6 +7,7 @@ namespace NEXA.Model
 {
     public enum UserRole
     {
+        SuperAdmin,
         Admin,
         Manager,
         SalesStaff
