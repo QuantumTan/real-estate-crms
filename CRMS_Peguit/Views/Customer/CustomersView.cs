@@ -1,30 +1,21 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Controls;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Customers
 {
-    public class CustomersView : UserControl
+    public partial class CustomersView : UserControl
     {
         private readonly CustomerController _controller;
-
-        private DataGridView grid = null!;
-        private TextBox txtSearch = null!;
-        private ComboBox cmbFilter = null!;
-        private Button btnAdd = null!;
-
-        private KpiCard kpiTotal = null!;
-        private KpiCard kpiActive = null!;
-        private KpiCard kpiInactive = null!;
-        private KpiCard kpiThisMonth = null!;
         private KpiCard? _activeKpi; // which KPI card (if any) is currently filtering the grid
 
         public CustomersView()
         {
+            InitializeComponent();
             _controller = new CustomerController();
 
-            InitializeUI();
+            BindEvents();
             LayoutControls();
             RefreshKpis();
             RefreshGrid();
@@ -32,80 +23,27 @@ namespace CRMS_Peguit.winforms.Views.Customers
             Resize += (_, _) => LayoutControls();
         }
 
-        private void InitializeUI()
+        private void BindEvents()
         {
-            BackColor = Theme.Background;
-            Padding = new Padding(30);
-
-            Controls.Add(new Label
-            {
-                Text = "Customers",
-                Font = new Font("Segoe UI", 22, FontStyle.Bold),
-                ForeColor = Theme.TextPrimary,
-                Location = new Point(30, 25),
-                AutoSize = true
-            });
-
-            // ---- KPI cards ----
-            kpiTotal = new KpiCard("Total Customers", "total", Theme.Primary);
-            kpiActive = new KpiCard("Active Customers", "active", Color.MediumSeaGreen);
-            kpiInactive = new KpiCard("Inactive Customers", "inactive", Color.IndianRed);
-            kpiThisMonth = new KpiCard("New This Month", "this_month", Color.Goldenrod);
-
             foreach (var kpi in new[] { kpiTotal, kpiActive, kpiInactive, kpiThisMonth })
             {
                 kpi.Click += KpiCard_Click;
-                Controls.Add(kpi);
             }
 
-            txtSearch = new TextBox
-            {
-                PlaceholderText = "Search first name, last name, email, phone...",
-                Font = new Font("Segoe UI", 11),
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                BorderStyle = BorderStyle.FixedSingle
-            };
             txtSearch.TextChanged += (_, _) => RefreshGrid();
 
-            cmbFilter = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 11),
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary
-            };
+            cmbFilter.Items.Clear();
             cmbFilter.Items.AddRange(new[] { "All Status", "active", "inactive", "prospect" });
             cmbFilter.SelectedIndex = 0;
             cmbFilter.SelectedIndexChanged += (_, _) =>
             {
-                // Manually changing the dropdown clears any KPI-driven filter,
-                // so the two filter mechanisms don't fight each other.
                 SetActiveKpi(null);
                 RefreshGrid();
             };
 
-            btnAdd = CreateButton("+ Add Customer", Theme.Primary, Theme.Surface);
             btnAdd.Click += BtnAddClick;
 
-            grid = new DataGridView
-            {
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                MultiSelect = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                GridColor = Theme.Border,
-                BorderStyle = BorderStyle.None,
-                RowHeadersVisible = false,
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 45,
-                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None
-            };
-
+            grid.GridColor = Theme.Border;
             grid.RowTemplate.Height = 45;
             grid.DefaultCellStyle.BackColor = Theme.Surface;
             grid.DefaultCellStyle.ForeColor = Theme.TextPrimary;
@@ -118,33 +56,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
             grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
 
             grid.CellContentClick += GridCellContentClick;
-            // Clicking the Name cell itself also opens the detail view
             grid.CellDoubleClick += (_, e) =>
             {
                 if (e.RowIndex < 0) return;
                 var customer = GetCustomerAtRow(e.RowIndex);
                 if (customer is not null) ViewCustomer(customer);
             };
-
-            Controls.Add(txtSearch);
-            Controls.Add(cmbFilter);
-            Controls.Add(btnAdd);
-            Controls.Add(grid);
-        }
-
-        private static Button CreateButton(string text, Color backColor, Color foregroundColor)
-        {
-            var button = new Button
-            {
-                Text = text,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = backColor,
-                ForeColor = foregroundColor,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            button.FlatAppearance.BorderSize = 0;
-            return button;
         }
 
         private void LayoutControls()
@@ -191,11 +108,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
         {
             if (sender is not KpiCard clicked) return;
 
-            // Clicking the already-active KPI toggles the filter off
             SetActiveKpi(_activeKpi == clicked ? null : clicked);
-
-            // Clear the dropdown/search so the KPI filter is the obvious one in effect
-            cmbFilter.SelectedIndexChanged -= null; // no-op guard, kept explicit for clarity
             cmbFilter.SelectedIndex = 0;
             RefreshGrid();
         }
@@ -214,7 +127,6 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             IEnumerable<Customer> query = _controller.GetAll();
 
-            // KPI-driven filter takes priority over the dropdown
             if (_activeKpi is not null)
             {
                 var now = DateTime.UtcNow;
@@ -223,7 +135,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
                     "active" => query.Where(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase)),
                     "inactive" => query.Where(c => string.Equals(c.Status, "inactive", StringComparison.OrdinalIgnoreCase)),
                     "this_month" => query.Where(c => c.CreatedAt.Year == now.Year && c.CreatedAt.Month == now.Month),
-                    _ => query // "total" - no filter
+                    _ => query
                 };
             }
             else
@@ -253,88 +165,89 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 {
                     c.CustomerId,
                     Name = c.FullName,
-                    Email = string.IsNullOrWhiteSpace(c.Email) ? "-" : c.Email,
+                    c.Email,
                     Phone = string.IsNullOrWhiteSpace(c.Phone) ? "-" : c.Phone,
-                    c.Type,
-                    c.Status
+                    Type = c.Type.ToUpper(),
+                    Status = c.Status.ToUpper(),
+                    Assignment = c.AssignmentStatus.ToUpper(),
+                    AssignedTo = _controller.GetAssignedAgentName(c.AssignedAgentId) ?? "Unassigned"
                 })
                 .ToList();
 
-            if (grid.Columns["CustomerId"] is not null)
-                grid.Columns["CustomerId"].Visible = false;
+            var idCol = grid.Columns["CustomerId"];
+            if (idCol is not null) idCol.Visible = false;
 
-            if (grid.Columns["Name"] is not null)
+            AddActionButton("View", "View");
+            AddActionButton("Edit", "Edit");
+            AddActionButton("Archive", "Archive");
+        }
+
+        private static bool ContainsText(string? value, string search) =>
+            !string.IsNullOrWhiteSpace(value) &&
+            value.Contains(search, StringComparison.OrdinalIgnoreCase);
+
+        private void AddActionButton(string columnName, string text)
+        {
+            var btn = new DataGridViewButtonColumn
             {
-                grid.Columns["Name"].HeaderText = "Full Name";
-                grid.Columns["Name"].FillWeight = 160;
-            }
-
-            grid.Columns.Add(new ActionsColumn());
-        }
-
-        private Customer? GetCustomerAtRow(int rowIndex)
-        {
-            object? idValue = grid.Rows[rowIndex].Cells["CustomerId"].Value;
-            if (idValue is null || !int.TryParse(idValue.ToString(), out int customerId))
-                return null;
-
-            return _controller.GetAll().FirstOrDefault(c => c.CustomerId == customerId);
-        }
-
-        private Customer? GetSelectedCustomer()
-        {
-            if (grid.CurrentRow is null) return null;
-            return GetCustomerAtRow(grid.CurrentRow.Index);
+                Name = columnName,
+                HeaderText = columnName,
+                Text = text,
+                UseColumnTextForButtonValue = true,
+                Width = 80
+            };
+            grid.Columns.Add(btn);
         }
 
         private void GridCellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            if (grid.Columns[e.ColumnIndex] is not ActionsColumn) return;
+            if (e.RowIndex < 0) return;
 
-            grid.Rows[e.RowIndex].Selected = true;
-            grid.CurrentCell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
-
-            Customer? customer = GetSelectedCustomer();
+            var customer = GetCustomerAtRow(e.RowIndex);
             if (customer is null) return;
 
-            var menu = new ContextMenuStrip
+            string colName = grid.Columns[e.ColumnIndex].Name;
+
+            if (colName == "View")
             {
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                Font = new Font("Segoe UI", 10)
-            };
-
-            var viewItem = new ToolStripMenuItem("View");
-            viewItem.Click += (_, _) => ViewCustomer(customer);
-            menu.Items.Add(viewItem);
-
-            var messageItem = new ToolStripMenuItem("Message");
-            messageItem.Click += (_, _) => MessageCustomer(customer);
-            messageItem.Enabled = CRMS_Peguit.winforms.Models.Services.ContactEmailService.IsValidEmail(customer.Email);
-            menu.Items.Add(messageItem);
-
-            if (CRMS_Peguit.winforms.Auth.RbacService.CanEditAssignedRecord(customer.AssignedAgentId))
-            {
-                var editItem = new ToolStripMenuItem("Edit");
-                editItem.Click += (_, _) => EditCustomer(customer);
-                menu.Items.Add(editItem);
+                ViewCustomer(customer);
             }
-
-            if (CRMS_Peguit.winforms.Auth.RbacService.CanArchiveAssignedRecord(customer.AssignedAgentId))
+            else if (colName == "Edit")
             {
-                var archiveItem = new ToolStripMenuItem("Archive");
-                archiveItem.Click += (_, _) => ArchiveCustomer(customer);
-                menu.Items.Add(archiveItem);
+                EditCustomer(customer);
             }
+            else if (colName == "Archive")
+            {
+                ArchiveCustomer(customer);
+            }
+        }
 
-            menu.Show(grid, grid.PointToClient(Cursor.Position));
+        private Customer? GetCustomerAtRow(int rowIndex)
+        {
+            if (grid.Rows[rowIndex].Cells["CustomerId"].Value is int id)
+            {
+                return _controller.GetById(id);
+            }
+            return null;
+        }
+
+        private void BtnAddClick(object? sender, EventArgs e)
+        {
+            using var form = new CustomerInputForm();
+            if (form.ShowDialog() == DialogResult.OK && form.Result is not null)
+            {
+                _controller.Add(form.Result);
+                RefreshKpis();
+                RefreshGrid();
+            }
         }
 
         private void ViewCustomer(Customer customer)
         {
             using var form = new CustomerDetailForm(customer, _controller);
             form.ShowDialog();
+            RefreshKpis();
+            RefreshGrid();
         }
 
         private void EditCustomer(Customer customer)
@@ -350,54 +263,23 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
         private void ArchiveCustomer(Customer customer)
         {
-            var confirmation = MessageBox.Show(
-                $"Archive '{customer.FullName}'?", "Archive Customer",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            var confirm = MessageBox.Show(
+                $"Are you sure you want to archive '{customer.FullName}'?",
+                "Confirm Archive",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
 
-            if (confirmation != DialogResult.Yes) return;
-
-            _controller.SoftDelete(customer);
-            RefreshKpis();
-            RefreshGrid();
-        }
-
-        private void BtnAddClick(object? sender, EventArgs e)
-        {
-            using var form = new CustomerInputForm();
-            if (form.ShowDialog() == DialogResult.OK && form.Result is not null)
+            if (confirm == DialogResult.Yes)
             {
-                if (CRMS_Peguit.winforms.Auth.RbacService.ShouldAutoAssignCreatedRecord)
-                {
-                    form.Result.AssignedAgentId = CRMS_Peguit.winforms.Auth.CurrentSession.UserId;
-                    MessageBox.Show(
-                        "This customer will be assigned to you. Manager approval workflow is marked as pending until the approval backend is added.",
-                        "Assignment Approval Placeholder",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
-
-                _controller.Add(form.Result);
+                _controller.SoftDelete(customer);
                 RefreshKpis();
                 RefreshGrid();
             }
         }
 
-        private void MessageCustomer(Customer customer)
+        private void lblTitle_Click(object sender, EventArgs e)
         {
-            using var form = new CRMS_Peguit.winforms.Views.Shared.EmailMessageForm(customer.FullName, customer.Email);
-            form.ShowDialog();
-        }
 
-        private static bool ContainsText(string? value, string search)
-        {
-            return !string.IsNullOrWhiteSpace(value) &&
-                   value.Contains(search, StringComparison.OrdinalIgnoreCase);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) _controller.Dispose();
-            base.Dispose(disposing);
         }
     }
 }

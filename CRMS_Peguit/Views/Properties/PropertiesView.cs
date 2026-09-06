@@ -5,82 +5,34 @@ using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Properties
 {
-    public class PropertiesView : UserControl
+    public partial class PropertiesView : UserControl
     {
         private readonly PropertyController _controller;
 
-        private DataGridView grid = null!;
-        private TextBox txtSearch = null!;
-        private ComboBox cmbFilter = null!;
-        private Button btnAdd = null!;
-
         public PropertiesView()
         {
+            InitializeComponent();
             _controller = new PropertyController();
 
-            InitializeUI();
+            BindEvents();
             LayoutControls();
             RefreshGrid();
 
             Resize += (_, _) => LayoutControls();
         }
 
-        private void InitializeUI()
+        private void BindEvents()
         {
-            BackColor = Theme.Background;
-            Padding = new Padding(30);
-
-            Controls.Add(new Label
-            {
-                Text = "Properties",
-                Font = new Font("Segoe UI", 22, FontStyle.Bold),
-                ForeColor = Theme.TextPrimary,
-                Location = new Point(30, 25),
-                AutoSize = true
-            });
-
-            txtSearch = new TextBox
-            {
-                PlaceholderText = "Search address, type, status, owner, agent...",
-                Font = new Font("Segoe UI", 11),
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                BorderStyle = BorderStyle.FixedSingle
-            };
             txtSearch.TextChanged += (_, _) => RefreshGrid();
 
-            cmbFilter = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 11),
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary
-            };
+            cmbFilter.Items.Clear();
             cmbFilter.Items.AddRange(new[] { "All Status", "available", "reserved", "sold", "inactive" });
             cmbFilter.SelectedIndex = 0;
             cmbFilter.SelectedIndexChanged += (_, _) => RefreshGrid();
 
-            btnAdd = CreateButton("+ Add Property", Theme.Primary, Theme.Surface);
             btnAdd.Click += BtnAddClick;
 
-            grid = new DataGridView
-            {
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                MultiSelect = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                GridColor = Theme.Border,
-                BorderStyle = BorderStyle.None,
-                RowHeadersVisible = false,
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 45,
-                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None
-            };
-
+            grid.GridColor = Theme.Border;
             grid.RowTemplate.Height = 45;
             grid.DefaultCellStyle.BackColor = Theme.Surface;
             grid.DefaultCellStyle.ForeColor = Theme.TextPrimary;
@@ -99,26 +51,6 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 var property = GetPropertyAtRow(e.RowIndex);
                 if (property is not null) ViewProperty(property);
             };
-
-            Controls.Add(txtSearch);
-            Controls.Add(cmbFilter);
-            Controls.Add(btnAdd);
-            Controls.Add(grid);
-        }
-
-        private static Button CreateButton(string text, Color backColor, Color foregroundColor)
-        {
-            var button = new Button
-            {
-                Text = text,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = backColor,
-                ForeColor = foregroundColor,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            button.FlatAppearance.BorderSize = 0;
-            return button;
         }
 
         private void LayoutControls()
@@ -127,7 +59,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             int x = 30;
 
             txtSearch.Location = new Point(x, 75);
-            txtSearch.Size = new Size(Math.Max(240, (int)(availableWidth * 0.38)), 36);
+            txtSearch.Size = new Size(Math.Max(200, (int)(availableWidth * 0.35)), 36);
 
             cmbFilter.Location = new Point(x + txtSearch.Width + 15, 75);
             cmbFilter.Size = new Size(150, 36);
@@ -177,6 +109,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
                     Type = string.IsNullOrWhiteSpace(property.PropertyType) ? "-" : property.PropertyType,
                     Price = property.Price.ToString("N2"),
                     property.Status,
+                    Assignment = property.AssignmentStatus,
                     Owner = GetName(owners, property.OwnerCustomerId),
                     ListedBy = GetName(agents, property.ListedByAgentId)
                 })
@@ -253,6 +186,14 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 menu.Items.Add(deleteItem);
             }
 
+            if (RbacService.CanApproveAssignments &&
+                string.Equals(property.AssignmentStatus, "pending_review", StringComparison.OrdinalIgnoreCase))
+            {
+                var approveItem = new ToolStripMenuItem("Approve Assignment");
+                approveItem.Click += (_, _) => ApprovePropertyAssignment(property);
+                menu.Items.Add(approveItem);
+            }
+
             menu.Show(grid, grid.PointToClient(Cursor.Position));
         }
 
@@ -291,6 +232,17 @@ namespace CRMS_Peguit.winforms.Views.Properties
             RefreshGrid();
         }
 
+        private void ApprovePropertyAssignment(Property property)
+        {
+            _controller.ApproveAssignment(property, "Reviewed from Properties module.");
+            MessageBox.Show(
+                $"Assignment for property #{property.PropertyId} has been approved.",
+                "Assignment Approved",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            RefreshGrid();
+        }
+
         private void BtnAddClick(object? sender, EventArgs e)
         {
             var owners = _controller.GetOwnerCustomers();
@@ -320,16 +272,6 @@ namespace CRMS_Peguit.winforms.Views.Properties
             using var form = new PropertyInputForm(owners, agents);
             if (form.ShowDialog() == DialogResult.OK && form.Result is not null)
             {
-                if (RbacService.ShouldAutoAssignCreatedRecord)
-                {
-                    form.Result.ListedByAgentId = CurrentSession.UserId;
-                    MessageBox.Show(
-                        "This property will be assigned to you. Manager approval workflow is marked as pending until the approval backend is added.",
-                        "Assignment Approval Placeholder",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
-
                 _controller.Add(form.Result);
                 RefreshGrid();
             }
@@ -348,18 +290,19 @@ namespace CRMS_Peguit.winforms.Views.Properties
                     null));
             }
 
-            if (!agents.Any(x => x.UserId == property.ListedByAgentId))
+            if (property.ListedByAgentId.HasValue && !agents.Any(x => x.UserId == property.ListedByAgentId.Value))
             {
                 agents.Add(new AgentPickerItem(
-                    property.ListedByAgentId,
-                    _controller.GetListedAgentName(property.ListedByAgentId) ?? $"User #{property.ListedByAgentId}",
+                    property.ListedByAgentId.Value,
+                    _controller.GetListedAgentName(property.ListedByAgentId.Value) ?? $"User #{property.ListedByAgentId.Value}",
                     string.Empty));
             }
         }
 
-        private static string GetName(Dictionary<int, string> names, int id)
+        private static string GetName(Dictionary<int, string> names, int? id)
         {
-            return names.TryGetValue(id, out string? name) && !string.IsNullOrWhiteSpace(name)
+            if (id is null) return "Unassigned";
+            return names.TryGetValue(id.Value, out string? name) && !string.IsNullOrWhiteSpace(name)
                 ? name
                 : "-";
         }
@@ -368,12 +311,6 @@ namespace CRMS_Peguit.winforms.Views.Properties
         {
             return !string.IsNullOrWhiteSpace(value) &&
                    value.Contains(search, StringComparison.OrdinalIgnoreCase);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing) _controller.Dispose();
-            base.Dispose(disposing);
         }
     }
 }

@@ -4,20 +4,28 @@ using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Properties
 {
-    public class PropertyDetailForm : Form
+    public partial class PropertyDetailForm : Form
     {
-        private readonly Property _property;
-        private readonly PropertyController _controller;
+        private readonly Property? _property;
+        private readonly PropertyController? _controller;
+
+        public PropertyDetailForm()
+        {
+            InitializeComponent();
+        }
 
         public PropertyDetailForm(Property property, PropertyController controller)
         {
             _property = property;
             _controller = controller;
-            BuildUi();
+            InitializeComponent();
+            BuildFormControls();
         }
 
-        private void BuildUi()
+        private void BuildFormControls()
         {
+            if (_property == null || _controller == null) return;
+
             Width = 620;
             Height = 440;
             StartPosition = FormStartPosition.CenterParent;
@@ -42,7 +50,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
             y += 10;
             AddSectionTitle("Assignments", ref y);
             AddField("Owner", _controller.GetOwnerName(_property.OwnerCustomerId) ?? $"Customer #{_property.OwnerCustomerId}", ref y);
-            AddField("Listed By", _controller.GetListedAgentName(_property.ListedByAgentId) ?? $"User #{_property.ListedByAgentId}", ref y);
+            AddField("Listed By", _controller.GetListedAgentName(_property.ListedByAgentId) ?? (_property.ListedByAgentId.HasValue ? $"User #{_property.ListedByAgentId.Value}" : "Unassigned"), ref y);
+            AddField("Assignment Review", _property.AssignmentStatus, ref y);
 
             var btnClose = new Button
             {

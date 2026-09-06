@@ -1,34 +1,140 @@
-﻿using System;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.infrastructure.data;
 
-namespace CRMS_Peguit.domain.entities
+namespace CRMS_Peguit.api.Controllers
 {
-    public class Lead
+    [ApiController]
+    [Route("api/[controller]")]
+    public class LeadsController : ControllerBase
     {
-        public int LeadId { get; set; }
+        private readonly RealEstateDbContext _db;
 
-        public int TenantId { get; set; }
+        public LeadsController(RealEstateDbContext db)
+        {
+            _db = db;
+        }
 
-        // --- Split name fields ---
-        public string FirstName { get; set; } = string.Empty;
-        public string? MiddleName { get; set; }
-        public string LastName { get; set; } = string.Empty;
-        public string? Suffix { get; set; }
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var leads = await _db.Leads.ToListAsync();
+            return Ok(leads);
+        }
 
-        // Convenience read-only full name (NOT mapped to a column)
-        public string FullName =>
-            string.Join(" ", new[] { FirstName, MiddleName, LastName, Suffix }
-                .Where(s => !string.IsNullOrWhiteSpace(s)));
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var lead = await _db.Leads
+                .SingleOrDefaultAsync(x => x.LeadId == id);
 
-        public string? Phone { get; set; }
-        public string? Email { get; set; }
-        public string? Source { get; set; }
-        public int? AssignedAgentId { get; set; }
-        public string Stage { get; set; } = string.Empty;
-        public int? ConvertedCustomerId { get; set; }
-        public DateTime CreatedAt { get; set; }
+            return lead is null ? NotFound() : Ok(lead);
+        }
 
-        // --- Soft delete ---
-        public bool IsDeleted { get; set; }
-        public DateTime? DeletedAt { get; set; }
+        [HttpPost]
+        public async Task<IActionResult> Create(Lead lead)
+        {
+            var tenantResolver = HttpContext.RequestServices
+                .GetRequiredService<ITenantResolver>();
+
+            lead.TenantId = tenantResolver.GetTenantId();
+            lead.CreatedAt = DateTime.UtcNow;
+            lead.IsDeleted = false;
+            lead.DeletedAt = null;
+            lead.AssignedAgentId = null; // R23. Default state is Unassigned
+            lead.AssignmentStatus = string.IsNullOrWhiteSpace(lead.AssignmentStatus)
+                ? "pending_review"
+                : lead.AssignmentStatus;
+
+            _db.Leads.Add(lead);
+            await _db.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetById),
+                new { id = lead.LeadId }, lead);
+        }
+
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, Lead updated)
+        {
+            var item = await _db.Leads
+                .SingleOrDefaultAsync(x => x.LeadId == id);
+            if (item is null) return NotFound();
+
+            item.FirstName = updated.FirstName;
+            item.MiddleName = updated.MiddleName;
+            item.LastName = updated.LastName;
+            item.Suffix = updated.Suffix;
+            item.Phone = updated.Phone;
+            item.Email = updated.Email;
+            item.Source = updated.Source;
+            item.Stage = updated.Stage;
+            item.Notes = updated.Notes;
+            item.Priority = updated.Priority;
+            item.ExpectedValue = updated.ExpectedValue;
+            item.AssignedAgentId = updated.AssignedAgentId;
+            item.AssignmentStatus = updated.AssignmentStatus;
+            item.AssignmentReviewedByUserId = updated.AssignmentReviewedByUserId;
+            item.AssignmentReviewedAt = updated.AssignmentReviewedAt;
+            item.AssignmentReviewNotes = updated.AssignmentReviewNotes;
+
+            await _db.SaveChangesAsync();
+            return Ok(item);
+        }
+
+        [HttpPost("{id:int}/convert")]
+        public async Task<IActionResult> ConvertToCustomer(int id)
+        {
+            var item = await _db.Leads.SingleOrDefaultAsync(x => x.LeadId == id);
+            if (item is null) return NotFound();
+
+            if (string.Equals(item.Stage, "converted", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("This lead has already been converted.");
+
+            var customer = new Customer
+            {
+                TenantId = item.TenantId,
+                FirstName = item.FirstName,
+                MiddleName = item.MiddleName,
+                LastName = item.LastName,
+                Suffix = item.Suffix,
+                Email = item.Email,
+                Phone = item.Phone,
+                Type = "buyer",
+                Status = "active",
+                AssignedAgentId = item.AssignedAgentId,
+                AssignmentStatus = item.AssignmentStatus,
+                AssignmentReviewedByUserId = item.AssignmentReviewedByUserId,
+                AssignmentReviewedAt = item.AssignmentReviewedAt,
+                AssignmentReviewNotes = item.AssignmentReviewNotes,
+                CreatedAt = DateTime.UtcNow,
+                IsDeleted = false,
+                DeletedAt = null
+            };
+
+            _db.Customers.Add(customer);
+            await _db.SaveChangesAsync();
+
+            item.Stage = "converted";
+            item.ConvertedCustomerId = customer.CustomerId;
+            await _db.SaveChangesAsync();
+
+            return Ok(customer);
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var item = await _db.Leads
+                .SingleOrDefaultAsync(x => x.LeadId == id);
+            if (item is null) return NotFound();
+
+            // Soft delete
+            item.IsDeleted = true;
+            item.DeletedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
     }
 }

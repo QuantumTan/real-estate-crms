@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
@@ -42,6 +42,10 @@ namespace CRMS_Peguit.api.Controllers
             customer.CreatedAt = DateTime.UtcNow;
             customer.IsDeleted = false;
             customer.DeletedAt = null;
+            customer.AssignedAgentId = null; // R23. Default state is Unassigned
+            customer.AssignmentStatus = string.IsNullOrWhiteSpace(customer.AssignmentStatus)
+                ? "pending_review"
+                : customer.AssignmentStatus;
 
             _db.Customers.Add(customer);
             await _db.SaveChangesAsync();
@@ -66,6 +70,10 @@ namespace CRMS_Peguit.api.Controllers
             item.Type = updated.Type;
             item.Status = updated.Status;
             item.AssignedAgentId = updated.AssignedAgentId;
+            item.AssignmentStatus = updated.AssignmentStatus;
+            item.AssignmentReviewedByUserId = updated.AssignmentReviewedByUserId;
+            item.AssignmentReviewedAt = updated.AssignmentReviewedAt;
+            item.AssignmentReviewNotes = updated.AssignmentReviewNotes;
 
             await _db.SaveChangesAsync();
             return Ok(item);

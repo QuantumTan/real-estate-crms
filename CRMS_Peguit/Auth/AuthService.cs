@@ -1,8 +1,11 @@
-﻿using System;
+using System;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.infrastructure.Security;
+using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Auth
 {
@@ -74,8 +77,57 @@ namespace CRMS_Peguit.winforms.Auth
             }
             catch (Exception) // network unreachable, monsterASP down, timeout, etc.
             {
-                return TryOfflineLogin(companyId, email, password);
+                return TryLocalDbLogin(companyId, email, password);
             }
+        }
+
+        private AuthResult TryLocalDbLogin(string companyId, string email, string password)
+        {
+            try
+            {
+                if (!int.TryParse(companyId, out int tenantId) || tenantId <= 0)
+                    tenantId = 1;
+
+                using var db = LocalDb.CreateContext();
+                var user = db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Email.ToLower() == email.Trim().ToLower())
+                    .SingleOrDefault();
+
+                if (user != null)
+                {
+                    bool verify = PasswordHasher.Verify(password, user.PasswordHash);
+                    if (verify)
+                    {
+                        var role = db.Roles.AsNoTracking().FirstOrDefault(r => r.RoleId == user.RoleId);
+                        string roleName = role?.RoleName ?? "Agent";
+                        string displayName = string.IsNullOrWhiteSpace(user.FullName) ? user.Email : user.FullName;
+
+                        _localCache.SaveSuccessfulLogin(companyId, user.UserId, displayName, user.Email, user.PasswordHash, roleName);
+
+                        CurrentSession.Start(
+                            user.UserId,
+                            user.TenantId > 0 ? user.TenantId : tenantId,
+                            displayName,
+                            user.Email,
+                            roleName,
+                            jwtToken: null,
+                            isOffline: false);
+
+                        return new AuthResult { Success = true, WasOffline = false };
+                    }
+                    else
+                    {
+                        return new AuthResult { Success = false, ErrorMessage = "Invalid email or password." };
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to cached credentials
+            }
+
+            return TryOfflineLogin(companyId, email, password);
         }
 
         private AuthResult TryOfflineLogin(string companyId, string email, string password)

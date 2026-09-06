@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
@@ -6,82 +6,34 @@ using Lead = CRMS_Peguit.domain.entities.Lead;
 
 namespace CRMS_Peguit.winforms.Views.Leads
 {
-    public class LeadsView : UserControl
+    public partial class LeadsView : UserControl
     {
         private readonly LeadController _controller;
 
-        private DataGridView grid = null!;
-        private TextBox txtSearch = null!;
-        private ComboBox cmbFilter = null!;
-        private Button btnAdd = null!;
-
         public LeadsView()
         {
+            InitializeComponent();
             _controller = new LeadController();
 
-            InitializeUI();
+            BindEvents();
             LayoutControls();
             RefreshGrid();
 
             Resize += (_, _) => LayoutControls();
         }
 
-        private void InitializeUI()
+        private void BindEvents()
         {
-            BackColor = Theme.Background;
-            Padding = new Padding(30);
-
-            Controls.Add(new Label
-            {
-                Text = "Leads",
-                Font = new Font("Segoe UI", 22, FontStyle.Bold),
-                ForeColor = Theme.TextPrimary,
-                Location = new Point(30, 25),
-                AutoSize = true
-            });
-
-            txtSearch = new TextBox
-            {
-                PlaceholderText = "Search first name, last name, email, phone...",
-                Font = new Font("Segoe UI", 11),
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                BorderStyle = BorderStyle.FixedSingle
-            };
             txtSearch.TextChanged += (_, _) => RefreshGrid();
 
-            cmbFilter = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 11),
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary
-            };
+            cmbFilter.Items.Clear();
             cmbFilter.Items.AddRange(new[] { "All Stages", "new", "contacted", "qualified", "converted", "lost" });
             cmbFilter.SelectedIndex = 0;
             cmbFilter.SelectedIndexChanged += (_, _) => RefreshGrid();
 
-            btnAdd = CreateButton("+ Add Lead", Theme.Primary, Theme.Surface);
             btnAdd.Click += BtnAddClick;
 
-            grid = new DataGridView
-            {
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                MultiSelect = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                BackgroundColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                GridColor = Theme.Border,
-                BorderStyle = BorderStyle.None,
-                RowHeadersVisible = false,
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 45,
-                ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None
-            };
-
+            grid.GridColor = Theme.Border;
             grid.RowTemplate.Height = 45;
             grid.DefaultCellStyle.BackColor = Theme.Surface;
             grid.DefaultCellStyle.ForeColor = Theme.TextPrimary;
@@ -100,26 +52,6 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 var lead = GetLeadAtRow(e.RowIndex);
                 if (lead is not null) ViewLead(lead);
             };
-
-            Controls.Add(txtSearch);
-            Controls.Add(cmbFilter);
-            Controls.Add(btnAdd);
-            Controls.Add(grid);
-        }
-
-        private static Button CreateButton(string text, Color backColor, Color foregroundColor)
-        {
-            var button = new Button
-            {
-                Text = text,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = backColor,
-                ForeColor = foregroundColor,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Cursor = Cursors.Hand
-            };
-            button.FlatAppearance.BorderSize = 0;
-            return button;
         }
 
         private void LayoutControls()
@@ -173,7 +105,10 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     Email = string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email,
                     Phone = string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone,
                     Source = string.IsNullOrWhiteSpace(lead.Source) ? "-" : lead.Source,
-                    lead.Stage
+                    Priority = string.IsNullOrWhiteSpace(lead.Priority) ? "-" : lead.Priority,
+                    ExpectedValue = lead.ExpectedValue?.ToString("N2") ?? "-",
+                    lead.Stage,
+                    Assignment = lead.AssignmentStatus
                 })
                 .ToList();
 
@@ -246,6 +181,31 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 menu.Items.Add(convertItem);
             }
 
+            if (CRMS_Peguit.winforms.Auth.RbacService.CanEditAssignedRecord(lead.AssignedAgentId) &&
+                !string.Equals(lead.Stage, "lost", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(lead.Stage, "converted", StringComparison.OrdinalIgnoreCase))
+            {
+                var lostItem = new ToolStripMenuItem("Mark as Lost");
+                lostItem.Click += (_, _) => MarkLeadLost(lead);
+                menu.Items.Add(lostItem);
+            }
+
+            if (CRMS_Peguit.winforms.Auth.RbacService.CanEditAssignedRecord(lead.AssignedAgentId) &&
+                string.Equals(lead.Stage, "lost", StringComparison.OrdinalIgnoreCase))
+            {
+                var restoreItem = new ToolStripMenuItem("Restore Lead");
+                restoreItem.Click += (_, _) => RestoreLostLead(lead);
+                menu.Items.Add(restoreItem);
+            }
+
+            if (CRMS_Peguit.winforms.Auth.RbacService.CanApproveAssignments &&
+                string.Equals(lead.AssignmentStatus, "pending_review", StringComparison.OrdinalIgnoreCase))
+            {
+                var approveItem = new ToolStripMenuItem("Approve Assignment");
+                approveItem.Click += (_, _) => ApproveLeadAssignment(lead);
+                menu.Items.Add(approveItem);
+            }
+
             if (CRMS_Peguit.winforms.Auth.RbacService.CanArchiveAssignedRecord(lead.AssignedAgentId))
             {
                 var archiveItem = new ToolStripMenuItem("Archive");
@@ -289,16 +249,6 @@ namespace CRMS_Peguit.winforms.Views.Leads
             using var form = new LeadInputForm();
             if (form.ShowDialog() == DialogResult.OK && form.Result is not null)
             {
-                if (CRMS_Peguit.winforms.Auth.RbacService.ShouldAutoAssignCreatedRecord)
-                {
-                    form.Result.AssignedAgentId = CRMS_Peguit.winforms.Auth.CurrentSession.UserId;
-                    MessageBox.Show(
-                        "This lead will be assigned to you. Manager approval workflow is marked as pending until the approval backend is added.",
-                        "Assignment Approval Placeholder",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
-
                 _controller.Add(form.Result);
                 RefreshGrid();
             }
@@ -307,7 +257,50 @@ namespace CRMS_Peguit.winforms.Views.Leads
         private void MessageLead(Lead lead)
         {
             using var form = new CRMS_Peguit.winforms.Views.Shared.EmailMessageForm(lead.FullName, lead.Email);
-            form.ShowDialog();
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                _controller.LogEmail(lead, form.SentSubject);
+                RefreshGrid();
+            }
+        }
+
+        private void MarkLeadLost(Lead lead)
+        {
+            var confirmation = MessageBox.Show(
+                $"Mark '{lead.FullName}' as lost?",
+                "Lead Lifecycle",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirmation != DialogResult.Yes) return;
+
+            _controller.MarkLost(lead);
+            RefreshGrid();
+        }
+
+        private void RestoreLostLead(Lead lead)
+        {
+            var confirmation = MessageBox.Show(
+                $"Restore '{lead.FullName}' back to active follow-up?",
+                "Restore Lead",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirmation != DialogResult.Yes) return;
+
+            _controller.RestoreFromLost(lead);
+            RefreshGrid();
+        }
+
+        private void ApproveLeadAssignment(Lead lead)
+        {
+            _controller.ApproveAssignment(lead, "Reviewed from Leads module.");
+            MessageBox.Show(
+                $"Assignment for '{lead.FullName}' has been approved.",
+                "Assignment Approved",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            RefreshGrid();
         }
 
         private void ConvertLead(Lead lead)
@@ -334,10 +327,9 @@ namespace CRMS_Peguit.winforms.Views.Leads
                    value.Contains(search, StringComparison.OrdinalIgnoreCase);
         }
 
-        protected override void Dispose(bool disposing)
+        private void txtSearch_TextChanged(object sender, EventArgs e)
         {
-            if (disposing) _controller.Dispose();
-            base.Dispose(disposing);
+
         }
     }
 }

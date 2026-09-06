@@ -1,0 +1,163 @@
+﻿namespace CRMS_Peguit.winforms.Views.Shared
+{
+    partial class EmailMessageForm
+    {
+        private System.ComponentModel.IContainer components = null;
+
+        private System.Windows.Forms.Label lblRecipient = null!;
+        private System.Windows.Forms.TextBox txtRecipient = null!;
+        private System.Windows.Forms.Label lblSubject = null!;
+        private System.Windows.Forms.TextBox txtSubject = null!;
+        private System.Windows.Forms.Label lblBody = null!;
+        private System.Windows.Forms.TextBox txtBody = null!;
+        private System.Windows.Forms.Button btnSend = null!;
+        private System.Windows.Forms.Button btnCancel = null!;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        private void InitializeComponent()
+        {
+            this.lblRecipient = new System.Windows.Forms.Label();
+            this.txtRecipient = new System.Windows.Forms.TextBox();
+            this.lblSubject = new System.Windows.Forms.Label();
+            this.txtSubject = new System.Windows.Forms.TextBox();
+            this.lblBody = new System.Windows.Forms.Label();
+            this.txtBody = new System.Windows.Forms.TextBox();
+            this.btnSend = new System.Windows.Forms.Button();
+            this.btnCancel = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            // 
+            // lblRecipient
+            // 
+            this.lblRecipient.AutoSize = true;
+            this.lblRecipient.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.lblRecipient.Location = new System.Drawing.Point(20, 20);
+            this.lblRecipient.Name = "lblRecipient";
+            this.lblRecipient.Size = new System.Drawing.Size(108, 19);
+            this.lblRecipient.TabIndex = 0;
+            this.lblRecipient.Text = "Recipient Email *";
+            // 
+            // txtRecipient
+            // 
+            this.txtRecipient.BackColor = System.Drawing.Color.White;
+            this.txtRecipient.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtRecipient.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.txtRecipient.Location = new System.Drawing.Point(20, 45);
+            this.txtRecipient.Name = "txtRecipient";
+            this.txtRecipient.Size = new System.Drawing.Size(500, 25);
+            this.txtRecipient.TabIndex = 1;
+            // 
+            // lblSubject
+            // 
+            this.lblSubject.AutoSize = true;
+            this.lblSubject.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.lblSubject.Location = new System.Drawing.Point(20, 95);
+            this.lblSubject.Name = "lblSubject";
+            this.lblSubject.Size = new System.Drawing.Size(60, 19);
+            this.lblSubject.TabIndex = 2;
+            this.lblSubject.Text = "Subject *";
+            // 
+            // txtSubject
+            // 
+            this.txtSubject.BackColor = System.Drawing.Color.White;
+            this.txtSubject.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtSubject.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.txtSubject.Location = new System.Drawing.Point(20, 120);
+            this.txtSubject.Name = "txtSubject";
+            this.txtSubject.Size = new System.Drawing.Size(500, 25);
+            this.txtSubject.TabIndex = 3;
+            this.txtSubject.Text = "Follow up from NEXA";
+            // 
+            // lblBody
+            // 
+            this.lblBody.AutoSize = true;
+            this.lblBody.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.lblBody.Location = new System.Drawing.Point(20, 170);
+            this.lblBody.Name = "lblBody";
+            this.lblBody.Size = new System.Drawing.Size(73, 19);
+            this.lblBody.TabIndex = 4;
+            this.lblBody.Text = "Message *";
+            // 
+            // txtBody
+            // 
+            this.txtBody.BackColor = System.Drawing.Color.White;
+            this.txtBody.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtBody.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.txtBody.Location = new System.Drawing.Point(20, 195);
+            this.txtBody.Multiline = true;
+            this.txtBody.Name = "txtBody";
+            this.txtBody.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtBody.Size = new System.Drawing.Size(500, 185);
+            this.txtBody.TabIndex = 5;
+            // 
+            // btnSend
+            // 
+            this.btnSend.BackColor = System.Drawing.Color.FromArgb(37, 103, 156);
+            this.btnSend.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnSend.FlatAppearance.BorderSize = 0;
+            this.btnSend.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSend.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnSend.ForeColor = System.Drawing.Color.White;
+            this.btnSend.Location = new System.Drawing.Point(330, 410);
+            this.btnSend.Name = "btnSend";
+            this.btnSend.Size = new System.Drawing.Size(90, 38);
+            this.btnSend.TabIndex = 6;
+            this.btnSend.Text = "Send";
+            this.btnSend.UseVisualStyleBackColor = false;
+            // 
+            // btnCancel
+            // 
+            this.btnCancel.BackColor = System.Drawing.Color.White;
+            this.btnCancel.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.btnCancel.FlatAppearance.BorderSize = 0;
+            this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCancel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnCancel.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.btnCancel.Location = new System.Drawing.Point(430, 410);
+            this.btnCancel.Name = "btnCancel";
+            this.btnCancel.Size = new System.Drawing.Size(90, 38);
+            this.btnCancel.TabIndex = 7;
+            this.btnCancel.Text = "Cancel";
+            this.btnCancel.UseVisualStyleBackColor = false;
+            // 
+            // EmailMessageForm
+            // 
+            this.AcceptButton = this.btnSend;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.FromArgb(243, 247, 250);
+            this.CancelButton = this.btnCancel;
+            this.ClientSize = new System.Drawing.Size(544, 481);
+            this.Controls.Add(this.lblRecipient);
+            this.Controls.Add(this.txtRecipient);
+            this.Controls.Add(this.lblSubject);
+            this.Controls.Add(this.txtSubject);
+            this.Controls.Add(this.lblBody);
+            this.Controls.Add(this.txtBody);
+            this.Controls.Add(this.btnSend);
+            this.Controls.Add(this.btnCancel);
+            this.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.Name = "EmailMessageForm";
+            this.ShowInTaskbar = false;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            this.Text = "Send Email";
+            this.ResumeLayout(false);
+            this.PerformLayout();
+        }
+
+        #endregion
+    }
+}

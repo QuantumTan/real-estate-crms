@@ -1,4 +1,5 @@
-﻿using CRMS_Peguit.domain.entities;
+
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
@@ -6,31 +7,27 @@ namespace CRMS_Peguit.winforms.Views.Customers
 {
     public partial class CustomerDetailForm : Form
     {
-        private readonly Customer _customer;
-        private readonly CustomerController _controller;
+        private readonly Customer? _customer;
+        private readonly CustomerController? _controller;
+
+        public CustomerDetailForm()
+        {
+            InitializeComponent();
+        }
 
         public CustomerDetailForm(Customer customer, CustomerController controller)
         {
             _customer = customer;
             _controller = controller;
+            InitializeComponent();
             BuildUi();
         }
 
         private void BuildUi()
         {
-            Width = 620;
-            Height = 640;
-            StartPosition = FormStartPosition.CenterParent;
-            BackColor = Theme.Background;
-            ForeColor = Theme.TextPrimary;
-            Font = new Font("Segoe UI", 10);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            Text = $"Customer - {_customer.FullName}";
+            if (_customer == null || _controller == null) return;
 
             int y = 20;
-
             AddHeading(_customer.FullName, ref y);
             AddStatusBadge(_customer.Status, ref y);
 
@@ -44,6 +41,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             AddSectionTitle("Ownership", ref y);
             var agentName = _controller.GetAssignedAgentName(_customer.AssignedAgentId);
             AddField("Assigned Agent", agentName ?? "Unassigned", ref y);
+            AddField("Assignment Review", _customer.AssignmentStatus, ref y);
             AddField("Status", _customer.Status, ref y);
             // NOTE: "Admin user" field intentionally omitted here - there's no
             // FK on Customer for an overseeing Admin yet. Clarify what this
@@ -72,7 +70,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             }
 
             y += 10;
-            AddSectionTitle("Activity History", ref y);
+            AddSectionTitle("Recent Activities", ref y);
             var activities = _controller.GetActivityHistory(_customer.CustomerId);
             if (activities.Count == 0)
             {

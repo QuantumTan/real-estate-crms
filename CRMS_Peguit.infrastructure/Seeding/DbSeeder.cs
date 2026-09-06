@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.domain.Entities;
 using CRMS_Peguit.infrastructure.data;
 using CRMS_Peguit.infrastructure.Security;
@@ -28,7 +28,8 @@ namespace CRMS_Peguit.infrastructure.Seeding
                 new User
                 {
                     TenantId = tenantId,
-                    FullName = "Test Admin",
+                    FirstName = "System",
+                    LastName = "Admin",
                     Email = "admin@test.com",
                     PasswordHash = PasswordHasher.Hash("Admin123!"),
                     RoleId = adminRole.RoleId,
@@ -38,7 +39,8 @@ namespace CRMS_Peguit.infrastructure.Seeding
                 new User
                 {
                     TenantId = tenantId,
-                    FullName = "Test Manager",
+                    FirstName = "Test",
+                    LastName = "Manager",
                     Email = "manager@test.com",
                     PasswordHash = PasswordHasher.Hash("Manager123!"),
                     RoleId = managerRole.RoleId,
@@ -48,7 +50,8 @@ namespace CRMS_Peguit.infrastructure.Seeding
                 new User
                 {
                     TenantId = tenantId,
-                    FullName = "Test Agent",
+                    FirstName = "Test",
+                    LastName = "Agent",
                     Email = "agent@test.com",
                     PasswordHash = PasswordHasher.Hash("Agent123!"),
                     RoleId = agentRole.RoleId,

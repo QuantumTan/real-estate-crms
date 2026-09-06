@@ -36,6 +36,10 @@ namespace CRMS_Peguit.domain.entities
         public string Status { get; set; } = "active";
 
         public int? AssignedAgentId { get; set; }
+        public string AssignmentStatus { get; set; } = "pending_review";
+        public int? AssignmentReviewedByUserId { get; set; }
+        public DateTime? AssignmentReviewedAt { get; set; }
+        public string? AssignmentReviewNotes { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

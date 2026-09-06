@@ -35,13 +35,16 @@ namespace CRMS_Peguit.domain.entities
 
         public string? Notes { get; set; }
 
-
-
         public string Stage { get; set; } = "new";
 
         public string? Priority { get; set; }
+        public decimal? ExpectedValue { get; set; }
 
         public int? AssignedAgentId { get; set; }
+        public string AssignmentStatus { get; set; } = "pending_review";
+        public int? AssignmentReviewedByUserId { get; set; }
+        public DateTime? AssignmentReviewedAt { get; set; }
+        public string? AssignmentReviewNotes { get; set; }
 
         public int? ConvertedCustomerId { get; set; }
 

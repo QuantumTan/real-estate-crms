@@ -154,6 +154,21 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignmentReviewNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("AssignmentReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AssignmentReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -274,6 +289,21 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignmentReviewNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("AssignmentReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AssignmentReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int?>("ConvertedCustomerId")
                         .HasColumnType("int");
 
@@ -286,6 +316,9 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<string>("Email")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<decimal?>("ExpectedValue")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -392,6 +425,21 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AssignmentReviewNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("AssignmentReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AssignmentReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -600,10 +648,19 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("FullName")
+                    b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -618,15 +675,19 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("Suffix")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int>("TenantId")
                         .HasColumnType("int");
 
                     b.HasKey("UserId");
 
-                    b.HasIndex("Email")
-                        .IsUnique();
-
                     b.HasIndex("RoleId");
+
+                    b.HasIndex("TenantId", "Email")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });

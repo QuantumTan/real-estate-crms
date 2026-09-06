@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
 using CRMS_Peguit.winforms.Auth;
+using CRMS_Peguit.winforms.Models.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRMS_Peguit.winforms.Controllers
@@ -27,6 +28,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 .Options;
 
             _db = new RealEstateDbContext(options, TenantId);
+            SchemaRepairService.EnsureCrmPolishColumns(_db);
         }
 
         public List<Customer> GetAll()
@@ -51,9 +53,11 @@ namespace CRMS_Peguit.winforms.Controllers
             customer.CreatedAt = DateTime.UtcNow;
             customer.IsDeleted = false;
             customer.DeletedAt = null;
+            ApplyAssignmentDefaults(customer);
 
             _db.Customers.Add(customer);
             _db.SaveChanges();
+            LogActivity("Customer Created", null, customer.CustomerId, $"Customer '{customer.FullName}' was created.");
             return customer;
         }
 
@@ -62,6 +66,8 @@ namespace CRMS_Peguit.winforms.Controllers
             var item = _db.Customers
                 .SingleOrDefault(x => x.CustomerId == customer.CustomerId);
             if (item is null) return;
+
+            var oldAgentId = item.AssignedAgentId;
 
             item.FirstName = customer.FirstName;
             item.MiddleName = customer.MiddleName;
@@ -72,8 +78,20 @@ namespace CRMS_Peguit.winforms.Controllers
             item.Type = customer.Type;
             item.Status = customer.Status;
             item.AssignedAgentId = customer.AssignedAgentId;
+            item.AssignmentStatus = customer.AssignmentStatus;
+            item.AssignmentReviewedByUserId = customer.AssignmentReviewedByUserId;
+            item.AssignmentReviewedAt = customer.AssignmentReviewedAt;
+            item.AssignmentReviewNotes = customer.AssignmentReviewNotes;
 
             _db.SaveChanges();
+
+            if (oldAgentId != customer.AssignedAgentId)
+            {
+                LogActivity("Customer Assignment Changed", null, item.CustomerId,
+                    $"Customer '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{customer.AssignedAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+            }
+
+            LogActivity("Customer Updated", null, item.CustomerId, $"Customer '{item.FullName}' was updated.");
         }
 
         public void SoftDelete(Customer customer)
@@ -85,6 +103,7 @@ namespace CRMS_Peguit.winforms.Controllers
             item.IsDeleted = true;
             item.DeletedAt = DateTime.UtcNow;
             _db.SaveChanges();
+            LogActivity("Customer Archived", null, item.CustomerId, $"Customer '{item.FullName}' was archived.");
         }
 
         public void Restore(Customer customer)
@@ -101,19 +120,17 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public void Delete(Customer customer) => SoftDelete(customer);
 
-        // ---- NEW: for the customer detail view ----
-
         public string? GetAssignedAgentName(int? assignedAgentId)
         {
             if (assignedAgentId is null) return null;
             return _db.Users
                 .AsNoTracking()
                 .Where(u => u.UserId == assignedAgentId)
+                .AsEnumerable()
                 .Select(u => u.FullName)
                 .SingleOrDefault();
         }
 
-        // Only meaningful when Customer.Type is "seller" or "both"
         public List<Property> GetOwnedProperties(int customerId)
         {
             return _db.Properties
@@ -132,6 +149,24 @@ namespace CRMS_Peguit.winforms.Controllers
                 .ToList();
         }
 
+        public void ApproveAssignment(Customer customer, string? notes = null)
+        {
+            var item = _db.Customers.SingleOrDefault(x => x.CustomerId == customer.CustomerId);
+            if (item is null) return;
+
+            item.AssignmentStatus = "approved";
+            item.AssignmentReviewedByUserId = CurrentSession.UserId;
+            item.AssignmentReviewedAt = DateTime.UtcNow;
+            item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            _db.SaveChanges();
+            LogActivity("Customer Assignment Approved", null, item.CustomerId, $"Assignment for '{item.FullName}' was approved.");
+        }
+
+        public void LogEmail(Customer customer, string subject)
+        {
+            LogActivity("Email", null, customer.CustomerId, $"Email sent to '{customer.FullName}'. Subject: {subject}");
+        }
+
         // KPI counts - computed here so CustomersView doesn't need its own queries
         public CustomerKpiCounts GetKpiCounts()
         {
@@ -145,6 +180,30 @@ namespace CRMS_Peguit.winforms.Controllers
                 Inactive = all.Count(c => string.Equals(c.Status, "inactive", StringComparison.OrdinalIgnoreCase)),
                 ThisMonth = all.Count(c => c.CreatedAt.Year == now.Year && c.CreatedAt.Month == now.Month)
             };
+        }
+
+        private void LogActivity(string type, int? leadId, int? customerId, string notes)
+        {
+            if (CurrentSession.UserId <= 0) return;
+
+            _db.Activities.Add(new Activity
+            {
+                TenantId = TenantId,
+                Type = type,
+                RelatedLeadId = leadId,
+                RelatedCustomerId = customerId,
+                LoggedByAgentId = CurrentSession.UserId,
+                Notes = notes,
+                ActivityDate = DateTime.UtcNow
+            });
+            _db.SaveChanges();
+        }
+
+        private static void ApplyAssignmentDefaults(Customer customer)
+        {
+            // R23. Default state is Unassigned — never auto-assigned to creator.
+            customer.AssignedAgentId = null;
+            customer.AssignmentStatus = "pending_review";
         }
 
         public void Dispose() => _db.Dispose();
