@@ -22,6 +22,13 @@ namespace CRMS_Peguit.Models.Backend
             return new List<string>
             {
                 "Dashboard",
+                "Leads",
+                "Customers",
+                "Properties",
+                "Deals",
+                "Activities",
+                "TasksReminders",
+                "Approvals",
                 "Managers",
                 "SalesStaff",
                 "Reports",

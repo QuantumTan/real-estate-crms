@@ -1,14 +1,16 @@
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Controls;
 using CRMS_Peguit.winforms.Models.Services;
+using CRMS_Peguit.winforms.Views.Shared;
 
 namespace CRMS_Peguit.winforms.Views.Customers
 {
     public partial class CustomersView : UserControl
     {
         private readonly CustomerController _controller;
-        private KpiCard? _activeKpi; // which KPI card (if any) is currently filtering the grid
+        private string _filterStatus = "All";
 
         public CustomersView()
         {
@@ -16,45 +18,35 @@ namespace CRMS_Peguit.winforms.Views.Customers
             _controller = new CustomerController();
 
             BindEvents();
-            LayoutControls();
-            RefreshKpis();
+            UpdateFilterPillStyles();
             RefreshGrid();
-
-            Resize += (_, _) => LayoutControls();
         }
 
         private void BindEvents()
         {
-            foreach (var kpi in new[] { kpiTotal, kpiActive, kpiInactive, kpiThisMonth })
-            {
-                kpi.Click += KpiCard_Click;
-            }
-
+            btnAdd.Click += BtnAddClick;
             txtSearch.TextChanged += (_, _) => RefreshGrid();
 
-            cmbFilter.Items.Clear();
-            cmbFilter.Items.AddRange(new[] { "All Status", "active", "inactive", "prospect" });
-            cmbFilter.SelectedIndex = 0;
-            cmbFilter.SelectedIndexChanged += (_, _) =>
-            {
-                SetActiveKpi(null);
-                RefreshGrid();
-            };
+            btnFilterAll.Click += (_, _) => SetFilter("All");
+            btnFilterActive.Click += (_, _) => SetFilter("Active");
+            btnFilterFollowUp.Click += (_, _) => SetFilter("Follow Up");
+            btnFilterInactive.Click += (_, _) => SetFilter("Inactive");
 
-            btnAdd.Click += BtnAddClick;
+            // Modern Grid Styling
+            grid.EnableHeadersVisualStyles = false;
+            grid.GridColor = Color.FromArgb(241, 245, 249);
+            grid.RowTemplate.Height = 52;
+            grid.DefaultCellStyle.BackColor = Color.White;
+            grid.DefaultCellStyle.ForeColor = Color.FromArgb(15, 23, 42);
+            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
+            grid.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 23, 42);
+            grid.DefaultCellStyle.Font = new Font("Segoe UI", 9.5f);
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
+            grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(100, 116, 139);
+            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            grid.ColumnHeadersHeight = 44;
 
-            grid.GridColor = Theme.Border;
-            grid.RowTemplate.Height = 45;
-            grid.DefaultCellStyle.BackColor = Theme.Surface;
-            grid.DefaultCellStyle.ForeColor = Theme.TextPrimary;
-            grid.DefaultCellStyle.SelectionBackColor = Theme.Border;
-            grid.DefaultCellStyle.SelectionForeColor = Theme.TextPrimary;
-            grid.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
-            grid.DefaultCellStyle.Font = new Font("Segoe UI", 10);
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Theme.Background;
-            grid.ColumnHeadersDefaultCellStyle.ForeColor = Theme.TextPrimary;
-            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-
+            grid.CellPainting += Grid_CellPainting;
             grid.CellContentClick += GridCellContentClick;
             grid.CellDoubleClick += (_, e) =>
             {
@@ -64,87 +56,64 @@ namespace CRMS_Peguit.winforms.Views.Customers
             };
         }
 
-        private void LayoutControls()
+        private void SetFilter(string filter)
         {
-            int availableWidth = Math.Max(0, Width - 60);
-            int x = 30;
-
-            // KPI row
-            int kpiY = 70;
-            int kpiWidth = Math.Max(150, (availableWidth - 3 * 16) / 4);
-            int kx = x;
-            foreach (var kpi in new[] { kpiTotal, kpiActive, kpiInactive, kpiThisMonth })
-            {
-                kpi.Location = new Point(kx, kpiY);
-                kpi.Size = new Size(kpiWidth, 90);
-                kx += kpiWidth + 16;
-            }
-
-            int toolbarY = kpiY + 90 + 20;
-            txtSearch.Location = new Point(x, toolbarY);
-            txtSearch.Size = new Size(Math.Max(200, (int)(availableWidth * 0.35)), 36);
-
-            cmbFilter.Location = new Point(x + txtSearch.Width + 15, toolbarY);
-            cmbFilter.Size = new Size(150, 36);
-
-            btnAdd.Location = new Point(x + txtSearch.Width + cmbFilter.Width + 30, toolbarY - 2);
-            btnAdd.Size = new Size(150, 38);
-
-            int gridY = toolbarY + 55;
-            grid.Location = new Point(x, gridY);
-            grid.Size = new Size(availableWidth, Math.Max(0, Height - gridY - 30));
-        }
-
-        private void RefreshKpis()
-        {
-            var counts = _controller.GetKpiCounts();
-            kpiTotal.SetValue(counts.Total);
-            kpiActive.SetValue(counts.Active);
-            kpiInactive.SetValue(counts.Inactive);
-            kpiThisMonth.SetValue(counts.ThisMonth);
-        }
-
-        private void KpiCard_Click(object? sender, EventArgs e)
-        {
-            if (sender is not KpiCard clicked) return;
-
-            SetActiveKpi(_activeKpi == clicked ? null : clicked);
-            cmbFilter.SelectedIndex = 0;
+            _filterStatus = filter;
+            UpdateFilterPillStyles();
             RefreshGrid();
         }
 
-        private void SetActiveKpi(KpiCard? kpi)
+        private void UpdateFilterPillStyles()
         {
-            foreach (var card in new[] { kpiTotal, kpiActive, kpiInactive, kpiThisMonth })
-                card.SetSelected(card == kpi);
+            var pills = new[]
+            {
+                (btnFilterAll, "All"),
+                (btnFilterActive, "Active"),
+                (btnFilterFollowUp, "Follow Up"),
+                (btnFilterInactive, "Inactive")
+            };
 
-            _activeKpi = kpi;
+            foreach (var (btn, name) in pills)
+            {
+                bool isSelected = string.Equals(_filterStatus, name, StringComparison.OrdinalIgnoreCase);
+                if (isSelected)
+                {
+                    btn.BackColor = Color.FromArgb(15, 91, 158);
+                    btn.ForeColor = Color.White;
+                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+                }
+                else
+                {
+                    btn.BackColor = Color.White;
+                    btn.ForeColor = Color.FromArgb(71, 85, 105);
+                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
+                }
+            }
         }
 
         private void RefreshGrid()
         {
             grid.Columns.Clear();
 
-            IEnumerable<Customer> query = _controller.GetAll();
+            var allList = _controller.GetAll().ToList();
+            int total = allList.Count;
+            int active = allList.Count(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase));
+            lblSubtitle.Text = $"{total} total · {active} active";
 
-            if (_activeKpi is not null)
+            IEnumerable<Customer> query = allList;
+
+            if (string.Equals(_filterStatus, "Active", StringComparison.OrdinalIgnoreCase))
             {
-                var now = DateTime.UtcNow;
-                query = _activeKpi.FilterKey switch
-                {
-                    "active" => query.Where(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase)),
-                    "inactive" => query.Where(c => string.Equals(c.Status, "inactive", StringComparison.OrdinalIgnoreCase)),
-                    "this_month" => query.Where(c => c.CreatedAt.Year == now.Year && c.CreatedAt.Month == now.Month),
-                    _ => query
-                };
+                query = query.Where(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase));
             }
-            else
+            else if (string.Equals(_filterStatus, "Inactive", StringComparison.OrdinalIgnoreCase))
             {
-                string? filter = cmbFilter.SelectedItem?.ToString();
-                if (!string.IsNullOrWhiteSpace(filter) && filter != "All Status")
-                {
-                    query = query.Where(c => string.Equals(c.Status, filter, StringComparison.OrdinalIgnoreCase));
-                }
+                query = query.Where(c => string.Equals(c.Status, "inactive", StringComparison.OrdinalIgnoreCase));
+            }
+            else if (string.Equals(_filterStatus, "Follow Up", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(c => string.Equals(c.Status, "prospect", StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(c.AssignmentStatus, "pending", StringComparison.OrdinalIgnoreCase));
             }
 
             string search = txtSearch.Text.Trim();
@@ -165,68 +134,273 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 {
                     c.CustomerId,
                     Name = c.FullName,
-                    c.Email,
+                    Company = string.IsNullOrWhiteSpace(c.Type) ? "Client" : char.ToUpper(c.Type[0]) + c.Type.Substring(1).ToLower(),
                     Phone = string.IsNullOrWhiteSpace(c.Phone) ? "-" : c.Phone,
-                    Type = c.Type.ToUpper(),
+                    Email = string.IsNullOrWhiteSpace(c.Email) ? "-" : c.Email,
+                    AssignedTo = _controller.GetAssignedAgentName(c.AssignedAgentId) ?? "Unassigned",
                     Status = c.Status.ToUpper(),
-                    Assignment = c.AssignmentStatus.ToUpper(),
-                    AssignedTo = _controller.GetAssignedAgentName(c.AssignedAgentId) ?? "Unassigned"
+                    LastContacted = c.CreatedAt.ToString("MMM dd, yyyy")
                 })
                 .ToList();
 
             var idCol = grid.Columns["CustomerId"];
             if (idCol is not null) idCol.Visible = false;
 
-            AddActionButton("View", "View");
-            AddActionButton("Edit", "Edit");
-            AddActionButton("Archive", "Archive");
+            if (grid.Columns["Name"] is DataGridViewColumn nameCol)
+            {
+                nameCol.HeaderText = "NAME";
+                nameCol.FillWeight = 160;
+            }
+            if (grid.Columns["Company"] is DataGridViewColumn compCol)
+            {
+                compCol.HeaderText = "COMPANY";
+                compCol.FillWeight = 90;
+            }
+            if (grid.Columns["Phone"] is DataGridViewColumn phoneCol)
+            {
+                phoneCol.HeaderText = "PHONE";
+                phoneCol.FillWeight = 100;
+            }
+            if (grid.Columns["Email"] is DataGridViewColumn emailCol)
+            {
+                emailCol.HeaderText = "EMAIL";
+                emailCol.FillWeight = 140;
+            }
+            if (grid.Columns["AssignedTo"] is DataGridViewColumn assignCol)
+            {
+                assignCol.HeaderText = "ASSIGNED TO";
+                assignCol.FillWeight = 110;
+            }
+            if (grid.Columns["Status"] is DataGridViewColumn statusCol)
+            {
+                statusCol.HeaderText = "STATUS";
+                statusCol.FillWeight = 90;
+            }
+            if (grid.Columns["LastContacted"] is DataGridViewColumn lastCol)
+            {
+                lastCol.HeaderText = "LAST CONTACTED";
+                lastCol.FillWeight = 100;
+            }
+
+            grid.Columns.Add(new ActionsColumn());
+        }
+
+        private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.Graphics is null) return;
+
+            // Custom render Status pill badge
+            if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
+            {
+                e.PaintBackground(e.CellBounds, true);
+                string status = e.Value.ToString() ?? "";
+                Color bgColor;
+                Color textColor;
+
+                if (status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
+                {
+                    bgColor = Theme.StatusActiveBg;
+                    textColor = Theme.StatusActiveText;
+                }
+                else if (status.Equals("PROSPECT", StringComparison.OrdinalIgnoreCase) || status.Contains("FOLLOW"))
+                {
+                    bgColor = Theme.StatusFollowUpBg;
+                    textColor = Theme.StatusFollowUpText;
+                }
+                else
+                {
+                    bgColor = Theme.StatusInactiveBg;
+                    textColor = Theme.StatusInactiveText;
+                }
+
+                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+                {
+                    var size = TextRenderer.MeasureText(status, font);
+                    int pillWidth = size.Width + 16;
+                    int pillHeight = 22;
+                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
+                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
+                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
+
+                    using (var brush = new SolidBrush(bgColor))
+                    using (var path = GetRoundedRectangle(pillRect, 8))
+                    {
+                        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        e.Graphics.FillPath(brush, path);
+                    }
+
+                    TextRenderer.DrawText(e.Graphics, status, font, pillRect, textColor,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                }
+
+                e.Handled = true;
+            }
+            // Custom render Name with circular initials badge
+            else if (grid.Columns[e.ColumnIndex].Name == "Name" && e.Value != null)
+            {
+                e.PaintBackground(e.CellBounds, true);
+                string name = e.Value.ToString() ?? "";
+                string initials = GetInitials(name);
+
+                int avatarSize = 28;
+                int avatarX = e.CellBounds.X + 8;
+                int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
+                var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
+
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var brush = new SolidBrush(Color.FromArgb(71, 118, 153)))
+                {
+                    e.Graphics.FillEllipse(brush, avatarRect);
+                }
+
+                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
+                {
+                    TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, Color.White,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                }
+
+                var textRect = new Rectangle(avatarX + avatarSize + 10, e.CellBounds.Y,
+                    e.CellBounds.Width - avatarSize - 18, e.CellBounds.Height);
+
+                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+                {
+                    TextRenderer.DrawText(e.Graphics, name, font, textRect, Theme.TextPrimary,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
+
+                e.Handled = true;
+            }
+            // Custom render Email as clickable blue
+            else if (grid.Columns[e.ColumnIndex].Name == "Email" && e.Value != null)
+            {
+                e.PaintBackground(e.CellBounds, true);
+                string email = e.Value.ToString() ?? "";
+                using (var font = new Font("Segoe UI", 9.5f))
+                {
+                    TextRenderer.DrawText(e.Graphics, email, font, e.CellBounds, Theme.Primary,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private static string GetInitials(string fullName)
+        {
+            if (string.IsNullOrWhiteSpace(fullName)) return "U";
+            var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+            return $"{char.ToUpper(parts[0][0])}{char.ToUpper(parts[^1][0])}";
+        }
+
+        private static System.Drawing.Drawing2D.GraphicsPath GetRoundedRectangle(Rectangle bounds, int radius)
+        {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
         }
 
         private static bool ContainsText(string? value, string search) =>
             !string.IsNullOrWhiteSpace(value) &&
             value.Contains(search, StringComparison.OrdinalIgnoreCase);
 
-        private void AddActionButton(string columnName, string text)
-        {
-            var btn = new DataGridViewButtonColumn
-            {
-                Name = columnName,
-                HeaderText = columnName,
-                Text = text,
-                UseColumnTextForButtonValue = true,
-                Width = 80
-            };
-            grid.Columns.Add(btn);
-        }
-
         private void GridCellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0) return;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (grid.Columns[e.ColumnIndex] is not ActionsColumn) return;
+
+            grid.Rows[e.RowIndex].Selected = true;
+            grid.CurrentCell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
 
             var customer = GetCustomerAtRow(e.RowIndex);
             if (customer is null) return;
 
-            string colName = grid.Columns[e.ColumnIndex].Name;
+            var menu = new ContextMenuStrip
+            {
+                BackColor = Theme.Surface,
+                ForeColor = Theme.TextPrimary,
+                Font = new Font("Segoe UI", 10)
+            };
 
-            if (colName == "View")
+            var viewItem = new ToolStripMenuItem("View");
+            viewItem.Click += (_, _) => ViewCustomer(customer);
+            menu.Items.Add(viewItem);
+
+            var messageItem = new ToolStripMenuItem("Message");
+            messageItem.Click += (_, _) => MessageCustomer(customer);
+            messageItem.Enabled = ContactEmailService.IsValidEmail(customer.Email);
+            menu.Items.Add(messageItem);
+
+            if (RbacService.CanEditRecord(customer.AssignedAgentId, customer.CreatedByUserId))
             {
-                ViewCustomer(customer);
+                var editItem = new ToolStripMenuItem("Edit");
+                editItem.Click += (_, _) => EditCustomer(customer);
+                menu.Items.Add(editItem);
             }
-            else if (colName == "Edit")
+
+            if (RbacService.CanAssignRecords)
             {
-                EditCustomer(customer);
+                var assignItem = new ToolStripMenuItem("Assign Agent");
+                assignItem.Click += (_, _) =>
+                {
+                    using var dlg = new AssignAgentDialog(customer.FullName, _controller.GetAgents(), customer.AssignedAgentId);
+                    if (dlg.ShowDialog() == DialogResult.OK)
+                    {
+                        _controller.AssignAgent(customer, dlg.SelectedAgentId, dlg.ApproveNow, dlg.ReviewNotes);
+                        RefreshGrid();
+                    }
+                };
+                menu.Items.Add(assignItem);
             }
-            else if (colName == "Archive")
+
+            if (RbacService.CanApproveAssignments &&
+                string.Equals(customer.AssignmentStatus, "pending_review", StringComparison.OrdinalIgnoreCase))
             {
-                ArchiveCustomer(customer);
+                var approveItem = new ToolStripMenuItem("Approve Assignment");
+                approveItem.Click += (_, _) => ApproveCustomerAssignment(customer);
+                menu.Items.Add(approveItem);
             }
+
+            if (RbacService.CanArchiveRecord(customer.AssignedAgentId, customer.CreatedByUserId))
+            {
+                var archiveItem = new ToolStripMenuItem("Archive");
+                archiveItem.Click += (_, _) => ArchiveCustomer(customer);
+                menu.Items.Add(archiveItem);
+            }
+
+            menu.Show(grid, grid.PointToClient(Cursor.Position));
+        }
+
+        private void MessageCustomer(Customer customer)
+        {
+            using var form = new CRMS_Peguit.winforms.Views.Shared.EmailMessageForm(customer.FullName, customer.Email);
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                _controller.LogEmail(customer, form.SentSubject);
+                RefreshGrid();
+            }
+        }
+
+        private void ApproveCustomerAssignment(Customer customer)
+        {
+            _controller.ApproveAssignment(customer, "Reviewed from Customers module.");
+            MessageBox.Show(
+                $"Assignment for '{customer.FullName}' has been approved.",
+                "Assignment Approved",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            RefreshGrid();
         }
 
         private Customer? GetCustomerAtRow(int rowIndex)
         {
             if (grid.Rows[rowIndex].Cells["CustomerId"].Value is int id)
             {
-                return _controller.GetById(id);
+                return _controller.GetAll().FirstOrDefault(c => c.CustomerId == id) ?? _controller.GetById(id);
             }
             return null;
         }
@@ -259,6 +433,11 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 RefreshKpis();
                 RefreshGrid();
             }
+        }
+
+        private void RefreshKpis()
+        {
+            // Dynamic totals are now displayed in lblSubtitle
         }
 
         private void ArchiveCustomer(Customer customer)

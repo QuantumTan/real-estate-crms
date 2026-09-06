@@ -7,30 +7,36 @@ namespace CRMS_Peguit.winforms
         private static SyncService? _syncService;
 
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             ApplicationConfiguration.Initialize();
+
+            if (args.Contains("--sync-once"))
+            {
+                var localConn = Environment.GetEnvironmentVariable("CRMS_CONNECTION") ??
+                    "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
+                var cloudConn = Environment.GetEnvironmentVariable("CRMS_CLOUD_CONNECTION") ??
+                    "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713;Password=2Ni%Sz_9?J8m;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
+                using var sync = new SyncService(localConn, cloudConn);
+                sync.SyncAsync().GetAwaiter().GetResult();
+                return;
+            }
 
             // ==================================================
             // LOCAL DATABASE
             // ==================================================
 
             var localConnection =
-                "Server=localhost\\SQLEXPRESS;" +
-                "Database=CRMS_Local;" +
-                "Trusted_Connection=True;" +
-                "TrustServerCertificate=True;";
+                Environment.GetEnvironmentVariable("CRMS_CONNECTION") ??
+                "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
 
             // ==================================================
-            // CLOUD DATABASE
+            // CLOUD DATABASE (MonsterASP)
             // ==================================================
-            //
-            // Keep your actual connection string here for now.
-            // Do NOT commit database credentials to Git.
-            //
 
             var cloudConnection =
-                "YOUR_CLOUD_CONNECTION_STRING";
+                Environment.GetEnvironmentVariable("CRMS_CLOUD_CONNECTION") ??
+                "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713;Password=2Ni%Sz_9?J8m;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
 
             // ==================================================
             // START SYNC SERVICE

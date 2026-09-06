@@ -1,20 +1,27 @@
-namespace CRMS_Peguit.winforms.Views.Deals
+namespace CRMS_Peguit.winforms.Views.Management
 {
-    partial class DealsView
+    partial class ApprovalsView
     {
+        /// <summary> 
+        /// Required designer variable.
+        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
         private System.Windows.Forms.Label lblTitle = null!;
         private System.Windows.Forms.Label lblSubtitle = null!;
+        private System.Windows.Forms.Button btnRefresh = null!;
         private System.Windows.Forms.TextBox txtSearch = null!;
         private System.Windows.Forms.Button btnFilterAll = null!;
-        private System.Windows.Forms.Button btnFilterOffer = null!;
-        private System.Windows.Forms.Button btnFilterContract = null!;
-        private System.Windows.Forms.Button btnFilterClosed = null!;
-        private System.Windows.Forms.Button btnFilterLost = null!;
+        private System.Windows.Forms.Button btnFilterLeads = null!;
+        private System.Windows.Forms.Button btnFilterCustomers = null!;
+        private System.Windows.Forms.Button btnFilterProperties = null!;
         private System.Windows.Forms.Panel pnlCard = null!;
         private System.Windows.Forms.DataGridView grid = null!;
 
+        /// <summary> 
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -30,12 +37,12 @@ namespace CRMS_Peguit.winforms.Views.Deals
         {
             this.lblTitle = new System.Windows.Forms.Label();
             this.lblSubtitle = new System.Windows.Forms.Label();
+            this.btnRefresh = new System.Windows.Forms.Button();
             this.txtSearch = new System.Windows.Forms.TextBox();
             this.btnFilterAll = new System.Windows.Forms.Button();
-            this.btnFilterOffer = new System.Windows.Forms.Button();
-            this.btnFilterContract = new System.Windows.Forms.Button();
-            this.btnFilterClosed = new System.Windows.Forms.Button();
-            this.btnFilterLost = new System.Windows.Forms.Button();
+            this.btnFilterLeads = new System.Windows.Forms.Button();
+            this.btnFilterCustomers = new System.Windows.Forms.Button();
+            this.btnFilterProperties = new System.Windows.Forms.Button();
             this.pnlCard = new System.Windows.Forms.Panel();
             this.grid = new System.Windows.Forms.DataGridView();
             this.pnlCard.SuspendLayout();
@@ -49,9 +56,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
             this.lblTitle.Location = new System.Drawing.Point(30, 20);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(86, 37);
+            this.lblTitle.Size = new System.Drawing.Size(262, 37);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "Deals";
+            this.lblTitle.Text = "Review & Approvals";
             // 
             // lblSubtitle
             // 
@@ -60,9 +67,25 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.lblSubtitle.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
             this.lblSubtitle.Location = new System.Drawing.Point(32, 58);
             this.lblSubtitle.Name = "lblSubtitle";
-            this.lblSubtitle.Size = new System.Drawing.Size(120, 17);
+            this.lblSubtitle.Size = new System.Drawing.Size(430, 17);
             this.lblSubtitle.TabIndex = 1;
-            this.lblSubtitle.Text = "0 total · $0 pipeline";
+            this.lblSubtitle.Text = "Review pending submissions, assign sales staff, and approve listings and leads.";
+            // 
+            // btnRefresh
+            // 
+            this.btnRefresh.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnRefresh.BackColor = System.Drawing.Color.White;
+            this.btnRefresh.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnRefresh.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
+            this.btnRefresh.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRefresh.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnRefresh.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
+            this.btnRefresh.Location = new System.Drawing.Point(880, 24);
+            this.btnRefresh.Name = "btnRefresh";
+            this.btnRefresh.Size = new System.Drawing.Size(120, 36);
+            this.btnRefresh.TabIndex = 2;
+            this.btnRefresh.Text = "⟳ Refresh";
+            this.btnRefresh.UseVisualStyleBackColor = false;
             // 
             // txtSearch
             // 
@@ -72,9 +95,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.txtSearch.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
             this.txtSearch.Location = new System.Drawing.Point(30, 90);
             this.txtSearch.Name = "txtSearch";
-            this.txtSearch.PlaceholderText = "🔍 Search customer, property, agent, or stage...";
+            this.txtSearch.PlaceholderText = "🔍 Search pending items by name or submitter...";
             this.txtSearch.Size = new System.Drawing.Size(360, 24);
-            this.txtSearch.TabIndex = 2;
+            this.txtSearch.TabIndex = 3;
             // 
             // btnFilterAll
             // 
@@ -87,74 +110,58 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.btnFilterAll.ForeColor = System.Drawing.Color.White;
             this.btnFilterAll.Location = new System.Drawing.Point(630, 88);
             this.btnFilterAll.Name = "btnFilterAll";
-            this.btnFilterAll.Size = new System.Drawing.Size(55, 28);
-            this.btnFilterAll.TabIndex = 3;
-            this.btnFilterAll.Text = "All";
+            this.btnFilterAll.Size = new System.Drawing.Size(95, 28);
+            this.btnFilterAll.TabIndex = 4;
+            this.btnFilterAll.Text = "All Pending";
             this.btnFilterAll.UseVisualStyleBackColor = false;
             // 
-            // btnFilterOffer
+            // btnFilterLeads
             // 
-            this.btnFilterOffer.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnFilterOffer.BackColor = System.Drawing.Color.White;
-            this.btnFilterOffer.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnFilterOffer.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
-            this.btnFilterOffer.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnFilterOffer.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnFilterOffer.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
-            this.btnFilterOffer.Location = new System.Drawing.Point(691, 88);
-            this.btnFilterOffer.Name = "btnFilterOffer";
-            this.btnFilterOffer.Size = new System.Drawing.Size(65, 28);
-            this.btnFilterOffer.TabIndex = 4;
-            this.btnFilterOffer.Text = "Offer";
-            this.btnFilterOffer.UseVisualStyleBackColor = false;
+            this.btnFilterLeads.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnFilterLeads.BackColor = System.Drawing.Color.White;
+            this.btnFilterLeads.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnFilterLeads.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
+            this.btnFilterLeads.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnFilterLeads.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnFilterLeads.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
+            this.btnFilterLeads.Location = new System.Drawing.Point(731, 88);
+            this.btnFilterLeads.Name = "btnFilterLeads";
+            this.btnFilterLeads.Size = new System.Drawing.Size(75, 28);
+            this.btnFilterLeads.TabIndex = 5;
+            this.btnFilterLeads.Text = "Leads";
+            this.btnFilterLeads.UseVisualStyleBackColor = false;
             // 
-            // btnFilterContract
+            // btnFilterCustomers
             // 
-            this.btnFilterContract.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnFilterContract.BackColor = System.Drawing.Color.White;
-            this.btnFilterContract.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnFilterContract.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
-            this.btnFilterContract.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnFilterContract.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnFilterContract.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
-            this.btnFilterContract.Location = new System.Drawing.Point(762, 88);
-            this.btnFilterContract.Name = "btnFilterContract";
-            this.btnFilterContract.Size = new System.Drawing.Size(80, 28);
-            this.btnFilterContract.TabIndex = 5;
-            this.btnFilterContract.Text = "Contract";
-            this.btnFilterContract.UseVisualStyleBackColor = false;
+            this.btnFilterCustomers.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnFilterCustomers.BackColor = System.Drawing.Color.White;
+            this.btnFilterCustomers.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnFilterCustomers.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
+            this.btnFilterCustomers.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnFilterCustomers.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnFilterCustomers.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
+            this.btnFilterCustomers.Location = new System.Drawing.Point(812, 88);
+            this.btnFilterCustomers.Name = "btnFilterCustomers";
+            this.btnFilterCustomers.Size = new System.Drawing.Size(95, 28);
+            this.btnFilterCustomers.TabIndex = 6;
+            this.btnFilterCustomers.Text = "Customers";
+            this.btnFilterCustomers.UseVisualStyleBackColor = false;
             // 
-            // btnFilterClosed
+            // btnFilterProperties
             // 
-            this.btnFilterClosed.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnFilterClosed.BackColor = System.Drawing.Color.White;
-            this.btnFilterClosed.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnFilterClosed.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
-            this.btnFilterClosed.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnFilterClosed.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnFilterClosed.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
-            this.btnFilterClosed.Location = new System.Drawing.Point(848, 88);
-            this.btnFilterClosed.Name = "btnFilterClosed";
-            this.btnFilterClosed.Size = new System.Drawing.Size(75, 28);
-            this.btnFilterClosed.TabIndex = 6;
-            this.btnFilterClosed.Text = "Closed";
-            this.btnFilterClosed.UseVisualStyleBackColor = false;
-            // 
-            // btnFilterLost
-            // 
-            this.btnFilterLost.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnFilterLost.BackColor = System.Drawing.Color.White;
-            this.btnFilterLost.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnFilterLost.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
-            this.btnFilterLost.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnFilterLost.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnFilterLost.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
-            this.btnFilterLost.Location = new System.Drawing.Point(929, 88);
-            this.btnFilterLost.Name = "btnFilterLost";
-            this.btnFilterLost.Size = new System.Drawing.Size(71, 28);
-            this.btnFilterLost.TabIndex = 7;
-            this.btnFilterLost.Text = "Lost";
-            this.btnFilterLost.UseVisualStyleBackColor = false;
+            this.btnFilterProperties.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnFilterProperties.BackColor = System.Drawing.Color.White;
+            this.btnFilterProperties.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnFilterProperties.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
+            this.btnFilterProperties.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnFilterProperties.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnFilterProperties.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
+            this.btnFilterProperties.Location = new System.Drawing.Point(913, 88);
+            this.btnFilterProperties.Name = "btnFilterProperties";
+            this.btnFilterProperties.Size = new System.Drawing.Size(87, 28);
+            this.btnFilterProperties.TabIndex = 7;
+            this.btnFilterProperties.Text = "Properties";
+            this.btnFilterProperties.UseVisualStyleBackColor = false;
             // 
             // pnlCard
             // 
@@ -192,22 +199,22 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.grid.Size = new System.Drawing.Size(968, 518);
             this.grid.TabIndex = 0;
             // 
-            // DealsView
+            // ApprovalsView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.FromArgb(244, 247, 251);
+            this.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             this.Controls.Add(this.pnlCard);
-            this.Controls.Add(this.btnFilterLost);
-            this.Controls.Add(this.btnFilterClosed);
-            this.Controls.Add(this.btnFilterContract);
-            this.Controls.Add(this.btnFilterOffer);
+            this.Controls.Add(this.btnFilterProperties);
+            this.Controls.Add(this.btnFilterCustomers);
+            this.Controls.Add(this.btnFilterLeads);
             this.Controls.Add(this.btnFilterAll);
             this.Controls.Add(this.txtSearch);
+            this.Controls.Add(this.btnRefresh);
             this.Controls.Add(this.lblSubtitle);
             this.Controls.Add(this.lblTitle);
-            this.Name = "DealsView";
-            this.Size = new System.Drawing.Size(1030, 700);
+            this.Name = "ApprovalsView";
+            this.Size = new System.Drawing.Size(1030, 670);
             this.pnlCard.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
             this.ResumeLayout(false);

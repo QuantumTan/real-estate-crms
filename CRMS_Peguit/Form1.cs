@@ -11,54 +11,89 @@ using System.Linq;
 
 namespace CRMS_Peguit.winforms
 {
-    public partial class Form1 : MaterialForm
+    public partial class Form1 : Form
     {
+        private Button? _activeNavButton;
+        private readonly List<Button> _navButtons = new();
 
         public Form1()
         {
             InitializeComponent();
+            InitNavButtons();
             BindEvents();
             ApplyRolePermissions();
-            ShowView(new DashboardView());
+            SetActiveNavButton(btnDashboard);
+            BtnDashboardClick(btnDashboard, EventArgs.Empty);
+        }
+
+        private void InitNavButtons()
+        {
+            _navButtons.AddRange(new[]
+            {
+                btnDashboard,
+                btnLeads,
+                btnCustomers,
+                btnProperties,
+                btnDeals,
+                btnActivities,
+                btnFollowUps,
+                btnSupportTickets,
+                btnReports,
+                btnApprovals,
+                btnManageManagers,
+                btnManageAgents
+            });
+
+            foreach (var btn in _navButtons)
+            {
+                btn.MouseEnter += (s, e) =>
+                {
+                    if (s is Button b && b != _activeNavButton)
+                        b.BackColor = Theme.SidebarHover;
+                };
+                btn.MouseLeave += (s, e) =>
+                {
+                    if (s is Button b && b != _activeNavButton)
+                        b.BackColor = Color.Transparent;
+                };
+            }
+        }
+
+        private void SetActiveNavButton(Button button)
+        {
+            _activeNavButton = button;
+            foreach (var btn in _navButtons)
+            {
+                if (btn == button)
+                {
+                    btn.BackColor = Theme.SidebarSelected;
+                    btn.ForeColor = Color.White;
+                }
+                else
+                {
+                    btn.BackColor = Color.Transparent;
+                    btn.ForeColor = Theme.SidebarText;
+                }
+            }
         }
 
         private void BindEvents()
         {
             btnLogout.Click += BtnLogoutClick;
-            btnDashboard.Click += BtnDashboardClick;
-            btnManageManagers.Click += BtnManageManagersClick;
-            btnManageAgents.Click += BtnManageAgentsClick;
-            btnCustomers.Click += BtnCustomersClick;
-            btnLeads.Click += BtnLeadsClick;
-            btnProperties.Click += BtnPropertiesClick;
-            btnDeals.Click += BtnDealsClick;
-            btnActivities.Click += BtnActivitiesClick;
-            btnFollowUps.Click += BtnFollowUpsClick;
-            btnReports.Click += BtnReportsClick;
-            btnSupportTickets.Click += BtnSupportTicketsClick;
-        }
+            btnDashboard.Click += (s, e) => { SetActiveNavButton(btnDashboard); BtnDashboardClick(s, e); };
+            btnManageManagers.Click += (s, e) => { SetActiveNavButton(btnManageManagers); BtnManageManagersClick(s, e); };
+            btnManageAgents.Click += (s, e) => { SetActiveNavButton(btnManageAgents); BtnManageAgentsClick(s, e); };
+            btnCustomers.Click += (s, e) => { SetActiveNavButton(btnCustomers); BtnCustomersClick(s, e); };
+            btnLeads.Click += (s, e) => { SetActiveNavButton(btnLeads); BtnLeadsClick(s, e); };
+            btnProperties.Click += (s, e) => { SetActiveNavButton(btnProperties); BtnPropertiesClick(s, e); };
+            btnDeals.Click += (s, e) => { SetActiveNavButton(btnDeals); BtnDealsClick(s, e); };
+            btnActivities.Click += (s, e) => { SetActiveNavButton(btnActivities); BtnActivitiesClick(s, e); };
+            btnFollowUps.Click += (s, e) => { SetActiveNavButton(btnFollowUps); BtnFollowUpsClick(s, e); };
+            btnReports.Click += (s, e) => { SetActiveNavButton(btnReports); BtnReportsClick(s, e); };
+            btnApprovals.Click += (s, e) => { SetActiveNavButton(btnApprovals); BtnApprovalsClick(s, e); };
+            btnSupportTickets.Click += (s, e) => { SetActiveNavButton(btnSupportTickets); BtnSupportTicketsClick(s, e); };
 
-        // ==========================================
-        // CREATE NAVIGATION BUTTON
-        // ==========================================
-
-        private Button NavButton(string text, int y)
-        {
-            var button = new Button
-            {
-                Text = "  " + text,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                Font = new Font("Segoe UI", 10.5f),
-                Location = new Point(10, y),
-                Size = new Size(200, 45),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Cursor = Cursors.Hand
-            };
-
-            button.FlatAppearance.BorderSize = 0;
-            return button;
+            lblBellIcon.Click += (_, _) => MessageBox.Show("No new notifications.", "Notifications", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // =====================================================
@@ -79,8 +114,26 @@ namespace CRMS_Peguit.winforms
                 return;
             }
 
+            var user = CurrentSession.CurrentUser;
+            string initials = !string.IsNullOrWhiteSpace(user.FullName)
+                ? string.Join("", user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(s => s[0])).ToUpper()
+                : "U";
+            if (initials.Length > 2) initials = initials.Substring(0, 2);
+
+            lblUserAvatar.Text = initials;
+            lblUserName.Text = user.FullName;
+            lblUserRole.Text = user.GetDashboardType();
+
+            lblHeaderAvatar.Text = initials;
+            lblHeaderUserName.Text = $"{user.FullName}\r\n{user.GetDashboardType()}";
+            lblRoleBadge.Text = $"• {user.GetDashboardType()}";
+
+            btnApprovals.Visible = CurrentSession.CanAccess("Approvals") || RbacService.CanApproveAssignments;
             btnManageManagers.Visible = CurrentSession.CanAccess("Managers");
             btnManageAgents.Visible = CurrentSession.CanAccess("SalesStaff");
+            lblAdminSection.Text = RbacService.IsAdmin ? "ADMINISTRATION" : "MANAGEMENT";
+            lblAdminSection.Visible = btnManageManagers.Visible || btnManageAgents.Visible || btnApprovals.Visible;
+
             btnCustomers.Visible = CurrentSession.CanAccess("Customers");
             btnLeads.Visible = CurrentSession.CanAccess("Leads");
             btnProperties.Visible = CurrentSession.CanAccess("Properties");
@@ -90,8 +143,7 @@ namespace CRMS_Peguit.winforms
             btnReports.Visible = CurrentSession.CanAccess("Reports");
             btnSupportTickets.Visible = CurrentSession.CanAccess("SupportTickets");
 
-            Text = $"CRMS - {CurrentSession.CurrentUser.FullName} " +
-                   $"({CurrentSession.CurrentUser.GetDashboardType()})";
+            Text = $"NEXA CRM SYSTEM — {user.FullName} ({user.GetDashboardType()})";
         }
 
         // =====================================================
@@ -112,8 +164,50 @@ namespace CRMS_Peguit.winforms
         // NAVIGATION
         // =====================================================
 
-        private void BtnDashboardClick(object? sender, EventArgs e) =>
-            ShowView(new DashboardView());
+        public void NavigateTo(string module)
+        {
+            switch (module.ToLowerInvariant())
+            {
+                case "customers":
+                    if (!CurrentSession.CanAccess("Customers")) return;
+                    SetActiveNavButton(btnCustomers);
+                    BtnCustomersClick(btnCustomers, EventArgs.Empty);
+                    break;
+                case "leads":
+                    if (!CurrentSession.CanAccess("Leads")) return;
+                    SetActiveNavButton(btnLeads);
+                    BtnLeadsClick(btnLeads, EventArgs.Empty);
+                    break;
+                case "properties":
+                    if (!CurrentSession.CanAccess("Properties")) return;
+                    SetActiveNavButton(btnProperties);
+                    BtnPropertiesClick(btnProperties, EventArgs.Empty);
+                    break;
+                case "deals":
+                    if (!CurrentSession.CanAccess("Deals")) return;
+                    SetActiveNavButton(btnDeals);
+                    BtnDealsClick(btnDeals, EventArgs.Empty);
+                    break;
+                case "approvals":
+                    if (!CurrentSession.CanAccess("Approvals") && !RbacService.CanApproveAssignments) return;
+                    SetActiveNavButton(btnApprovals);
+                    BtnApprovalsClick(btnApprovals, EventArgs.Empty);
+                    break;
+            }
+        }
+
+        private void BtnDashboardClick(object? sender, EventArgs e)
+        {
+            var dashboard = new DashboardView();
+            dashboard.NavigationRequested += module => NavigateTo(module);
+            ShowView(dashboard);
+        }
+
+        private void BtnApprovalsClick(object? sender, EventArgs e)
+        {
+            if (!CurrentSession.CanAccess("Approvals") && !RbacService.CanApproveAssignments) return;
+            ShowView(new CRMS_Peguit.winforms.Views.Management.ApprovalsView());
+        }
 
         private void BtnManageManagersClick(object? sender, EventArgs e)
         {

@@ -22,19 +22,17 @@ namespace CRMS_Peguit.Models.Backend
             return new List<string>
             {
                 "Dashboard",
-
-                // View Reports
-                "Reports",
-
-                // Oversight & Manage Support Tickets
-                "SupportTickets",
-
-                // Monitor Team Performance
-                "TeamPerformance",
-
-                // Review Customer, Property & Staff Assignments
+                "Leads",
                 "Customers",
                 "Properties",
+                "Deals",
+                "Activities",
+                "TasksReminders",
+                "Approvals",
+                "SalesStaff",
+                "Reports",
+                "SupportTickets",
+                "TeamPerformance",
                 "CustomerAssignments",
                 "PropertyAssignments",
                 "StaffAssignments"

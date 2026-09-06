@@ -19,6 +19,7 @@ namespace CRMS_Peguit.winforms.Models.Services
             {
                 EnsureLeadColumns((SqlConnection)connection);
                 EnsureUserColumns((SqlConnection)connection);
+                EnsurePropertyColumns((SqlConnection)connection);
                 EnsureAssignmentColumns((SqlConnection)connection, "Leads");
                 EnsureAssignmentColumns((SqlConnection)connection, "Customers");
                 EnsureAssignmentColumns((SqlConnection)connection, "Properties");
@@ -53,6 +54,27 @@ namespace CRMS_Peguit.winforms.Models.Services
                 "ALTER TABLE [Leads] ADD [Priority] nvarchar(20) NULL;");
         }
 
+        private static void EnsurePropertyColumns(SqlConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+IF EXISTS (
+    SELECT 1 FROM sys.columns 
+    WHERE object_id = OBJECT_ID('dbo.Properties') 
+    AND name = 'ListedByAgentId' 
+    AND is_nullable = 0
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Properties_ListedByAgentId' AND object_id = OBJECT_ID('dbo.Properties'))
+        DROP INDEX [IX_Properties_ListedByAgentId] ON [dbo].[Properties];
+
+    ALTER TABLE [dbo].[Properties] ALTER COLUMN [ListedByAgentId] int NULL;
+
+    CREATE NONCLUSTERED INDEX [IX_Properties_ListedByAgentId] ON [dbo].[Properties] ([ListedByAgentId]);
+END";
+            command.ExecuteNonQuery();
+        }
+
         private static void EnsureUserColumns(SqlConnection connection)
         {
             ExecuteIfMissing(
@@ -80,7 +102,13 @@ namespace CRMS_Peguit.winforms.Models.Services
                 "ALTER TABLE [Users] ADD [Suffix] nvarchar(20) NULL;");
 
             using var cmd = connection.CreateCommand();
-            cmd.CommandText = "UPDATE [Users] SET [FirstName] = CASE WHEN CHARINDEX('@', Email) > 0 THEN LEFT(Email, CHARINDEX('@', Email) - 1) ELSE Email END WHERE ([FirstName] IS NULL OR [FirstName] = '') AND ([LastName] IS NULL OR [LastName] = '')";
+            cmd.CommandText = @"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'FullName' AND IS_NULLABLE = 'NO')
+BEGIN
+    ALTER TABLE [dbo].[Users] ALTER COLUMN [FullName] nvarchar(200) NULL;
+END
+UPDATE [Users] SET [FirstName] = CASE WHEN CHARINDEX('@', Email) > 0 THEN LEFT(Email, CHARINDEX('@', Email) - 1) ELSE Email END WHERE ([FirstName] IS NULL OR [FirstName] = '') AND ([LastName] IS NULL OR [LastName] = '');
+";
             cmd.ExecuteNonQuery();
         }
 
@@ -109,6 +137,29 @@ namespace CRMS_Peguit.winforms.Models.Services
                 tableName,
                 "AssignmentReviewNotes",
                 $"ALTER TABLE [{tableName}] ADD [AssignmentReviewNotes] nvarchar(1000) NULL;");
+
+            ExecuteIfMissing(
+                connection,
+                tableName,
+                "CreatedByUserId",
+                $"ALTER TABLE [{tableName}] ADD [CreatedByUserId] int NULL;");
+
+            using var cmd = connection.CreateCommand();
+            if (tableName == "Customers")
+            {
+                cmd.CommandText = "UPDATE c SET c.[CreatedByUserId] = ISNULL(a.[LoggedByAgentId], ISNULL(c.[AssignedAgentId], 1)) FROM [Customers] c OUTER APPLY (SELECT TOP 1 [LoggedByAgentId] FROM [Activities] WHERE [RelatedCustomerId] = c.[CustomerId] AND [Type] = 'Customer Created') a WHERE c.[CreatedByUserId] IS NULL;";
+                cmd.ExecuteNonQuery();
+            }
+            else if (tableName == "Leads")
+            {
+                cmd.CommandText = "UPDATE l SET l.[CreatedByUserId] = ISNULL(a.[LoggedByAgentId], ISNULL(l.[AssignedAgentId], 1)) FROM [Leads] l OUTER APPLY (SELECT TOP 1 [LoggedByAgentId] FROM [Activities] WHERE [RelatedLeadId] = l.[LeadId] AND [Type] = 'Lead Created') a WHERE l.[CreatedByUserId] IS NULL;";
+                cmd.ExecuteNonQuery();
+            }
+            else if (tableName == "Properties")
+            {
+                cmd.CommandText = "UPDATE p SET p.[CreatedByUserId] = ISNULL(p.[ListedByAgentId], 1) FROM [Properties] p WHERE p.[CreatedByUserId] IS NULL;";
+                cmd.ExecuteNonQuery();
+            }
         }
 
         private static void ExecuteIfMissing(

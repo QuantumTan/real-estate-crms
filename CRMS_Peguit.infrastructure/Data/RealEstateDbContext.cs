@@ -120,6 +120,7 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.PropertyType).HasMaxLength(100);
                 entity.Property(x => x.Price).HasColumnType("decimal(18,2)");
                 entity.Property(x => x.Status).HasMaxLength(50);
+                entity.Property(x => x.ListedByAgentId).IsRequired(false);
                 entity.Property(x => x.AssignmentStatus).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.AssignmentReviewNotes).HasMaxLength(1000);
 

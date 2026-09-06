@@ -33,8 +33,20 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<Lead> GetAll()
         {
-            return _db.Leads
-                .AsNoTracking()
+            var query = _db.Leads.AsNoTracking();
+
+            // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
+            // Manager/Admin retain full oversight (R26).
+            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            {
+                int currentUserId = CurrentSession.UserId;
+                query = query.Where(l =>
+                    (l.AssignedAgentId.HasValue && l.AssignedAgentId.Value > 0)
+                        ? l.AssignedAgentId.Value == currentUserId
+                        : (l.CreatedByUserId.HasValue && l.CreatedByUserId.Value == currentUserId));
+            }
+
+            return query
                 .OrderBy(x => x.LastName)
                 .ThenBy(x => x.FirstName)
                 .ToList();
@@ -42,18 +54,39 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Lead? GetById(int id)
         {
-            return _db.Leads
+            var item = _db.Leads
                 .AsNoTracking()
                 .SingleOrDefault(x => x.LeadId == id);
+
+            if (item is null) return null;
+
+            if (!RbacService.CanAgentViewRecord(item.AssignedAgentId, item.CreatedByUserId))
+                return null;
+
+            return item;
         }
 
         public Lead Add(Lead lead)
         {
             lead.TenantId = TenantId;
             lead.CreatedAt = DateTime.UtcNow;
+            lead.CreatedByUserId = CurrentSession.UserId;
             lead.IsDeleted = false;
             lead.DeletedAt = null;
-            ApplyAssignmentDefaults(lead);
+
+            if (RbacService.CanAssignRecords)
+            {
+                if (lead.AssignedAgentId <= 0)
+                {
+                    lead.AssignedAgentId = null;
+                }
+            }
+            else
+            {
+                // R23: Default state is Unassigned — never auto-assigned to creator.
+                // R24: Only Manager or Admin may set ownership.
+                ApplyAssignmentDefaults(lead);
+            }
 
             _db.Leads.Add(lead);
             _db.SaveChanges();
@@ -66,8 +99,6 @@ namespace CRMS_Peguit.winforms.Controllers
             var item = _db.Leads.SingleOrDefault(x => x.LeadId == lead.LeadId);
             if (item is null) return;
 
-            var oldAgentId = item.AssignedAgentId;
-
             item.FirstName = lead.FirstName;
             item.MiddleName = lead.MiddleName;
             item.LastName = lead.LastName;
@@ -79,18 +110,27 @@ namespace CRMS_Peguit.winforms.Controllers
             item.Notes = lead.Notes;
             item.Priority = lead.Priority;
             item.ExpectedValue = lead.ExpectedValue;
-            item.AssignedAgentId = lead.AssignedAgentId;
-            item.AssignmentStatus = lead.AssignmentStatus;
-            item.AssignmentReviewedByUserId = lead.AssignmentReviewedByUserId;
-            item.AssignmentReviewedAt = lead.AssignmentReviewedAt;
-            item.AssignmentReviewNotes = lead.AssignmentReviewNotes;
-            _db.SaveChanges();
 
-            if (oldAgentId != lead.AssignedAgentId)
+            // R24: Only Manager or Admin may set or change ownership.
+            if (RbacService.CanAssignRecords)
             {
-                LogActivity("Lead Assignment Changed", item.LeadId, null,
-                    $"Lead '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{lead.AssignedAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+                var oldAgentId = item.AssignedAgentId;
+                var newAgentId = lead.AssignedAgentId <= 0 ? null : lead.AssignedAgentId;
+
+                item.AssignedAgentId = newAgentId;
+                item.AssignmentStatus = lead.AssignmentStatus;
+                item.AssignmentReviewedByUserId = lead.AssignmentReviewedByUserId;
+                item.AssignmentReviewedAt = lead.AssignmentReviewedAt;
+                item.AssignmentReviewNotes = lead.AssignmentReviewNotes;
+
+                if (oldAgentId != newAgentId)
+                {
+                    LogActivity("Lead Assignment Changed", item.LeadId, null,
+                        $"Lead '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+                }
             }
+
+            _db.SaveChanges();
 
             LogActivity("Lead Updated", item.LeadId, null, $"Lead '{item.FullName}' was updated.");
         }
@@ -189,6 +229,56 @@ namespace CRMS_Peguit.winforms.Controllers
             item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             _db.SaveChanges();
             LogActivity("Lead Assignment Approved", item.LeadId, null, $"Assignment for '{item.FullName}' was approved.");
+        }
+
+        public void AssignAgent(Lead lead, int? agentId, bool approve = true, string? notes = null)
+        {
+            var item = _db.Leads.SingleOrDefault(x => x.LeadId == lead.LeadId);
+            if (item is null) return;
+
+            var oldAgentId = item.AssignedAgentId;
+            var newAgentId = agentId <= 0 ? null : agentId;
+
+            item.AssignedAgentId = newAgentId;
+            item.AssignmentStatus = approve ? "approved" : "pending_review";
+            item.AssignmentReviewedByUserId = CurrentSession.UserId;
+            item.AssignmentReviewedAt = DateTime.UtcNow;
+            item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+            _db.SaveChanges();
+
+            if (oldAgentId != newAgentId)
+            {
+                LogActivity("Lead Assignment Changed", item.LeadId, null,
+                    $"Lead '{item.FullName}' assigned to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+            }
+        }
+
+        public List<Lead> GetPendingReview()
+        {
+            return _db.Leads
+                .AsNoTracking()
+                .Where(l => l.AssignmentStatus == "pending_review" || l.AssignedAgentId == null)
+                .OrderByDescending(l => l.CreatedAt)
+                .ToList();
+        }
+
+        public List<AgentPickerItem> GetAgents()
+        {
+            var agentRoleIds = _db.Roles
+                .AsNoTracking()
+                .Where(r => r.RoleName.ToLower() == "agent")
+                .Select(r => r.RoleId)
+                .ToList();
+
+            return _db.Users
+                .AsNoTracking()
+                .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
+                .OrderBy(u => u.LastName)
+                .ThenBy(u => u.FirstName)
+                .AsEnumerable()
+                .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
+                .ToList();
         }
 
         public void LogEmail(Lead lead, string subject)

@@ -16,6 +16,10 @@ namespace CRMS_Peguit.winforms.Auth
         public static bool IsAgent =>
             CurrentSession.CurrentUser?.Role == UserRole.SalesStaff;
 
+        // R26. Manager and Admin retain full oversight regardless of ownership.
+        public static bool HasFullOversight =>
+            IsManager || IsAdmin || IsSuperAdmin;
+
         // R24. Only Manager or Admin may set or change ownership.
         public static bool CanAssignRecords =>
             IsManager || IsAdmin;
@@ -23,24 +27,47 @@ namespace CRMS_Peguit.winforms.Auth
         public static bool CanApproveAssignments =>
             IsManager;
 
-        public static bool CanEditAssignedRecord(int? assignedAgentId)
+        // R23 (revised) & R25 (revised):
+        // Visibility is scoped to exactly one Agent at a time:
+        // - Creator while Pending / Unassigned
+        // - Assignee once assigned
+        // At no point is a Pending or Assigned record visible to an Agent who is neither its creator (while Pending) nor its assignee (once assigned).
+        // Manager and Admin retain full oversight regardless of this (per R26).
+        public static bool CanAgentViewRecord(int? assignedAgentId, int? createdByUserId)
         {
-            // R26. Manager and Admin bypass ownership restrictions entirely (oversight override)
-            if (IsManager || IsAdmin || IsSuperAdmin)
+            if (HasFullOversight)
                 return true;
 
-            // R25. Ownership governs Agent access — Agent may modify ONLY records where they are current owner.
-            // Unassigned records (null assignedAgentId) are read-only for Agents until assigned by Manager.
-            if (IsAgent)
-                return assignedAgentId.HasValue && assignedAgentId.Value == CurrentSession.UserId;
+            if (!IsAgent)
+                return false;
 
-            return false;
+            int currentUserId = CurrentSession.UserId;
+            if (currentUserId <= 0)
+                return false;
+
+            // Once assigned, visibility transfers: visible ONLY to the assigned Agent.
+            if (assignedAgentId.HasValue && assignedAgentId.Value > 0)
+            {
+                return assignedAgentId.Value == currentUserId;
+            }
+
+            // While Pending / Unassigned, visible ONLY to its creator.
+            return createdByUserId.HasValue && createdByUserId.Value == currentUserId;
         }
 
-        public static bool CanArchiveAssignedRecord(int? assignedAgentId) =>
-            CanEditAssignedRecord(assignedAgentId);
+        public static bool CanEditRecord(int? assignedAgentId, int? createdByUserId) =>
+            CanAgentViewRecord(assignedAgentId, createdByUserId);
 
-        // R23. Default state is Unassigned — a record created by an Agent starts Unassigned.
+        public static bool CanArchiveRecord(int? assignedAgentId, int? createdByUserId) =>
+            CanEditRecord(assignedAgentId, createdByUserId);
+
+        public static bool CanEditAssignedRecord(int? assignedAgentId, int? createdByUserId = null) =>
+            CanEditRecord(assignedAgentId, createdByUserId);
+
+        public static bool CanArchiveAssignedRecord(int? assignedAgentId, int? createdByUserId = null) =>
+            CanArchiveRecord(assignedAgentId, createdByUserId);
+
+        // R23 (revised): Default state is Unassigned — a record created by an Agent starts Unassigned.
         // It is NEVER auto-assigned to its creator.
         public static bool ShouldAutoAssignCreatedRecord =>
             false;

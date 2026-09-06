@@ -32,8 +32,20 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<Property> GetAll()
         {
-            return _db.Properties
-                .AsNoTracking()
+            var query = _db.Properties.AsNoTracking();
+
+            // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
+            // Manager/Admin retain full oversight (R26).
+            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            {
+                int currentUserId = CurrentSession.UserId;
+                query = query.Where(p =>
+                    (p.ListedByAgentId.HasValue && p.ListedByAgentId.Value > 0)
+                        ? p.ListedByAgentId.Value == currentUserId
+                        : (p.CreatedByUserId.HasValue && p.CreatedByUserId.Value == currentUserId));
+            }
+
+            return query
                 .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Address)
                 .ToList();
@@ -43,7 +55,21 @@ namespace CRMS_Peguit.winforms.Controllers
         {
             property.TenantId = TenantId;
             property.CreatedAt = DateTime.UtcNow;
-            ApplyAssignmentDefaults(property);
+            property.CreatedByUserId = CurrentSession.UserId;
+
+            if (RbacService.CanAssignRecords)
+            {
+                if (property.ListedByAgentId <= 0)
+                {
+                    property.ListedByAgentId = null;
+                }
+            }
+            else
+            {
+                // R23: Default state is Unassigned — never auto-assigned to creator.
+                // R24: Only Manager or Admin may set ownership.
+                ApplyAssignmentDefaults(property);
+            }
 
             _db.Properties.Add(property);
             _db.SaveChanges();
@@ -57,26 +83,32 @@ namespace CRMS_Peguit.winforms.Controllers
                 .SingleOrDefault(x => x.PropertyId == property.PropertyId);
             if (item is null) return;
 
-            var oldAgentId = item.ListedByAgentId;
-
             item.Address = property.Address;
             item.PropertyType = property.PropertyType;
             item.Price = property.Price;
             item.Status = property.Status;
             item.OwnerCustomerId = property.OwnerCustomerId;
-            item.ListedByAgentId = property.ListedByAgentId;
-            item.AssignmentStatus = property.AssignmentStatus;
-            item.AssignmentReviewedByUserId = property.AssignmentReviewedByUserId;
-            item.AssignmentReviewedAt = property.AssignmentReviewedAt;
-            item.AssignmentReviewNotes = property.AssignmentReviewNotes;
+
+            // R24: Only Manager or Admin may set or change ownership.
+            if (RbacService.CanAssignRecords)
+            {
+                var oldAgentId = item.ListedByAgentId;
+                var newAgentId = property.ListedByAgentId <= 0 ? null : property.ListedByAgentId;
+
+                item.ListedByAgentId = newAgentId;
+                item.AssignmentStatus = property.AssignmentStatus;
+                item.AssignmentReviewedByUserId = property.AssignmentReviewedByUserId;
+                item.AssignmentReviewedAt = property.AssignmentReviewedAt;
+                item.AssignmentReviewNotes = property.AssignmentReviewNotes;
+
+                if (oldAgentId != newAgentId)
+                {
+                    LogActivity("Property Assignment Changed", null, null,
+                        $"Property listing '{item.Address}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+                }
+            }
 
             _db.SaveChanges();
-
-            if (oldAgentId != property.ListedByAgentId)
-            {
-                LogActivity("Property Assignment Changed", null, null,
-                    $"Property listing '{item.Address}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{property.ListedByAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
-            }
 
             LogActivity("Property Updated", null, null, $"Property listing '{item.Address}' was updated.");
         }
@@ -104,6 +136,39 @@ namespace CRMS_Peguit.winforms.Controllers
             item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             _db.SaveChanges();
             LogActivity("Property Assignment Approved", null, null, $"Assignment for property listing '{item.Address}' was approved.");
+        }
+
+        public void AssignAgent(Property property, int? agentId, bool approve = true, string? notes = null)
+        {
+            var item = _db.Properties
+                .SingleOrDefault(x => x.PropertyId == property.PropertyId);
+            if (item is null) return;
+
+            var oldAgentId = item.ListedByAgentId;
+            var newAgentId = agentId <= 0 ? null : agentId;
+
+            item.ListedByAgentId = newAgentId;
+            item.AssignmentStatus = approve ? "approved" : "pending_review";
+            item.AssignmentReviewedByUserId = CurrentSession.UserId;
+            item.AssignmentReviewedAt = DateTime.UtcNow;
+            item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+            _db.SaveChanges();
+
+            if (oldAgentId != newAgentId)
+            {
+                LogActivity("Property Assignment Changed", null, null,
+                    $"Property listing '{item.Address}' assigned to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+            }
+        }
+
+        public List<Property> GetPendingReview()
+        {
+            return _db.Properties
+                .AsNoTracking()
+                .Where(p => p.AssignmentStatus == "pending_review" || p.ListedByAgentId == null)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToList();
         }
 
         public List<CustomerPickerItem> GetOwnerCustomers()

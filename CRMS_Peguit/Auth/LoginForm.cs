@@ -7,7 +7,7 @@ using System.Windows.Forms;
 
 namespace CRMS_Peguit.winforms
 {
-    public partial class LoginForm : MaterialForm
+    public partial class LoginForm : Form
     {
         private readonly AuthService _authService;
 

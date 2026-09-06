@@ -1,4 +1,5 @@
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
@@ -31,7 +32,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
         private void LoadPickers()
         {
             cmbOwner.Items.Clear();
-            cmbOwner.Items.Add("-- Unassigned Owner --");
+            cmbOwner.Items.Add("-- Select Owner --");
             foreach (var owner in _owners)
             {
                 cmbOwner.Items.Add(owner);
@@ -78,6 +79,12 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 cmbPropertyType.SelectedItem = "house";
                 cmbStatus.SelectedItem = "available";
             }
+
+            // R24. Only Manager or Admin may set or change ownership.
+            if (!RbacService.CanAssignRecords)
+            {
+                cmbListedByAgent.Enabled = false;
+            }
         }
 
         private void BtnSaveClick(object? sender, EventArgs e)
@@ -103,13 +110,26 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 }
             }
 
-            int ownerId = cmbOwner.SelectedItem is CustomerPickerItem selectedOwner
-                ? selectedOwner.CustomerId
-                : 0;
+            if (cmbOwner.SelectedItem is not CustomerPickerItem selectedOwner || selectedOwner.CustomerId <= 0)
+            {
+                ShowValidationError("Please select a valid property owner.", cmbOwner);
+                return;
+            }
+            int ownerId = selectedOwner.CustomerId;
 
-            int agentId = cmbListedByAgent.SelectedItem is AgentPickerItem selectedAgent
-                ? selectedAgent.UserId
-                : 0;
+            int? agentId = null;
+            if (RbacService.CanAssignRecords)
+            {
+                if (cmbListedByAgent.SelectedItem is AgentPickerItem selectedAgent && selectedAgent.UserId > 0)
+                {
+                    agentId = selectedAgent.UserId;
+                }
+            }
+            else
+            {
+                // R24: Agent cannot set or reassign ownership. Keep existing assignment.
+                agentId = _existingProperty?.ListedByAgentId;
+            }
 
             string propertyType = cmbPropertyType.SelectedItem?.ToString() ?? "house";
             string status = cmbStatus.SelectedItem?.ToString() ?? "available";
@@ -121,7 +141,10 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 _existingProperty.Status = status;
                 _existingProperty.Price = price;
                 _existingProperty.OwnerCustomerId = ownerId;
-                _existingProperty.ListedByAgentId = agentId;
+                if (RbacService.CanAssignRecords)
+                {
+                    _existingProperty.ListedByAgentId = agentId;
+                }
                 Result = _existingProperty;
             }
             else

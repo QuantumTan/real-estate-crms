@@ -33,8 +33,20 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<Customer> GetAll()
         {
-            return _db.Customers
-                .AsNoTracking()
+            var query = _db.Customers.AsNoTracking();
+
+            // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
+            // Manager/Admin retain full oversight (R26).
+            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            {
+                int currentUserId = CurrentSession.UserId;
+                query = query.Where(c =>
+                    (c.AssignedAgentId.HasValue && c.AssignedAgentId.Value > 0)
+                        ? c.AssignedAgentId.Value == currentUserId
+                        : (c.CreatedByUserId.HasValue && c.CreatedByUserId.Value == currentUserId));
+            }
+
+            return query
                 .OrderBy(x => x.LastName)
                 .ThenBy(x => x.FirstName)
                 .ToList();
@@ -42,18 +54,39 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Customer? GetById(int id)
         {
-            return _db.Customers
+            var item = _db.Customers
                 .AsNoTracking()
                 .SingleOrDefault(x => x.CustomerId == id);
+
+            if (item is null) return null;
+
+            if (!RbacService.CanAgentViewRecord(item.AssignedAgentId, item.CreatedByUserId))
+                return null;
+
+            return item;
         }
 
         public Customer Add(Customer customer)
         {
             customer.TenantId = TenantId;
             customer.CreatedAt = DateTime.UtcNow;
+            customer.CreatedByUserId = CurrentSession.UserId;
             customer.IsDeleted = false;
             customer.DeletedAt = null;
-            ApplyAssignmentDefaults(customer);
+
+            if (RbacService.CanAssignRecords)
+            {
+                if (customer.AssignedAgentId <= 0)
+                {
+                    customer.AssignedAgentId = null;
+                }
+            }
+            else
+            {
+                // R23: Default state is Unassigned — never auto-assigned to creator.
+                // R24: Only Manager or Admin may set ownership.
+                ApplyAssignmentDefaults(customer);
+            }
 
             _db.Customers.Add(customer);
             _db.SaveChanges();
@@ -67,8 +100,6 @@ namespace CRMS_Peguit.winforms.Controllers
                 .SingleOrDefault(x => x.CustomerId == customer.CustomerId);
             if (item is null) return;
 
-            var oldAgentId = item.AssignedAgentId;
-
             item.FirstName = customer.FirstName;
             item.MiddleName = customer.MiddleName;
             item.LastName = customer.LastName;
@@ -77,19 +108,27 @@ namespace CRMS_Peguit.winforms.Controllers
             item.Email = customer.Email;
             item.Type = customer.Type;
             item.Status = customer.Status;
-            item.AssignedAgentId = customer.AssignedAgentId;
-            item.AssignmentStatus = customer.AssignmentStatus;
-            item.AssignmentReviewedByUserId = customer.AssignmentReviewedByUserId;
-            item.AssignmentReviewedAt = customer.AssignmentReviewedAt;
-            item.AssignmentReviewNotes = customer.AssignmentReviewNotes;
+
+            // R24: Only Manager or Admin may set or change ownership.
+            if (RbacService.CanAssignRecords)
+            {
+                var oldAgentId = item.AssignedAgentId;
+                var newAgentId = customer.AssignedAgentId <= 0 ? null : customer.AssignedAgentId;
+
+                item.AssignedAgentId = newAgentId;
+                item.AssignmentStatus = customer.AssignmentStatus;
+                item.AssignmentReviewedByUserId = customer.AssignmentReviewedByUserId;
+                item.AssignmentReviewedAt = customer.AssignmentReviewedAt;
+                item.AssignmentReviewNotes = customer.AssignmentReviewNotes;
+
+                if (oldAgentId != newAgentId)
+                {
+                    LogActivity("Customer Assignment Changed", null, item.CustomerId,
+                        $"Customer '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+                }
+            }
 
             _db.SaveChanges();
-
-            if (oldAgentId != customer.AssignedAgentId)
-            {
-                LogActivity("Customer Assignment Changed", null, item.CustomerId,
-                    $"Customer '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{customer.AssignedAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
-            }
 
             LogActivity("Customer Updated", null, item.CustomerId, $"Customer '{item.FullName}' was updated.");
         }
@@ -160,6 +199,56 @@ namespace CRMS_Peguit.winforms.Controllers
             item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             _db.SaveChanges();
             LogActivity("Customer Assignment Approved", null, item.CustomerId, $"Assignment for '{item.FullName}' was approved.");
+        }
+
+        public void AssignAgent(Customer customer, int? agentId, bool approve = true, string? notes = null)
+        {
+            var item = _db.Customers.SingleOrDefault(x => x.CustomerId == customer.CustomerId);
+            if (item is null) return;
+
+            var oldAgentId = item.AssignedAgentId;
+            var newAgentId = agentId <= 0 ? null : agentId;
+
+            item.AssignedAgentId = newAgentId;
+            item.AssignmentStatus = approve ? "approved" : "pending_review";
+            item.AssignmentReviewedByUserId = CurrentSession.UserId;
+            item.AssignmentReviewedAt = DateTime.UtcNow;
+            item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+            _db.SaveChanges();
+
+            if (oldAgentId != newAgentId)
+            {
+                LogActivity("Customer Assignment Changed", null, item.CustomerId,
+                    $"Customer '{item.FullName}' assigned to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+            }
+        }
+
+        public List<Customer> GetPendingReview()
+        {
+            return _db.Customers
+                .AsNoTracking()
+                .Where(c => c.AssignmentStatus == "pending_review" || c.AssignedAgentId == null)
+                .OrderByDescending(c => c.CreatedAt)
+                .ToList();
+        }
+
+        public List<AgentPickerItem> GetAgents()
+        {
+            var agentRoleIds = _db.Roles
+                .AsNoTracking()
+                .Where(r => r.RoleName.ToLower() == "agent")
+                .Select(r => r.RoleId)
+                .ToList();
+
+            return _db.Users
+                .AsNoTracking()
+                .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
+                .OrderBy(u => u.LastName)
+                .ThenBy(u => u.FirstName)
+                .AsEnumerable()
+                .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
+                .ToList();
         }
 
         public void LogEmail(Customer customer, string subject)

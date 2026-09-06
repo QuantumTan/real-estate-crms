@@ -1,13 +1,21 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.Entities;
 using CRMS_Peguit.infrastructure.data;
 
 namespace CRMS_Peguit.winforms.Models.Services
 {
     /// <summary>
-    /// Periodically pushes local CRM data to the cloud database.
+    /// Periodically pushes local CRM data to the cloud database (MonsterASP).
     /// One-way sync: local → cloud. Local always wins.
     /// Writes status to sync-log.txt next to the app.
-    /// Implements graceful failure handling with exponential backoff.
+    /// Implements graceful failure handling with exponential backoff and identity insert management.
     /// </summary>
     public class SyncService : IDisposable
     {
@@ -20,10 +28,25 @@ namespace CRMS_Peguit.winforms.Models.Services
         private int _baseIntervalSeconds;
         public bool CloudAvailable { get; private set; } = true;
 
-        public SyncService(string localConnection, string cloudConnection)
+        private static readonly HashSet<string> TablesWithIdentity = new(StringComparer.OrdinalIgnoreCase)
         {
-            _localConnection = localConnection;
-            _cloudConnection = cloudConnection;
+            "Roles", "Users", "LoginSessions", "Customers", "Properties", "Leads", "Deals",
+            "Activities", "PropertyShowingDetails", "SupportTickets", "Subscriptions",
+            "SystemSettings", "BackupLogs"
+        };
+
+        public SyncService(string? localConnection = null, string? cloudConnection = null)
+        {
+            _localConnection = !string.IsNullOrWhiteSpace(localConnection) && !localConnection.Contains("YOUR_CLOUD")
+                ? localConnection
+                : (Environment.GetEnvironmentVariable("CRMS_CONNECTION") ??
+                   "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;");
+
+            _cloudConnection = !string.IsNullOrWhiteSpace(cloudConnection) && !cloudConnection.Contains("YOUR_CLOUD")
+                ? cloudConnection
+                : (Environment.GetEnvironmentVariable("CRMS_CLOUD_CONNECTION") ??
+                   "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713;Password=2Ni%Sz_9?J8m;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;");
+
             _logPath = Path.Combine(AppContext.BaseDirectory, "sync-log.txt");
             _failureCount = 0;
         }
@@ -58,24 +81,36 @@ namespace CRMS_Peguit.winforms.Models.Services
                 CloudAvailable = true;
                 _failureCount = 0;
 
-                await SyncTable(local.Roles.ToList(), cloud.Roles.ToList(), cloud);
-                await SyncTable(local.Users.ToList(), cloud.Users.ToList(), cloud);
-                await SyncTable(local.LoginSessions.ToList(), cloud.LoginSessions.ToList(), cloud);
-                await SyncTable(local.Customers.ToList(), cloud.Customers.ToList(), cloud);
-                await SyncTable(local.BuyerProfiles.ToList(), cloud.BuyerProfiles.ToList(), cloud);
-                await SyncTable(local.Properties.ToList(), cloud.Properties.ToList(), cloud);
-                await SyncTable(local.Leads.ToList(), cloud.Leads.ToList(), cloud);
-                await SyncTable(local.Deals.ToList(), cloud.Deals.ToList(), cloud);
-                await SyncTable(local.Activities.ToList(), cloud.Activities.ToList(), cloud);
-                await SyncTable(local.PropertyShowingDetails.ToList(), cloud.PropertyShowingDetails.ToList(), cloud);
-                await SyncTable(local.SupportTickets.ToList(), cloud.SupportTickets.ToList(), cloud);
-                await SyncTable(local.Subscriptions.ToList(), cloud.Subscriptions.ToList(), cloud);
-                await SyncTable(local.SystemSettings.ToList(), cloud.SystemSettings.ToList(), cloud);
-                await SyncTable(local.BackupLogs.ToList(), cloud.BackupLogs.ToList(), cloud);
+                // Ensure cloud database schema matches latest columns
+                SchemaRepairService.EnsureCrmPolishColumns(cloud);
 
-                await cloud.SaveChangesAsync();
+                int totalChanges = 0;
+                var details = new List<string>();
 
-                Log($"Sync completed successfully at {DateTime.Now:HH:mm:ss}");
+                // Sync in strict foreign-key dependency order
+                totalChanges += await SyncTable<Role>(local, cloud, "Roles", details);
+                totalChanges += await SyncTable<User>(local, cloud, "Users", details);
+                totalChanges += await SyncTable<Customer>(local, cloud, "Customers", details);
+                totalChanges += await SyncTable<BuyerProfile>(local, cloud, "BuyerProfiles", details);
+                totalChanges += await SyncTable<Property>(local, cloud, "Properties", details);
+                totalChanges += await SyncTable<Lead>(local, cloud, "Leads", details);
+                totalChanges += await SyncTable<Deal>(local, cloud, "Deals", details);
+                totalChanges += await SyncTable<Activity>(local, cloud, "Activities", details);
+                totalChanges += await SyncTable<PropertyShowingDetail>(local, cloud, "PropertyShowingDetails", details);
+                totalChanges += await SyncTable<SupportTicket>(local, cloud, "SupportTickets", details);
+                totalChanges += await SyncTable<Subscription>(local, cloud, "Subscriptions", details);
+                totalChanges += await SyncTable<SystemSetting>(local, cloud, "SystemSettings", details);
+                totalChanges += await SyncTable<BackupLog>(local, cloud, "BackupLogs", details);
+                totalChanges += await SyncTable<LoginSession>(local, cloud, "LoginSessions", details);
+
+                if (totalChanges > 0)
+                {
+                    Log($"Sync completed successfully at {DateTime.Now:HH:mm:ss}. Pushed {totalChanges} record change(s) ({string.Join(", ", details)}).");
+                }
+                else
+                {
+                    Log($"Sync completed successfully at {DateTime.Now:HH:mm:ss}. Cloud database is up to date (0 changes).");
+                }
             }
             catch (Exception ex)
             {
@@ -107,38 +142,122 @@ namespace CRMS_Peguit.winforms.Models.Services
         private RealEstateDbContext CreateCloudContext()
         {
             var options = new DbContextOptionsBuilder<RealEstateDbContext>()
-                .UseSqlServer(_cloudConnection, sql => sql.EnableRetryOnFailure(maxRetryCount: 3))
+                .UseSqlServer(_cloudConnection, sql => sql.CommandTimeout(60))
                 .Options;
             return new RealEstateDbContext(options, 0);
         }
 
-        private async Task SyncTable<T>(List<T> localRows, List<T> cloudRows, RealEstateDbContext cloud)
+        private async Task<int> SyncTable<T>(
+            RealEstateDbContext local,
+            RealEstateDbContext cloud,
+            string tableName,
+            List<string> details)
             where T : class
         {
-            var cloudSet = cloud.Set<T>();
+            cloud.ChangeTracker.Clear();
+
+            var localRows = await local.Set<T>().IgnoreQueryFilters().AsNoTracking().ToListAsync();
+            if (localRows.Count == 0) return 0;
+
+            var cloudRows = await cloud.Set<T>().IgnoreQueryFilters().AsNoTracking().ToListAsync();
+
+            var entityType = cloud.Model.FindEntityType(typeof(T));
+            var primaryKey = entityType?.FindPrimaryKey();
+            var keyProp = primaryKey?.Properties[0].PropertyInfo;
+            if (keyProp == null) return 0;
+
+            var cloudMap = cloudRows.ToDictionary(r => keyProp.GetValue(r)!, r => r);
+
+            var toInsert = new List<T>();
+            var toUpdate = new List<T>();
 
             foreach (var localRow in localRows)
             {
-                var key = GetKey(localRow);
-                var existing = cloudRows.FirstOrDefault(r => GetKey(r).Equals(key));
-
-                if (existing is null)
+                var keyVal = keyProp.GetValue(localRow)!;
+                if (!cloudMap.TryGetValue(keyVal, out var existing))
                 {
-                    cloudSet.Add(localRow);
+                    toInsert.Add(localRow);
                 }
                 else
                 {
-                    cloud.Entry(existing).CurrentValues.SetValues(localRow);
+                    // Check if any property actually changed
+                    bool isDifferent = false;
+                    foreach (var prop in entityType!.GetProperties())
+                    {
+                        var pInfo = prop.PropertyInfo;
+                        if (pInfo == null) continue;
+                        var localVal = pInfo.GetValue(localRow);
+                        var cloudVal = pInfo.GetValue(existing);
+
+                        if (localVal is DateTime dt1 && cloudVal is DateTime dt2)
+                        {
+                            if (Math.Abs((dt1 - dt2).TotalSeconds) > 1)
+                            {
+                                isDifferent = true;
+                                break;
+                            }
+                            continue;
+                        }
+
+                        if (!Equals(localVal, cloudVal))
+                        {
+                            isDifferent = true;
+                            break;
+                        }
+                    }
+
+                    if (isDifferent)
+                    {
+                        toUpdate.Add(localRow);
+                    }
                 }
             }
-        }
 
-        private object GetKey<T>(T entity) where T : class
-        {
-            var keyProperty = typeof(T).GetProperties()
-                .First(p => p.Name.EndsWith("Id"));
+            if (toInsert.Count == 0 && toUpdate.Count == 0)
+            {
+                return 0;
+            }
 
-            return keyProperty.GetValue(entity)!;
+            var cloudSet = cloud.Set<T>();
+
+            foreach (var item in toUpdate)
+            {
+                cloudSet.Attach(item);
+                cloud.Entry(item).State = EntityState.Modified;
+            }
+
+            foreach (var item in toInsert)
+            {
+                cloudSet.Add(item);
+            }
+
+            bool hasIdentity = TablesWithIdentity.Contains(tableName);
+            var strategy = cloud.Database.CreateExecutionStrategy();
+
+            if (toInsert.Count > 0 && hasIdentity)
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await cloud.Database.BeginTransactionAsync();
+                    await cloud.Database.ExecuteSqlRawAsync($"SET IDENTITY_INSERT [dbo].[{tableName}] ON;");
+                    await cloud.SaveChangesAsync();
+                    await cloud.Database.ExecuteSqlRawAsync($"SET IDENTITY_INSERT [dbo].[{tableName}] OFF;");
+                    await tx.CommitAsync();
+                });
+            }
+            else
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await cloud.SaveChangesAsync();
+                });
+            }
+
+            cloud.ChangeTracker.Clear();
+
+            int tableChanges = toInsert.Count + toUpdate.Count;
+            details.Add($"{tableName}: +{toInsert.Count} ins, ~{toUpdate.Count} upd");
+            return tableChanges;
         }
 
         public int FailureCount => _failureCount;
