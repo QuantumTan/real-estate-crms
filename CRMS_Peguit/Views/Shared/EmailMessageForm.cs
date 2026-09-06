@@ -114,23 +114,34 @@ namespace CRMS_Peguit.winforms.Views.Shared
             };
         }
 
-        private void BtnSendClick(object? sender, EventArgs e)
+        private async void BtnSendClick(object? sender, EventArgs e)
         {
-            var result = ContactEmailService.SendPlaceholder(
-                txtRecipient.Text.Trim(),
-                txtSubject.Text.Trim(),
-                txtBody.Text.Trim());
+            btnSend.Enabled = false;
+            btnSend.Text = "Sending...";
 
-            MessageBox.Show(
-                result.Message,
-                result.Success ? "SMTP Placeholder" : "Validation Error",
-                MessageBoxButtons.OK,
-                result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
-
-            if (result.Success)
+            try
             {
-                DialogResult = DialogResult.OK;
-                Close();
+                var result = await ContactEmailService.SendAsync(
+                    txtRecipient.Text.Trim(),
+                    txtSubject.Text.Trim(),
+                    txtBody.Text.Trim());
+
+                MessageBox.Show(
+                    result.Message,
+                    result.Success ? "Email Sent" : "Email Error",
+                    MessageBoxButtons.OK,
+                    result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+
+                if (result.Success)
+                {
+                    DialogResult = DialogResult.OK;
+                    Close();
+                }
+            }
+            finally
+            {
+                btnSend.Enabled = true;
+                btnSend.Text = "Send";
             }
         }
     }

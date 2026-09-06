@@ -256,22 +256,50 @@ namespace CRMS_Peguit.winforms
             }
         }
 
-        private void LnkForgotPasswordClick(object? sender, EventArgs e)
+        private async void LnkForgotPasswordClick(object? sender, EventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(txtEmail.Text) &&
-                !ContactEmailService.IsValidEmail(txtEmail.Text))
+            lblError.Text = "";
+
+            if (string.IsNullOrWhiteSpace(txtCompanyId.Text))
+            {
+                lblError.Text = "Company ID is required before requesting a reset.";
+                txtCompanyId.Focus();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtEmail.Text))
+            {
+                lblError.Text = "Email is required before requesting a reset.";
+                txtEmail.Focus();
+                return;
+            }
+
+            if (!ContactEmailService.IsValidEmail(txtEmail.Text))
             {
                 lblError.Text = "Enter a valid email before requesting a reset.";
                 txtEmail.Focus();
                 return;
             }
 
-            MessageBox.Show(
-                "Password reset email is ready for SMTP integration. Once SMTP settings are configured, NEXA will send a reset link to the account email.",
-                "Forgot Password",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+            lnkForgotPassword.Enabled = false;
+
+            try
+            {
+                var result = await ContactEmailService.SendForgotPasswordAsync(
+                    txtEmail.Text.Trim(),
+                    txtCompanyId.Text.Trim());
+
+                MessageBox.Show(
+                    result.Message,
+                    result.Success ? "Password Reset Email" : "Email Error",
+                    MessageBoxButtons.OK,
+                    result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning
+                );
+            }
+            finally
+            {
+                lnkForgotPassword.Enabled = true;
+            }
         }
 
         // ==========================================================

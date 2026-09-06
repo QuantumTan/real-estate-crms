@@ -405,6 +405,10 @@ FodyWeavers.xsd
 .env.*
 !.env.example
 
+# Local SMTP credentials
+**/smtp.local.json
+**/smtp.*.local.json
+
 # User secrets
 **/secrets.json
 **/*.secrets.json
