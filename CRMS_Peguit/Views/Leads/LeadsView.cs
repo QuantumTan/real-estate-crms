@@ -1,5 +1,7 @@
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
+using CRMS_Peguit.winforms.Controls;
 using CRMS_Peguit.winforms.Models.Services;
 using CRMS_Peguit.winforms.Views.Shared;
 
@@ -18,15 +20,49 @@ namespace CRMS_Peguit.winforms.Views.Leads
             InitializeComponent();
             _controller = new LeadController();
 
+            ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
             RefreshGrid();
         }
 
+        private void ApplyStyling()
+        {
+            UiRadiusHelper.StyleCard(pnlCard, 12);
+            UiRadiusHelper.StyleButton(btnAdd, 8);
+            UiRadiusHelper.ApplyPillShape(btnFilterAll);
+            UiRadiusHelper.ApplyPillShape(btnFilterNew);
+            UiRadiusHelper.ApplyPillShape(btnFilterContacted);
+            UiRadiusHelper.ApplyPillShape(btnFilterQualified);
+            UiRadiusHelper.ApplyPillShape(btnFilterConverted);
+        }
+
         private void BindEvents()
         {
+            btnAdd.Visible = RbacService.CanCreateSalesRecord;
             btnAdd.Click += BtnAddClick;
             txtSearch.TextChanged += (_, _) => RefreshGrid();
+
+            if (RbacService.CanExportData)
+            {
+                var btnExport = new Button
+                {
+                    Text = "📥 Export CSV",
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    BackColor = Color.White,
+                    ForeColor = Color.FromArgb(15, 91, 158),
+                    Cursor = Cursors.Hand,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    Size = new Size(130, 36),
+                    Location = new Point(btnAdd.Visible ? btnAdd.Left - 140 : btnAdd.Left, btnAdd.Top)
+                };
+                btnExport.FlatAppearance.BorderColor = Color.FromArgb(15, 91, 158);
+                btnExport.Click += (_, _) => ExportToCsv();
+                UiRadiusHelper.StyleButton(btnExport, 8);
+                Controls.Add(btnExport);
+                btnExport.BringToFront();
+            }
 
             btnFilterAll.Click += (_, _) => SetFilter("All");
             btnFilterNew.Click += (_, _) => SetFilter("New");
@@ -518,6 +554,27 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 "Conversion Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             RefreshGrid();
+        }
+
+        private void ExportToCsv()
+        {
+            using var sfd = new SaveFileDialog
+            {
+                Filter = "CSV File (*.csv)|*.csv",
+                FileName = $"Leads_Export_{DateTime.Now:yyyyMMdd_HHmm}.csv"
+            };
+            if (sfd.ShowDialog() == DialogResult.OK)
+            {
+                var leads = _controller.GetAll().ToList();
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("LeadId,FullName,Source,Stage,Priority,ExpectedValue,Phone,Email,AssignedAgent,CreatedAt");
+                foreach (var l in leads)
+                {
+                    sb.AppendLine($"\"{l.LeadId}\",\"{l.FullName}\",\"{l.Source}\",\"{l.Stage}\",\"{l.Priority}\",\"{l.ExpectedValue}\",\"{l.Phone}\",\"{l.Email}\",\"{_controller.GetAssignedAgentName(l.AssignedAgentId)}\",\"{l.CreatedAt:yyyy-MM-dd}\"");
+                }
+                System.IO.File.WriteAllText(sfd.FileName, sb.ToString());
+                MessageBox.Show("Leads exported successfully.", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private static bool ContainsText(string? value, string search)

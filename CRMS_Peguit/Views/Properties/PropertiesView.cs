@@ -18,15 +18,48 @@ namespace CRMS_Peguit.winforms.Views.Properties
             InitializeComponent();
             _controller = new PropertyController();
 
+            ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
             RefreshGrid();
         }
 
+        private void ApplyStyling()
+        {
+            UiRadiusHelper.StyleCard(pnlCard, 12);
+            UiRadiusHelper.StyleButton(btnAdd, 8);
+            UiRadiusHelper.ApplyPillShape(btnFilterAll);
+            UiRadiusHelper.ApplyPillShape(btnFilterAvailable);
+            UiRadiusHelper.ApplyPillShape(btnFilterPending);
+            UiRadiusHelper.ApplyPillShape(btnFilterSold);
+        }
+
         private void BindEvents()
         {
+            btnAdd.Visible = RbacService.CanCreateSalesRecord;
             btnAdd.Click += BtnAddClick;
             txtSearch.TextChanged += (_, _) => RefreshGrid();
+
+            if (RbacService.CanExportData)
+            {
+                var btnExport = new Button
+                {
+                    Text = "📥 Export CSV",
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    BackColor = Color.White,
+                    ForeColor = Color.FromArgb(15, 91, 158),
+                    Cursor = Cursors.Hand,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    Size = new Size(130, 36),
+                    Location = new Point(btnAdd.Visible ? btnAdd.Left - 140 : btnAdd.Left, btnAdd.Top)
+                };
+                btnExport.FlatAppearance.BorderColor = Color.FromArgb(15, 91, 158);
+                btnExport.Click += (_, _) => ExportToCsv();
+                UiRadiusHelper.StyleButton(btnExport, 8);
+                Controls.Add(btnExport);
+                btnExport.BringToFront();
+            }
 
             btnFilterAll.Click += (_, _) => SetFilter("All");
             btnFilterAvailable.Click += (_, _) => SetFilter("Available");
@@ -476,6 +509,27 @@ namespace CRMS_Peguit.winforms.Views.Properties
             return names.TryGetValue(id.Value, out string? name) && !string.IsNullOrWhiteSpace(name)
                 ? name
                 : "-";
+        }
+
+        private void ExportToCsv()
+        {
+            using var sfd = new SaveFileDialog
+            {
+                Filter = "CSV File (*.csv)|*.csv",
+                FileName = $"Properties_Export_{DateTime.Now:yyyyMMdd_HHmm}.csv"
+            };
+            if (sfd.ShowDialog() == DialogResult.OK)
+            {
+                var properties = _controller.GetAll().ToList();
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("PropertyId,Address,PropertyType,Price,Status,OwnerCustomerId,ListedByAgentId");
+                foreach (var p in properties)
+                {
+                    sb.AppendLine($"\"{p.PropertyId}\",\"{p.Address}\",\"{p.PropertyType}\",\"{p.Price}\",\"{p.Status}\",\"{p.OwnerCustomerId}\",\"{p.ListedByAgentId}\"");
+                }
+                System.IO.File.WriteAllText(sfd.FileName, sb.ToString());
+                MessageBox.Show("Properties exported successfully.", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private static bool ContainsText(string? value, string search)

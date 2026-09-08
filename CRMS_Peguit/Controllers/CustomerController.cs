@@ -28,7 +28,6 @@ namespace CRMS_Peguit.winforms.Controllers
                 .Options;
 
             _db = new RealEstateDbContext(options, TenantId);
-            SchemaRepairService.EnsureCrmPolishColumns(_db);
         }
 
         public List<Customer> GetAll()

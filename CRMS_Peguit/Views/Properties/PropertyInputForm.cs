@@ -1,4 +1,4 @@
-using CRMS_Peguit.domain.entities;
+﻿using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
@@ -24,6 +24,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
             _existingProperty = property;
 
             InitializeComponent();
+            UiRadiusHelper.StyleButton(btnSave, 8);
+            UiRadiusHelper.StyleButton(btnCancel, 8);
             btnSave.Click += BtnSaveClick;
             LoadPickers();
             LoadData();
@@ -178,3 +180,5 @@ namespace CRMS_Peguit.winforms.Views.Properties
         }
     }
 }
+
+

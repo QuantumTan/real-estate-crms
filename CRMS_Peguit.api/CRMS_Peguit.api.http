@@ -1,6 +1,76 @@
 @CRMS_Peguit.api_HostAddress = http://localhost:5252
 
-GET {{CRMS_Peguit.api_HostAddress}}/weatherforecast/
+### 1. Create Company in Master Database
+POST {{CRMS_Peguit.api_HostAddress}}/companies
+Content-Type: application/json
+
+{
+  "companyCode": "COMP001",
+  "companyName": "My First Real Estate CRM Company",
+  "isActive": true,
+  "createdAt": "2026-09-08T09:15:00"
+}
+
+### 2. Register Device in Master Database
+POST {{CRMS_Peguit.api_HostAddress}}/devices
+Content-Type: application/json
+
+{
+  "companyId": 1,
+  "deviceCode": "DEV001",
+  "deviceName": "Main CRM Workstation",
+  "isActive": true,
+  "createdAt": "2026-09-08T09:50:00"
+}
+
+### 3. Register Company Database in Master Database (with CredentialKey)
+POST {{CRMS_Peguit.api_HostAddress}}/company-databases
+Content-Type: application/json
+
+{
+  "companyId": 1,
+  "serverName": "db66713.public.databaseasp.net",
+  "databaseName": "db66713",
+  "credentialKey": "TenantA",
+  "isActive": true
+}
+
+### 4. Test Dynamic Tenant Connection & Entity Count
+GET {{CRMS_Peguit.api_HostAddress}}/test-tenant/1
 Accept: application/json
 
-###
+### 5. Create Customer in Tenant Database
+POST {{CRMS_Peguit.api_HostAddress}}/tenant/1/customers
+Content-Type: application/json
+
+{
+  "firstName": "Juan",
+  "middleName": "Dela",
+  "lastName": "Cruz",
+  "phone": "+639123456789",
+  "email": "juan.delacruz@example.com",
+  "type": "Buyer",
+  "status": "Active",
+  "assignmentStatus": "pending_review",
+  "isActive": true
+}
+
+### 6. Get All Customers from Tenant Database
+GET {{CRMS_Peguit.api_HostAddress}}/tenant/1/customers
+Accept: application/json
+
+### 7. Create Property in Tenant Database
+POST {{CRMS_Peguit.api_HostAddress}}/tenant/1/properties
+Content-Type: application/json
+
+{
+  "address": "123 Palm Boulevard, Davao City",
+  "propertyType": "Residential",
+  "price": 4500000.00,
+  "status": "Available",
+  "assignmentStatus": "approved"
+}
+
+### 8. Get All Properties from Tenant Database
+GET {{CRMS_Peguit.api_HostAddress}}/tenant/1/properties
+Accept: application/json

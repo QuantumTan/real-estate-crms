@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.domain.Entities;
 
@@ -47,6 +47,10 @@ namespace CRMS_Peguit.infrastructure.data
 
                 entity.Property(x => x.DatabaseName)
                     .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.CredentialKey)
+                    .HasMaxLength(100)
                     .IsRequired();
 
                 entity.HasOne(x => x.Company)

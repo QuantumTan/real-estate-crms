@@ -4,6 +4,7 @@ using System.Linq;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
+using CRMS_Peguit.winforms.Models.ViewModels;
 
 namespace CRMS_Peguit.winforms.Views.Dashboard
 {
@@ -25,6 +26,10 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             kpiProperties.Click += (_, _) => RequestNavigation("Properties");
             kpiLeads.Click += (_, _) => RequestNavigation("Leads");
             kpiDeals.Click += (_, _) => RequestNavigation("Deals");
+
+            // Modern rounded cards
+            UiRadiusHelper.StyleCard(pnlLeftCard, 12);
+            UiRadiusHelper.StyleCard(pnlRightCard, 12);
 
             // Recent grid styling
             gridRecent.EnableHeadersVisualStyles = false;
@@ -61,45 +66,21 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
         {
             try
             {
-                using var customerCtrl = new CustomerController();
-                using var propertyCtrl = new PropertyController();
-                using var leadCtrl = new LeadController();
-                using var dealCtrl = new DealController();
+                using var dashboardCtrl = new DashboardController();
+                var summary = dashboardCtrl.GetSummary();
 
-                var customers = customerCtrl.GetAll();
-                var properties = propertyCtrl.GetAll();
-                var leads = leadCtrl.GetAll();
-                var deals = dealCtrl.GetAll();
-                var agents = propertyCtrl.GetAgents();
+                kpiCustomers.SetValue(summary.TotalCustomers);
+                kpiProperties.SetValue(summary.ActiveProperties);
+                kpiLeads.SetValue(summary.QualifiedLeads);
+                kpiDeals.SetValue(summary.TotalDeals);
 
-                int totalCustomers = customers.Count;
-                int activeProps = properties.Count(p => string.Equals(p.Status, "available", StringComparison.OrdinalIgnoreCase));
-                int qualifiedLeads = leads.Count(l => string.Equals(l.Stage, "qualified", StringComparison.OrdinalIgnoreCase));
-                int totalDeals = deals.Count;
-                decimal pipelineSum = deals.Sum(d => d.Value);
-
-                kpiCustomers.SetValue(totalCustomers);
-                kpiProperties.SetValue(activeProps);
-                kpiLeads.SetValue(qualifiedLeads);
-                kpiDeals.SetValue(totalDeals);
-
-                lblStat1Value.Text = $"${pipelineSum:N0}";
-                lblStat2Value.Text = $"{activeProps} listings";
-                lblStat3Value.Text = $"{agents.Count} agents";
+                lblStat1Value.Text = $"${summary.PipelineValue:N0}";
+                lblStat2Value.Text = $"{summary.ActiveProperties} listings";
+                lblStat3Value.Text = $"{summary.TotalAgents} agents";
 
                 // Populate recent leads
                 gridRecent.Columns.Clear();
-                gridRecent.DataSource = leads
-                    .Take(10)
-                    .Select(l => new
-                    {
-                        Lead = l.FullName,
-                        Email = string.IsNullOrWhiteSpace(l.Email) ? "-" : l.Email,
-                        Source = string.IsNullOrWhiteSpace(l.Source) ? "Website" : l.Source,
-                        Value = l.ExpectedValue.HasValue ? $"${l.ExpectedValue.Value:N0}" : "-",
-                        Stage = l.Stage.ToUpper()
-                    })
-                    .ToList();
+                gridRecent.DataSource = summary.RecentLeads;
 
                 if (gridRecent.Columns["Lead"] is DataGridViewColumn leadCol)
                 {

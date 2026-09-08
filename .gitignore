@@ -409,6 +409,10 @@ FodyWeavers.xsd
 **/smtp.local.json
 **/smtp.*.local.json
 
+# Local Database credentials
+**/db.local.json
+**/db.*.local.json
+
 # User secrets
 **/secrets.json
 **/*.secrets.json

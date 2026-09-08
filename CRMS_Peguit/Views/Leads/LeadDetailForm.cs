@@ -1,3 +1,7 @@
+﻿using System;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
@@ -82,6 +86,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 DialogResult = DialogResult.OK
             };
             btnClose.FlatAppearance.BorderSize = 0;
+            UiRadiusHelper.StyleButton(btnClose, 8);
             Controls.Add(btnClose);
 
             Height = Math.Min(y + 100, 900);

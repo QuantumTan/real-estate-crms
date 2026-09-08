@@ -1,3 +1,5 @@
+using System.Drawing.Drawing2D;
+using CRMS_Peguit.Models;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Controls
@@ -13,7 +15,7 @@ namespace CRMS_Peguit.winforms.Controls
 
         private readonly Color _accentColor;
 
-        public KpiCard() : this("KPI", "all", Color.FromArgb(15, 91, 158))
+        public KpiCard() : this("KPI", "all", AzureTints.SkylineBlue)
         {
         }
 
@@ -25,6 +27,7 @@ namespace CRMS_Peguit.winforms.Controls
             Size = new Size(200, 90);
             BackColor = Theme.Surface;
             Cursor = Cursors.Hand;
+            UiRadiusHelper.ApplyRoundedCorners(this, 12);
 
             _lblValue = new Label
             {
@@ -53,13 +56,13 @@ namespace CRMS_Peguit.winforms.Controls
             _lblValue.Click += (_, _) => OnClick(EventArgs.Empty);
             _lblTitle.Click += (_, _) => OnClick(EventArgs.Empty);
 
-            // Hover effects
-            MouseEnter += (_, _) => BackColor = Color.FromArgb(241, 245, 249);
-            MouseLeave += (_, _) => BackColor = Color.White;
-            _lblValue.MouseEnter += (_, _) => BackColor = Color.FromArgb(241, 245, 249);
-            _lblValue.MouseLeave += (_, _) => BackColor = Color.White;
-            _lblTitle.MouseEnter += (_, _) => BackColor = Color.FromArgb(241, 245, 249);
-            _lblTitle.MouseLeave += (_, _) => BackColor = Color.White;
+            // Hover effects (using AzureTints)
+            MouseEnter += (_, _) => BackColor = AzureTints.WhisperTint;
+            MouseLeave += (_, _) => BackColor = Theme.Surface;
+            _lblValue.MouseEnter += (_, _) => BackColor = AzureTints.WhisperTint;
+            _lblValue.MouseLeave += (_, _) => BackColor = Theme.Surface;
+            _lblTitle.MouseEnter += (_, _) => BackColor = AzureTints.WhisperTint;
+            _lblTitle.MouseLeave += (_, _) => BackColor = Theme.Surface;
 
             Paint += KpiCard_Paint;
         }
@@ -77,16 +80,19 @@ namespace CRMS_Peguit.winforms.Controls
 
         private void KpiCard_Paint(object? sender, PaintEventArgs e)
         {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
             // Left accent bar, thicker when selected - avoids relying on
             // a full border color change so it stays readable either way.
-            int barWidth = IsSelected ? 6 : 3;
+            int barWidth = IsSelected ? 6 : 4;
             using var brush = new SolidBrush(_accentColor);
             e.Graphics.FillRectangle(brush, 0, 0, barWidth, Height);
 
             if (IsSelected)
             {
                 using var pen = new Pen(_accentColor, 2);
-                e.Graphics.DrawRectangle(pen, 1, 1, Width - 2, Height - 2);
+                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(1, 1, Width - 2, Height - 2), 12);
+                e.Graphics.DrawPath(pen, path);
             }
         }
     }

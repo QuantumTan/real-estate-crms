@@ -1,0 +1,9 @@
+{
+  "localConnection": "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;",
+  "cloudConnection": "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;",
+  "tenants": {
+    "tenant_a": "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713_tenant_a;Password=YOUR_TENANT_A_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;",
+    "tenant_b": "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713_tenant_b;Password=YOUR_TENANT_B_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;",
+    "tenant_c": "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713_tenant_c;Password=YOUR_TENANT_C_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;"
+  }
+}

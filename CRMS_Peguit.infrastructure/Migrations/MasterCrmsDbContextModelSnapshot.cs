@@ -65,6 +65,11 @@ namespace CRMS_Peguit.infrastructure.Migrations
                     b.Property<int>("CompanyId")
                         .HasColumnType("int");
 
+                    b.Property<string>("CredentialKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("DatabaseName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -96,8 +101,24 @@ namespace CRMS_Peguit.infrastructure.Migrations
                     b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignmentReviewNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("AssignmentReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AssignmentReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignmentStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
@@ -106,22 +127,35 @@ namespace CRMS_Peguit.infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("LastName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Suffix")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("TenantId")
                         .HasColumnType("int");
@@ -172,7 +206,7 @@ namespace CRMS_Peguit.infrastructure.Migrations
                     b.HasIndex("DeviceCode")
                         .IsUnique();
 
-                    b.ToTable("Device");
+                    b.ToTable("Devices");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.CompanyDatabase", b =>

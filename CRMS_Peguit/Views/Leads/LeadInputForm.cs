@@ -17,6 +17,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
             _existingLead = lead;
 
             InitializeComponent();
+            UiRadiusHelper.StyleButton(btnSave, 8);
+            UiRadiusHelper.StyleButton(btnCancel, 8);
             btnSave.Click += BtnSaveClick;
             LoadData();
         }

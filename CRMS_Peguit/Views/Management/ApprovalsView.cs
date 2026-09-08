@@ -9,6 +9,7 @@ using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Controls;
 using CRMS_Peguit.winforms.Models.Services;
+using CRMS_Peguit.winforms.Models.ViewModels;
 using CRMS_Peguit.winforms.Views.Customers;
 using CRMS_Peguit.winforms.Views.Leads;
 using CRMS_Peguit.winforms.Views.Properties;
@@ -18,9 +19,7 @@ namespace CRMS_Peguit.winforms.Views.Management
 {
     public partial class ApprovalsView : UserControl
     {
-        private readonly LeadController _leadController;
-        private readonly CustomerController _customerController;
-        private readonly PropertyController _propertyController;
+        private readonly ApprovalController _approvalController;
 
         private string _filterType = "All";
         private List<PendingApprovalItem> _allItems = new();
@@ -29,13 +28,22 @@ namespace CRMS_Peguit.winforms.Views.Management
         {
             InitializeComponent();
 
-            _leadController = new LeadController();
-            _customerController = new CustomerController();
-            _propertyController = new PropertyController();
+            _approvalController = new ApprovalController();
 
+            ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
             RefreshGrid();
+        }
+
+        private void ApplyStyling()
+        {
+            UiRadiusHelper.StyleCard(pnlCard, 12);
+            UiRadiusHelper.StyleButton(btnRefresh, 8);
+            UiRadiusHelper.ApplyPillShape(btnFilterAll);
+            UiRadiusHelper.ApplyPillShape(btnFilterLeads);
+            UiRadiusHelper.ApplyPillShape(btnFilterCustomers);
+            UiRadiusHelper.ApplyPillShape(btnFilterProperties);
         }
 
         private void BindEvents()
@@ -109,72 +117,7 @@ namespace CRMS_Peguit.winforms.Views.Management
 
         public void RefreshGrid()
         {
-            _allItems.Clear();
-
-            // 1. Pending Leads
-            var leads = _leadController.GetPendingReview();
-            foreach (var lead in leads)
-            {
-                string submitter = GetUserName(lead.CreatedByUserId);
-                string assigned = _leadController.GetAssignedAgentName(lead.AssignedAgentId) ?? "Unassigned";
-
-                _allItems.Add(new PendingApprovalItem
-                {
-                    Id = lead.LeadId,
-                    Type = "Lead",
-                    Title = lead.FullName,
-                    SubmitterName = submitter,
-                    CreatedAt = lead.CreatedAt,
-                    AssignedTo = assigned,
-                    AssignedAgentId = lead.AssignedAgentId,
-                    Status = "PENDING REVIEW",
-                    OriginalEntity = lead
-                });
-            }
-
-            // 2. Pending Customers
-            var customers = _customerController.GetPendingReview();
-            foreach (var cust in customers)
-            {
-                string submitter = GetUserName(cust.CreatedByUserId);
-                string assigned = _customerController.GetAssignedAgentName(cust.AssignedAgentId) ?? "Unassigned";
-
-                _allItems.Add(new PendingApprovalItem
-                {
-                    Id = cust.CustomerId,
-                    Type = "Customer",
-                    Title = cust.FullName,
-                    SubmitterName = submitter,
-                    CreatedAt = cust.CreatedAt,
-                    AssignedTo = assigned,
-                    AssignedAgentId = cust.AssignedAgentId,
-                    Status = "PENDING REVIEW",
-                    OriginalEntity = cust
-                });
-            }
-
-            // 3. Pending Properties
-            var properties = _propertyController.GetPendingReview();
-            foreach (var prop in properties)
-            {
-                string submitter = GetUserName(prop.CreatedByUserId);
-                string assigned = _propertyController.GetListedAgentName(prop.ListedByAgentId) ?? "Unassigned";
-
-                _allItems.Add(new PendingApprovalItem
-                {
-                    Id = prop.PropertyId,
-                    Type = "Property",
-                    Title = prop.Address,
-                    SubmitterName = submitter,
-                    CreatedAt = prop.CreatedAt,
-                    AssignedTo = assigned,
-                    AssignedAgentId = prop.ListedByAgentId,
-                    Status = "PENDING REVIEW",
-                    OriginalEntity = prop
-                });
-            }
-
-            _allItems = _allItems.OrderByDescending(x => x.CreatedAt).ToList();
+            _allItems = _approvalController.GetPendingApprovals();
 
             // Update subtitle badge
             int total = _allItems.Count;
@@ -401,22 +344,11 @@ namespace CRMS_Peguit.winforms.Views.Management
 
         private void OpenAssignDialog(PendingApprovalItem item)
         {
-            var agents = _leadController.GetAgents();
+            var agents = _approvalController.GetAgents();
             using var dlg = new AssignAgentDialog(item.Title, agents, item.AssignedAgentId);
             if (dlg.ShowDialog() == DialogResult.OK)
             {
-                if (item.Type == "Lead" && item.OriginalEntity is Lead lead)
-                {
-                    _leadController.AssignAgent(lead, dlg.SelectedAgentId, dlg.ApproveNow, dlg.ReviewNotes);
-                }
-                else if (item.Type == "Customer" && item.OriginalEntity is Customer cust)
-                {
-                    _customerController.AssignAgent(cust, dlg.SelectedAgentId, dlg.ApproveNow, dlg.ReviewNotes);
-                }
-                else if (item.Type == "Property" && item.OriginalEntity is Property prop)
-                {
-                    _propertyController.AssignAgent(prop, dlg.SelectedAgentId, dlg.ApproveNow, dlg.ReviewNotes);
-                }
+                _approvalController.AssignAgent(item, dlg.SelectedAgentId, dlg.ApproveNow, dlg.ReviewNotes);
 
                 MessageBox.Show(
                     $"Record '{item.Title}' has been assigned successfully.",
@@ -430,18 +362,7 @@ namespace CRMS_Peguit.winforms.Views.Management
 
         private void ApproveItemImmediately(PendingApprovalItem item)
         {
-            if (item.Type == "Lead" && item.OriginalEntity is Lead lead)
-            {
-                _leadController.ApproveAssignment(lead, "Approved directly from Approvals Center.");
-            }
-            else if (item.Type == "Customer" && item.OriginalEntity is Customer cust)
-            {
-                _customerController.ApproveAssignment(cust, "Approved directly from Approvals Center.");
-            }
-            else if (item.Type == "Property" && item.OriginalEntity is Property prop)
-            {
-                _propertyController.ApproveAssignment(prop, "Approved directly from Approvals Center.");
-            }
+            _approvalController.ApproveAssignment(item, "Approved directly from Approvals Center.");
 
             MessageBox.Show(
                 $"Submission for '{item.Title}' has been approved.",
@@ -456,17 +377,17 @@ namespace CRMS_Peguit.winforms.Views.Management
         {
             if (item.Type == "Lead" && item.OriginalEntity is Lead lead)
             {
-                using var form = new LeadDetailForm(lead, _leadController);
+                using var form = new LeadDetailForm(lead, _approvalController.LeadController);
                 form.ShowDialog();
             }
             else if (item.Type == "Customer" && item.OriginalEntity is Customer cust)
             {
-                using var form = new CustomerDetailForm(cust, _customerController);
+                using var form = new CustomerDetailForm(cust, _approvalController.CustomerController);
                 form.ShowDialog();
             }
             else if (item.Type == "Property" && item.OriginalEntity is Property prop)
             {
-                using var form = new PropertyDetailForm(prop, _propertyController);
+                using var form = new PropertyDetailForm(prop, _approvalController.PropertyController);
                 form.ShowDialog();
             }
 
@@ -483,24 +404,5 @@ namespace CRMS_Peguit.winforms.Views.Management
             }
             return null;
         }
-
-        private string GetUserName(int? userId)
-        {
-            if (!userId.HasValue || userId.Value <= 0) return "—";
-            return _customerController.GetAssignedAgentName(userId.Value) ?? $"User #{userId.Value}";
-        }
-    }
-
-    public class PendingApprovalItem
-    {
-        public int Id { get; set; }
-        public string Type { get; set; } = "";
-        public string Title { get; set; } = "";
-        public string SubmitterName { get; set; } = "";
-        public DateTime CreatedAt { get; set; }
-        public string AssignedTo { get; set; } = "Unassigned";
-        public int? AssignedAgentId { get; set; }
-        public string Status { get; set; } = "PENDING REVIEW";
-        public object OriginalEntity { get; set; } = null!;
     }
 }

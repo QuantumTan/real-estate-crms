@@ -32,8 +32,8 @@ namespace CRMS_Peguit.winforms.Controllers
 
         private void EnsureAdmin()
         {
-            if (CurrentSession.CurrentUser is not CRMS_Peguit.Models.Backend.Admin &&
-                CurrentSession.CurrentUser is not CRMS_Peguit.Models.Backend.SuperAdmin)
+            if (CurrentSession.CurrentUser is not CRMS_Peguit.winforms.Models.Roles.Admin &&
+                CurrentSession.CurrentUser is not CRMS_Peguit.winforms.Models.Roles.SuperAdmin)
             {
                 throw new UnauthorizedAccessException("Only Admins can perform this action.");
             }

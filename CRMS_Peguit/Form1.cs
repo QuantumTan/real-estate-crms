@@ -4,7 +4,10 @@ using CRMS_Peguit.winforms.Views.Customers;
 using CRMS_Peguit.winforms.Views.Leads;
 using CRMS_Peguit.winforms.Views.Properties;
 using CRMS_Peguit.winforms.Views.Deals;
+using CRMS_Peguit.winforms.Views.Marketing;
 using CRMS_Peguit.winforms.Views.Shared;
+using CRMS_Peguit.winforms.Views.Users;
+using CRMS_Peguit.Models;
 using CRMS_Peguit.winforms.Models.Services;
 using ReaLTaiizor.Forms;
 using System.Linq;
@@ -19,6 +22,7 @@ namespace CRMS_Peguit.winforms
         public Form1()
         {
             InitializeComponent();
+            ApplyTheme();
             InitNavButtons();
             BindEvents();
             ApplyRolePermissions();
@@ -35,6 +39,7 @@ namespace CRMS_Peguit.winforms
                 btnCustomers,
                 btnProperties,
                 btnDeals,
+                btnCampaigns,
                 btnActivities,
                 btnFollowUps,
                 btnSupportTickets,
@@ -46,6 +51,7 @@ namespace CRMS_Peguit.winforms
 
             foreach (var btn in _navButtons)
             {
+                UiRadiusHelper.ApplyRoundedCorners(btn, 6);
                 btn.MouseEnter += (s, e) =>
                 {
                     if (s is Button b && b != _activeNavButton)
@@ -87,6 +93,7 @@ namespace CRMS_Peguit.winforms
             btnLeads.Click += (s, e) => { SetActiveNavButton(btnLeads); BtnLeadsClick(s, e); };
             btnProperties.Click += (s, e) => { SetActiveNavButton(btnProperties); BtnPropertiesClick(s, e); };
             btnDeals.Click += (s, e) => { SetActiveNavButton(btnDeals); BtnDealsClick(s, e); };
+            btnCampaigns.Click += (s, e) => { SetActiveNavButton(btnCampaigns); BtnCampaignsClick(s, e); };
             btnActivities.Click += (s, e) => { SetActiveNavButton(btnActivities); BtnActivitiesClick(s, e); };
             btnFollowUps.Click += (s, e) => { SetActiveNavButton(btnFollowUps); BtnFollowUpsClick(s, e); };
             btnReports.Click += (s, e) => { SetActiveNavButton(btnReports); BtnReportsClick(s, e); };
@@ -94,6 +101,26 @@ namespace CRMS_Peguit.winforms
             btnSupportTickets.Click += (s, e) => { SetActiveNavButton(btnSupportTickets); BtnSupportTicketsClick(s, e); };
 
             lblBellIcon.Click += (_, _) => MessageBox.Show("No new notifications.", "Notifications", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void ApplyTheme()
+        {
+            sidebarPanel.BackColor = Theme.SidebarBackground;
+            pnlUserProfile.BackColor = Theme.SidebarProfileCard;
+            topHeaderPanel.BackColor = Theme.HeaderBackground;
+            mainPanel.BackColor = Theme.Background;
+            BackColor = Theme.Background;
+            txtGlobalSearch.BackColor = AzureTints.BackgroundWash;
+            txtGlobalSearch.ForeColor = Theme.TextPrimary;
+            lblHeaderUserName.ForeColor = Theme.TextPrimary;
+            lblHeaderAvatar.BackColor = AzureTints.SkylineBlue;
+            lblHeaderAvatar.ForeColor = AzureTints.PureWhite;
+            lblBellIcon.ForeColor = Theme.TextSecondary;
+
+            UiRadiusHelper.ApplyRoundedCorners(pnlUserProfile, 10);
+            UiRadiusHelper.ApplyPillShape(lblUserAvatar);
+            UiRadiusHelper.ApplyPillShape(lblHeaderAvatar);
+            UiRadiusHelper.StyleButton(btnLogout, 6);
         }
 
         // =====================================================
@@ -128,7 +155,7 @@ namespace CRMS_Peguit.winforms
             lblHeaderUserName.Text = $"{user.FullName}\r\n{user.GetDashboardType()}";
             lblRoleBadge.Text = $"• {user.GetDashboardType()}";
 
-            btnApprovals.Visible = CurrentSession.CanAccess("Approvals") || RbacService.CanApproveAssignments;
+            btnApprovals.Visible = CurrentSession.CanAccess("Approvals") && RbacService.CanApproveAssignments;
             btnManageManagers.Visible = CurrentSession.CanAccess("Managers");
             btnManageAgents.Visible = CurrentSession.CanAccess("SalesStaff");
             lblAdminSection.Text = RbacService.IsAdmin ? "ADMINISTRATION" : "MANAGEMENT";
@@ -138,6 +165,7 @@ namespace CRMS_Peguit.winforms
             btnLeads.Visible = CurrentSession.CanAccess("Leads");
             btnProperties.Visible = CurrentSession.CanAccess("Properties");
             btnDeals.Visible = CurrentSession.CanAccess("Deals");
+            btnCampaigns.Visible = CurrentSession.CanAccess("Campaigns");
             btnActivities.Visible = CurrentSession.CanAccess("Activities");
             btnFollowUps.Visible = CurrentSession.CanAccess("TasksReminders");
             btnReports.Visible = CurrentSession.CanAccess("Reports");
@@ -188,12 +216,23 @@ namespace CRMS_Peguit.winforms
                     SetActiveNavButton(btnDeals);
                     BtnDealsClick(btnDeals, EventArgs.Empty);
                     break;
+                case "campaigns":
+                    if (!CurrentSession.CanAccess("Campaigns")) return;
+                    SetActiveNavButton(btnCampaigns);
+                    BtnCampaignsClick(btnCampaigns, EventArgs.Empty);
+                    break;
                 case "approvals":
                     if (!CurrentSession.CanAccess("Approvals") && !RbacService.CanApproveAssignments) return;
                     SetActiveNavButton(btnApprovals);
                     BtnApprovalsClick(btnApprovals, EventArgs.Empty);
                     break;
             }
+        }
+
+        private void BtnCampaignsClick(object? sender, EventArgs e)
+        {
+            if (!CurrentSession.CanAccess("Campaigns")) return;
+            ShowView(new CampaignsView());
         }
 
         private void BtnDashboardClick(object? sender, EventArgs e)
@@ -212,13 +251,13 @@ namespace CRMS_Peguit.winforms
         private void BtnManageManagersClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Managers")) return;
-            ShowView(new CRMS_Peguit.winforms.Forms.AdminUserListForm("Manager"));
+            ShowView(new AdminUserListForm("Manager"));
         }
 
         private void BtnManageAgentsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("SalesStaff")) return;
-            ShowView(new CRMS_Peguit.winforms.Forms.AdminUserListForm("Agent"));
+            ShowView(new AdminUserListForm("Agent"));
         }
 
         private void BtnCustomersClick(object? sender, EventArgs e)

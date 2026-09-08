@@ -1,4 +1,4 @@
-using CRMS_Peguit.domain.entities;
+﻿using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
@@ -64,6 +64,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 DialogResult = DialogResult.OK
             };
             btnClose.FlatAppearance.BorderSize = 0;
+            UiRadiusHelper.StyleButton(btnClose, 8);
             Controls.Add(btnClose);
         }
 
@@ -136,3 +137,4 @@ namespace CRMS_Peguit.winforms.Views.Properties
         }
     }
 }
+

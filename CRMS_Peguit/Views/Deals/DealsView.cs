@@ -15,9 +15,20 @@ namespace CRMS_Peguit.winforms.Views.Deals
             InitializeComponent();
             _controller = new DealController();
 
+            ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
             RefreshGrid();
+        }
+
+        private void ApplyStyling()
+        {
+            UiRadiusHelper.StyleCard(pnlCard, 12);
+            UiRadiusHelper.ApplyPillShape(btnFilterAll);
+            UiRadiusHelper.ApplyPillShape(btnFilterOffer);
+            UiRadiusHelper.ApplyPillShape(btnFilterContract);
+            UiRadiusHelper.ApplyPillShape(btnFilterClosed);
+            UiRadiusHelper.ApplyPillShape(btnFilterLost);
         }
 
         private void BindEvents()

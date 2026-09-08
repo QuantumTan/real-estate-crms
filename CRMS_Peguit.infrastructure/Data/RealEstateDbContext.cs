@@ -308,5 +308,36 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<SystemSetting>().HasQueryFilter(x => x.TenantId == _tenantId);
             builder.Entity<BackupLog>().HasQueryFilter(x => x.TenantId == _tenantId);
         }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            EnforceTenantId();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(
+            bool acceptAllChangesOnSuccess,
+            CancellationToken cancellationToken = default)
+        {
+            EnforceTenantId();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void EnforceTenantId()
+        {
+            if (_tenantId <= 0) return;
+
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "TenantId");
+                    if (prop != null)
+                    {
+                        prop.CurrentValue = _tenantId;
+                    }
+                }
+            }
+        }
     }
 }

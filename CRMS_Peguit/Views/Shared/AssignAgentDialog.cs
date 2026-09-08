@@ -1,3 +1,4 @@
+﻿using CRMS_Peguit.winforms.Models.Services;
 using CRMS_Peguit.winforms.Controllers;
 
 namespace CRMS_Peguit.winforms.Views.Shared
@@ -19,6 +20,10 @@ namespace CRMS_Peguit.winforms.Views.Shared
         {
             _agents = agents ?? new List<AgentPickerItem>();
             InitializeComponent();
+
+            UiRadiusHelper.StyleButton(btnSave, 8);
+
+            UiRadiusHelper.StyleButton(btnCancel, 8);
 
             lblRecord.Text = $"Record: {recordTitle}";
             PopulateAgents(currentAgentId);
@@ -70,3 +75,4 @@ namespace CRMS_Peguit.winforms.Views.Shared
         }
     }
 }
+

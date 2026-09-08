@@ -19,6 +19,7 @@ namespace CRMS_Peguit.winforms
         private System.Windows.Forms.Button btnCustomers = null!;
         private System.Windows.Forms.Button btnProperties = null!;
         private System.Windows.Forms.Button btnDeals = null!;
+        private System.Windows.Forms.Button btnCampaigns = null!;
         private System.Windows.Forms.Button btnActivities = null!;
         private System.Windows.Forms.Button btnFollowUps = null!;
         private System.Windows.Forms.Label lblSupportSection = null!;
@@ -67,6 +68,7 @@ namespace CRMS_Peguit.winforms
             this.btnCustomers = new System.Windows.Forms.Button();
             this.btnProperties = new System.Windows.Forms.Button();
             this.btnDeals = new System.Windows.Forms.Button();
+            this.btnCampaigns = new System.Windows.Forms.Button();
             this.btnActivities = new System.Windows.Forms.Button();
             this.btnFollowUps = new System.Windows.Forms.Button();
             this.lblSupportSection = new System.Windows.Forms.Label();
@@ -189,6 +191,7 @@ namespace CRMS_Peguit.winforms
             this.pnlNav.Controls.Add(this.lblSupportSection);
             this.pnlNav.Controls.Add(this.btnFollowUps);
             this.pnlNav.Controls.Add(this.btnActivities);
+            this.pnlNav.Controls.Add(this.btnCampaigns);
             this.pnlNav.Controls.Add(this.btnDeals);
             this.pnlNav.Controls.Add(this.btnProperties);
             this.pnlNav.Controls.Add(this.btnCustomers);
@@ -296,6 +299,23 @@ namespace CRMS_Peguit.winforms
             this.btnDeals.Text = "  💼  Deals";
             this.btnDeals.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnDeals.UseVisualStyleBackColor = true;
+            // 
+            // btnCampaigns
+            // 
+            this.btnCampaigns.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnCampaigns.Dock = System.Windows.Forms.DockStyle.Top;
+            this.btnCampaigns.FlatAppearance.BorderSize = 0;
+            this.btnCampaigns.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCampaigns.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.btnCampaigns.ForeColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            this.btnCampaigns.Location = new System.Drawing.Point(0, 218);
+            this.btnCampaigns.Name = "btnCampaigns";
+            this.btnCampaigns.Padding = new System.Windows.Forms.Padding(16, 0, 0, 0);
+            this.btnCampaigns.Size = new System.Drawing.Size(240, 38);
+            this.btnCampaigns.TabIndex = 6;
+            this.btnCampaigns.Text = "  📣  Campaigns";
+            this.btnCampaigns.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnCampaigns.UseVisualStyleBackColor = true;
             // 
             // btnActivities
             // 
