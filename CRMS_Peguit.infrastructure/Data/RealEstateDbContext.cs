@@ -25,7 +25,6 @@ namespace CRMS_Peguit.infrastructure.data
         public DbSet<Activity> Activities => Set<Activity>();
         public DbSet<PropertyShowingDetail> PropertyShowingDetails => Set<PropertyShowingDetail>();
         public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
-        public DbSet<Subscription> Subscriptions => Set<Subscription>();
         public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
         public DbSet<BackupLog> BackupLogs => Set<BackupLog>();
 
@@ -354,14 +353,6 @@ namespace CRMS_Peguit.infrastructure.data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            builder.Entity<Subscription>(entity =>
-            {
-                entity.HasKey(x => x.SubscriptionId);
-                entity.Property(x => x.PlanName).HasMaxLength(100).IsRequired();
-                entity.Property(x => x.BillingAmount).HasColumnType("decimal(18,2)");
-                entity.Property(x => x.Status).HasMaxLength(50);
-            });
-
             builder.Entity<SystemSetting>(entity =>
             {
                 entity.HasKey(x => x.SettingId);
@@ -399,7 +390,6 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<Activity>().HasQueryFilter(x => x.LoggedByAgent.Role.TenantId == _tenantId);
             builder.Entity<PropertyShowingDetail>().HasQueryFilter(x => x.Activity.LoggedByAgent.Role.TenantId == _tenantId);
             builder.Entity<SupportTicket>().HasQueryFilter(x => x.RaisedByUser.Role.TenantId == _tenantId);
-            builder.Entity<Subscription>().HasQueryFilter(x => x.TenantId == _tenantId);
             builder.Entity<SystemSetting>().HasQueryFilter(x => x.UpdatedByUser.Role.TenantId == _tenantId);
             builder.Entity<BackupLog>().HasQueryFilter(x => x.PerformedByUser.Role.TenantId == _tenantId);
         }

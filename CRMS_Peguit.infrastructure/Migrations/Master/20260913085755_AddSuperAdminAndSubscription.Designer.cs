@@ -4,16 +4,19 @@ using CRMS_Peguit.infrastructure.data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CRMS_Peguit.infrastructure.Migrations
+namespace CRMS_Peguit.infrastructure.Migrations.Master
 {
     [DbContext(typeof(MasterCrmsDbContext))]
-    partial class MasterCrmsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260913085755_AddSuperAdminAndSubscription")]
+    partial class AddSuperAdminAndSubscription
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
