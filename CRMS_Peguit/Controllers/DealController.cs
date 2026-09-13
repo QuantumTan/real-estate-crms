@@ -1,28 +1,30 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
 using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Models.Services;
-using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CRMS_Peguit.winforms.Controllers
 {
     public class DealController : IDisposable
     {
         private readonly RealEstateDbContext _db;
-
-        private int TenantId => CurrentSession.TenantId;
+        public int TenantId => CurrentSession.TenantId;
 
         public DealController()
         {
-            _db = LocalDb.CreateContext(TenantId);
+            _db = LocalDb.CreateContext(tenantId: TenantId);
         }
 
         public List<Deal> GetAll()
         {
-            var query = _db.Deals.AsNoTracking();
+            var query = _db.Deals
+                .Include(d => d.Contingencies)
+                .Include(d => d.DealClauses)
+                .AsNoTracking();
 
             if (!RbacService.HasFullOversight && RbacService.IsAgent)
             {
@@ -38,6 +40,8 @@ namespace CRMS_Peguit.winforms.Controllers
         public Deal? GetById(int id)
         {
             var item = _db.Deals
+                .Include(d => d.Contingencies)
+                .Include(d => d.DealClauses)
                 .AsNoTracking()
                 .SingleOrDefault(x => x.DealId == id);
 
@@ -51,24 +55,47 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Deal Add(Deal deal)
         {
-            deal.TenantId = TenantId;
+            deal.CreatedByUserId = CurrentSession.UserId > 0 ? CurrentSession.UserId : 1;
             deal.CreatedAt = DateTime.UtcNow;
 
             // Apply defaults for commercial terms if not specified
             if (string.IsNullOrWhiteSpace(deal.PaymentScheme))
                 deal.PaymentScheme = "Bank Financing";
 
-            if (deal.DownPaymentPercent.HasValue && !deal.DownPaymentAmount.HasValue)
-                deal.DownPaymentAmount = deal.Value * (deal.DownPaymentPercent.Value / 100m);
+            if (deal.Contingencies.Count == 0)
+            {
+                var defaults = DealClauseLibrary.GetDefaultContingencies(deal.PaymentScheme);
+                foreach (var dc in defaults)
+                {
+                    deal.Contingencies.Add(new DealContingency
+                    {
+                        ContingencyName = dc.ContingencyName,
+                        Description = dc.Description,
+                        DueDate = dc.DueDate,
+                        IsSatisfied = dc.IsSatisfied,
+                        SatisfiedAt = dc.SatisfiedAt,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
 
-            if (!deal.BalanceAmount.HasValue)
-                deal.BalanceAmount = deal.Value - (deal.DownPaymentAmount ?? 0);
-
-            if (string.IsNullOrWhiteSpace(deal.ContingenciesJson))
-                deal.ContingenciesJson = DealContingency.SerializeList(DealClauseLibrary.GetDefaultContingencies(deal.PaymentScheme));
-
-            if (string.IsNullOrWhiteSpace(deal.ApprovedClauseIds))
-                deal.ApprovedClauseIds = "TTL-01,TAX-01,FIN-01,TRN-01,DEF-01";
+            if (deal.DealClauses.Count == 0)
+            {
+                var defaultClauseIds = new[] { "TTL-01", "TAX-01", "FIN-01", "TRN-01", "DEF-01" };
+                foreach (var cid in defaultClauseIds)
+                {
+                    var clauseDef = DealClauseLibrary.GetStandardClauses().FirstOrDefault(c => c.Id == cid);
+                    deal.DealClauses.Add(new DealClause
+                    {
+                        ClauseId = cid,
+                        Title = clauseDef?.Title ?? cid,
+                        ClauseText = clauseDef?.ClauseText,
+                        IsApproved = true,
+                        ApprovedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
 
             _db.Deals.Add(deal);
             _db.SaveChanges();
@@ -77,7 +104,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public void Update(Deal deal)
         {
-            var item = _db.Deals.SingleOrDefault(x => x.DealId == deal.DealId);
+            var item = _db.Deals.Include(d => d.Contingencies).Include(d => d.DealClauses).SingleOrDefault(x => x.DealId == deal.DealId);
             if (item is null) return;
 
             item.CustomerId = deal.CustomerId;
@@ -92,14 +119,10 @@ namespace CRMS_Peguit.winforms.Controllers
             item.PaymentScheme = deal.PaymentScheme;
             item.ReservationFee = deal.ReservationFee;
             item.DownPaymentPercent = deal.DownPaymentPercent;
-            item.DownPaymentAmount = deal.DownPaymentAmount;
-            item.BalanceAmount = deal.BalanceAmount;
             item.CgtPayer = deal.CgtPayer;
             item.DstPayer = deal.DstPayer;
             item.TransferTaxPayer = deal.TransferTaxPayer;
             item.RegistrationFeePayer = deal.RegistrationFeePayer;
-            item.ContingenciesJson = deal.ContingenciesJson;
-            item.ApprovedClauseIds = deal.ApprovedClauseIds;
             item.SpecialStipulations = deal.SpecialStipulations;
             item.ContractSignedDate = deal.ContractSignedDate;
 
@@ -108,22 +131,28 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public void UpdateContingencyStatus(int dealId, int contingencyIndex, string newStatus, string? notes = null)
         {
-            var item = _db.Deals.SingleOrDefault(x => x.DealId == dealId);
+            var item = _db.Deals.Include(d => d.Contingencies).SingleOrDefault(x => x.DealId == dealId);
             if (item is null) return;
 
-            var contingencies = DealContingency.DeserializeList(item.ContingenciesJson);
+            var contingencies = item.Contingencies.OrderBy(c => c.DealContingencyId).ToList();
             if (contingencyIndex >= 0 && contingencyIndex < contingencies.Count)
             {
-                contingencies[contingencyIndex].Status = newStatus;
+                var c = contingencies[contingencyIndex];
+                c.Status = newStatus;
                 if (string.Equals(newStatus, "Satisfied", StringComparison.OrdinalIgnoreCase))
                 {
-                    contingencies[contingencyIndex].ResolvedAt = DateTime.UtcNow;
+                    c.SatisfiedAt = DateTime.UtcNow;
+                    c.IsSatisfied = true;
+                }
+                else
+                {
+                    c.SatisfiedAt = null;
+                    c.IsSatisfied = false;
                 }
                 if (!string.IsNullOrWhiteSpace(notes))
                 {
-                    contingencies[contingencyIndex].Notes = notes;
+                    c.Description = notes;
                 }
-                item.ContingenciesJson = DealContingency.SerializeList(contingencies);
                 _db.SaveChanges();
             }
         }
@@ -140,31 +169,49 @@ namespace CRMS_Peguit.winforms.Controllers
         public Dictionary<int, string> GetCustomerNames()
         {
             return _db.Customers
+                .Include(x => x.Person)
                 .AsNoTracking()
-                .ToDictionary(c => c.CustomerId, c => $"{c.FirstName} {c.LastName}".Trim());
+                .OrderBy(x => x.Person.LastName)
+                .ThenBy(x => x.Person.FirstName)
+                .ToDictionary(
+                    x => x.CustomerId,
+                    x => x.FullName
+                );
         }
 
         public Dictionary<int, string> GetPropertyAddresses()
         {
             return _db.Properties
                 .AsNoTracking()
-                .ToDictionary(p => p.PropertyId, p => p.Address);
+                .OrderBy(x => x.Address)
+                .ToDictionary(
+                    x => x.PropertyId,
+                    x => x.Address
+                );
         }
 
         public Dictionary<int, string> GetAgentNames()
         {
             return _db.Users
+                .Include(x => x.Person)
                 .AsNoTracking()
-                .ToDictionary(u => u.UserId, u => $"{u.FirstName} {u.LastName}".Trim());
+                .OrderBy(x => x.Person.FirstName)
+                .ThenBy(x => x.Person.LastName)
+                .ToDictionary(
+                    x => x.UserId,
+                    x => x.FullName
+                );
         }
 
         public List<KeyValuePair<int, string>> GetCustomerPickerList()
         {
             return _db.Customers
+                .Include(c => c.Person)
                 .AsNoTracking()
-                .OrderBy(c => c.LastName)
-                .ThenBy(c => c.FirstName)
-                .Select(c => new KeyValuePair<int, string>(c.CustomerId, $"{c.FirstName} {c.LastName}".Trim()))
+                .OrderBy(c => c.Person.LastName)
+                .ThenBy(c => c.Person.FirstName)
+                .ToList()
+                .Select(c => new KeyValuePair<int, string>(c.CustomerId, c.FullName))
                 .ToList();
         }
 
@@ -180,10 +227,12 @@ namespace CRMS_Peguit.winforms.Controllers
         public List<KeyValuePair<int, string>> GetAgentPickerList()
         {
             return _db.Users
+                .Include(u => u.Person)
                 .AsNoTracking()
                 .Where(u => u.Status != "inactive")
-                .OrderBy(u => u.LastName)
-                .Select(u => new KeyValuePair<int, string>(u.UserId, $"{u.FirstName} {u.LastName}".Trim()))
+                .OrderBy(u => u.Person.LastName)
+                .ToList()
+                .Select(u => new KeyValuePair<int, string>(u.UserId, u.FullName))
                 .ToList();
         }
 

@@ -461,17 +461,26 @@ namespace CRMS_Peguit.winforms
                 : "U";
             if (initials.Length > 2) initials = initials.Substring(0, 2);
 
-            string role = user.GetDashboardType();
+            string roleDisplay = user.Role switch
+            {
+                CRMS_Peguit.winforms.Models.Roles.UserRole.SuperAdmin => "Super Admin",
+                CRMS_Peguit.winforms.Models.Roles.UserRole.Admin => "Admin",
+                CRMS_Peguit.winforms.Models.Roles.UserRole.Manager => "Manager",
+                CRMS_Peguit.winforms.Models.Roles.UserRole.SalesStaff => "Sales Staff",
+                _ => user.Role.ToString()
+            };
+
             lblUserAvatar.Text = initials;
             lblUserName.Text = user.FullName;
-            lblUserRole.Text = role;
+            lblUserRole.Text = roleDisplay;
 
             lblHeaderAvatar.Text = initials;
-            lblHeaderUserName.Text = $"{user.FullName}\r\n{role}";
-            lblRoleBadge.Text = $"• {role}";
+            lblHeaderUserName.Text = $"{user.FullName}\r\n{roleDisplay}";
+            lblRoleBadge.Text = $"• {roleDisplay}";
             var badgeSize = TextRenderer.MeasureText(lblRoleBadge.Text, lblRoleBadge.Font);
-            lblRoleBadge.Width = Math.Max(76, badgeSize.Width + 18);
+            lblRoleBadge.Width = Math.Max(72, badgeSize.Width + 16);
             UiRadiusHelper.ApplyPillShape(lblRoleBadge);
+            txtGlobalSearch.Location = new Point(lblRoleBadge.Right + 12, 16);
 
             btnApprovals.Visible = CurrentSession.CanAccess("Approvals") && RbacService.CanApproveAssignments;
             btnManageManagers.Visible = CurrentSession.CanAccess("Managers");
@@ -489,7 +498,7 @@ namespace CRMS_Peguit.winforms
             btnReports.Visible = CurrentSession.CanAccess("Reports");
             btnSupportTickets.Visible = CurrentSession.CanAccess("SupportTickets");
 
-            Text = $"NEXA CRM SYSTEM — {user.FullName} ({user.GetDashboardType()})";
+            Text = $"NEXA CRM SYSTEM — {user.FullName} ({roleDisplay})";
         }
 
         // =====================================================

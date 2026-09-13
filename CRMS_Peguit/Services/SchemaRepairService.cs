@@ -60,16 +60,13 @@ namespace CRMS_Peguit.winforms.Models.Services
             ExecuteIfMissing(connection, "Deals", "PaymentScheme", "ALTER TABLE [Deals] ADD [PaymentScheme] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "ReservationFee", "ALTER TABLE [Deals] ADD [ReservationFee] decimal(18,2) NULL;");
             ExecuteIfMissing(connection, "Deals", "DownPaymentPercent", "ALTER TABLE [Deals] ADD [DownPaymentPercent] decimal(5,2) NULL;");
-            ExecuteIfMissing(connection, "Deals", "DownPaymentAmount", "ALTER TABLE [Deals] ADD [DownPaymentAmount] decimal(18,2) NULL;");
-            ExecuteIfMissing(connection, "Deals", "BalanceAmount", "ALTER TABLE [Deals] ADD [BalanceAmount] decimal(18,2) NULL;");
             ExecuteIfMissing(connection, "Deals", "CgtPayer", "ALTER TABLE [Deals] ADD [CgtPayer] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "DstPayer", "ALTER TABLE [Deals] ADD [DstPayer] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "TransferTaxPayer", "ALTER TABLE [Deals] ADD [TransferTaxPayer] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "RegistrationFeePayer", "ALTER TABLE [Deals] ADD [RegistrationFeePayer] nvarchar(50) NULL;");
-            ExecuteIfMissing(connection, "Deals", "ContingenciesJson", "ALTER TABLE [Deals] ADD [ContingenciesJson] nvarchar(max) NULL;");
-            ExecuteIfMissing(connection, "Deals", "ApprovedClauseIds", "ALTER TABLE [Deals] ADD [ApprovedClauseIds] nvarchar(500) NULL;");
             ExecuteIfMissing(connection, "Deals", "SpecialStipulations", "ALTER TABLE [Deals] ADD [SpecialStipulations] nvarchar(max) NULL;");
             ExecuteIfMissing(connection, "Deals", "ContractSignedDate", "ALTER TABLE [Deals] ADD [ContractSignedDate] datetime2 NULL;");
+            ExecuteIfMissing(connection, "Deals", "CreatedByUserId", "ALTER TABLE [Deals] ADD [CreatedByUserId] int NOT NULL DEFAULT 1;");
         }
 
         private static void EnsurePropertyColumns(SqlConnection connection)
@@ -95,39 +92,12 @@ END";
 
         private static void EnsureUserColumns(SqlConnection connection)
         {
+            // 3NF: Personal info is normalized into Persons table.
             ExecuteIfMissing(
                 connection,
                 "Users",
-                "FirstName",
-                "ALTER TABLE [Users] ADD [FirstName] nvarchar(100) NOT NULL CONSTRAINT [DF_Users_FirstName] DEFAULT ('');");
-
-            ExecuteIfMissing(
-                connection,
-                "Users",
-                "MiddleName",
-                "ALTER TABLE [Users] ADD [MiddleName] nvarchar(100) NULL;");
-
-            ExecuteIfMissing(
-                connection,
-                "Users",
-                "LastName",
-                "ALTER TABLE [Users] ADD [LastName] nvarchar(100) NOT NULL CONSTRAINT [DF_Users_LastName] DEFAULT ('');");
-
-            ExecuteIfMissing(
-                connection,
-                "Users",
-                "Suffix",
-                "ALTER TABLE [Users] ADD [Suffix] nvarchar(20) NULL;");
-
-            using var cmd = connection.CreateCommand();
-            cmd.CommandText = @"
-IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'FullName' AND IS_NULLABLE = 'NO')
-BEGIN
-    ALTER TABLE [dbo].[Users] ALTER COLUMN [FullName] nvarchar(200) NULL;
-END
-UPDATE [Users] SET [FirstName] = CASE WHEN CHARINDEX('@', Email) > 0 THEN LEFT(Email, CHARINDEX('@', Email) - 1) ELSE Email END WHERE ([FirstName] IS NULL OR [FirstName] = '') AND ([LastName] IS NULL OR [LastName] = '');
-";
-            cmd.ExecuteNonQuery();
+                "PersonId",
+                "ALTER TABLE [Users] ADD [PersonId] int NOT NULL DEFAULT 1;");
         }
 
         private static void EnsureAssignmentColumns(SqlConnection connection, string tableName)

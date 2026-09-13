@@ -1,7 +1,9 @@
-using CRMS_Peguit.domain.entities;
-using CRMS_Peguit.domain.Entities;
-using Microsoft.EntityFrameworkCore;
 using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CRMS_Peguit.domain.entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace CRMS_Peguit.infrastructure.data
 {
@@ -10,6 +12,7 @@ namespace CRMS_Peguit.infrastructure.data
         private readonly int _tenantId;
 
         public DbSet<Role> Roles => Set<Role>();
+        public DbSet<Person> Persons => Set<Person>();
         public DbSet<User> Users => Set<User>();
         public DbSet<LoginSession> LoginSessions => Set<LoginSession>();
         public DbSet<Customer> Customers => Set<Customer>();
@@ -17,6 +20,8 @@ namespace CRMS_Peguit.infrastructure.data
         public DbSet<Property> Properties => Set<Property>();
         public DbSet<Lead> Leads => Set<Lead>();
         public DbSet<Deal> Deals => Set<Deal>();
+        public DbSet<DealContingency> DealContingencies => Set<DealContingency>();
+        public DbSet<DealClause> DealClauses => Set<DealClause>();
         public DbSet<Activity> Activities => Set<Activity>();
         public DbSet<PropertyShowingDetail> PropertyShowingDetails => Set<PropertyShowingDetail>();
         public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
@@ -42,20 +47,40 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.RoleName).HasMaxLength(100).IsRequired();
             });
 
-            builder.Entity<User>(entity =>
+            builder.Entity<Person>(entity =>
             {
-                entity.HasKey(x => x.UserId);
+                entity.HasKey(x => x.PersonId);
                 entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
                 entity.Property(x => x.MiddleName).HasMaxLength(100);
                 entity.Property(x => x.LastName).HasMaxLength(100).IsRequired();
                 entity.Property(x => x.Suffix).HasMaxLength(20);
+                entity.Property(x => x.Email).HasMaxLength(255);
+                entity.Property(x => x.Phone).HasMaxLength(50);
                 entity.Ignore(x => x.FullName);
-                entity.Property(x => x.Email).HasMaxLength(200).IsRequired();
-                entity.HasIndex(x => new { x.TenantId, x.Email }).IsUnique();
+            });
+
+            builder.Entity<User>(entity =>
+            {
+                entity.HasKey(x => x.UserId);
                 entity.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
                 entity.Property(x => x.Status).HasMaxLength(50);
 
-                entity.HasOne<Role>()
+                entity.Ignore(x => x.FirstName);
+                entity.Ignore(x => x.MiddleName);
+                entity.Ignore(x => x.LastName);
+                entity.Ignore(x => x.Suffix);
+                entity.Ignore(x => x.Email);
+                entity.Ignore(x => x.Phone);
+                entity.Ignore(x => x.FullName);
+
+                entity.HasOne(x => x.Person)
+                    .WithMany()
+                    .HasForeignKey(x => x.PersonId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.Navigation(x => x.Person).AutoInclude();
+
+                entity.HasOne(x => x.Role)
                     .WithMany()
                     .HasForeignKey(x => x.RoleId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -66,7 +91,7 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.HasKey(x => x.SessionId);
                 entity.Property(x => x.IpAddress).HasMaxLength(50);
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.User)
                     .WithMany()
                     .HasForeignKey(x => x.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
@@ -76,25 +101,34 @@ namespace CRMS_Peguit.infrastructure.data
             {
                 entity.HasKey(x => x.CustomerId);
 
-                entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
-                entity.Property(x => x.MiddleName).HasMaxLength(100);
-                entity.Property(x => x.LastName).HasMaxLength(100).IsRequired();
-                entity.Property(x => x.Suffix).HasMaxLength(20);
-
-                entity.Property(x => x.Phone).HasMaxLength(50);
-                entity.Property(x => x.Email).HasMaxLength(255);
                 entity.Property(x => x.Type).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.AssignmentStatus).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.AssignmentReviewNotes).HasMaxLength(1000);
 
+                entity.Ignore(x => x.FirstName);
+                entity.Ignore(x => x.MiddleName);
+                entity.Ignore(x => x.LastName);
+                entity.Ignore(x => x.Suffix);
+                entity.Ignore(x => x.Phone);
+                entity.Ignore(x => x.Email);
                 entity.Ignore(x => x.FullName);
 
-                entity.HasIndex(x => x.TenantId);
                 entity.HasIndex(x => x.IsDeleted);
-                entity.HasIndex(x => new { x.TenantId, x.LastName, x.FirstName });
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.Person)
+                    .WithMany()
+                    .HasForeignKey(x => x.PersonId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.Navigation(x => x.Person).AutoInclude();
+
+                entity.HasOne(x => x.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.AssignedAgent)
                     .WithMany()
                     .HasForeignKey(x => x.AssignedAgentId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -107,7 +141,7 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.PreferredLocation).HasMaxLength(200);
                 entity.Property(x => x.PreferredPropertyType).HasMaxLength(100);
 
-                entity.HasOne<Customer>()
+                entity.HasOne(x => x.Customer)
                     .WithOne()
                     .HasForeignKey<BuyerProfile>(x => x.CustomerId)
                     .OnDelete(DeleteBehavior.Cascade);
@@ -124,12 +158,17 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.AssignmentStatus).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.AssignmentReviewNotes).HasMaxLength(1000);
 
-                entity.HasOne<Customer>()
+                entity.HasOne(x => x.OwnerCustomer)
                     .WithMany()
                     .HasForeignKey(x => x.OwnerCustomerId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.ListedByAgent)
                     .WithMany()
                     .HasForeignKey(x => x.ListedByAgentId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -139,37 +178,42 @@ namespace CRMS_Peguit.infrastructure.data
             {
                 entity.HasKey(x => x.LeadId);
 
-                entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
-                entity.Property(x => x.MiddleName).HasMaxLength(100);
-                entity.Property(x => x.LastName).HasMaxLength(100).IsRequired();
-                entity.Property(x => x.Suffix).HasMaxLength(20);
-
-                entity.Property(x => x.Phone).HasMaxLength(50);
-                entity.Property(x => x.Email).HasMaxLength(255);
                 entity.Property(x => x.Source).HasMaxLength(100);
                 entity.Property(x => x.Stage).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.ExpectedValue).HasColumnType("decimal(18,2)");
-
-                entity.Property(x => x.Notes)
-    .HasMaxLength(2000);
-
-                entity.Property(x => x.Priority)
-                    .HasMaxLength(20);
+                entity.Property(x => x.Notes).HasMaxLength(2000);
+                entity.Property(x => x.Priority).HasMaxLength(20);
                 entity.Property(x => x.AssignmentStatus).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.AssignmentReviewNotes).HasMaxLength(1000);
 
+                entity.Ignore(x => x.FirstName);
+                entity.Ignore(x => x.MiddleName);
+                entity.Ignore(x => x.LastName);
+                entity.Ignore(x => x.Suffix);
+                entity.Ignore(x => x.Phone);
+                entity.Ignore(x => x.Email);
                 entity.Ignore(x => x.FullName);
 
-                entity.HasIndex(x => x.TenantId);
                 entity.HasIndex(x => x.IsDeleted);
-                entity.HasIndex(x => new { x.TenantId, x.LastName, x.FirstName });
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.Person)
+                    .WithMany()
+                    .HasForeignKey(x => x.PersonId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.Navigation(x => x.Person).AutoInclude();
+
+                entity.HasOne(x => x.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.AssignedAgent)
                     .WithMany()
                     .HasForeignKey(x => x.AssignedAgentId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne<Customer>()
+                entity.HasOne(x => x.ConvertedCustomer)
                     .WithOne()
                     .HasForeignKey<Lead>(x => x.ConvertedCustomerId)
                     .OnDelete(DeleteBehavior.SetNull);
@@ -184,30 +228,69 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.PaymentScheme).HasMaxLength(50).IsRequired(false);
                 entity.Property(x => x.ReservationFee).HasColumnType("decimal(18,2)").IsRequired(false);
                 entity.Property(x => x.DownPaymentPercent).HasColumnType("decimal(5,2)").IsRequired(false);
-                entity.Property(x => x.DownPaymentAmount).HasColumnType("decimal(18,2)").IsRequired(false);
-                entity.Property(x => x.BalanceAmount).HasColumnType("decimal(18,2)").IsRequired(false);
+                entity.Ignore(x => x.DownPaymentAmount);
+                entity.Ignore(x => x.BalanceAmount);
                 entity.Property(x => x.CgtPayer).HasMaxLength(50).IsRequired(false);
                 entity.Property(x => x.DstPayer).HasMaxLength(50).IsRequired(false);
                 entity.Property(x => x.TransferTaxPayer).HasMaxLength(50).IsRequired(false);
                 entity.Property(x => x.RegistrationFeePayer).HasMaxLength(50).IsRequired(false);
-                entity.Property(x => x.ContingenciesJson).HasMaxLength(4000).IsRequired(false);
-                entity.Property(x => x.ApprovedClauseIds).HasMaxLength(500).IsRequired(false);
+                entity.Ignore(x => x.ContingenciesJson);
+                entity.Ignore(x => x.ApprovedClauseIds);
                 entity.Property(x => x.SpecialStipulations).HasMaxLength(4000).IsRequired(false);
 
-                entity.HasOne<Customer>()
+                entity.HasOne(x => x.Customer)
                     .WithMany()
                     .HasForeignKey(x => x.CustomerId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne<Property>()
+                entity.HasOne(x => x.Property)
                     .WithMany()
                     .HasForeignKey(x => x.PropertyId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.Agent)
                     .WithMany()
                     .HasForeignKey(x => x.AgentId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(x => x.Contingencies)
+                    .WithOne(c => c.Deal)
+                    .HasForeignKey(c => c.DealId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(x => x.DealClauses)
+                    .WithOne(c => c.Deal)
+                    .HasForeignKey(c => c.DealId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<DealContingency>(entity =>
+            {
+                entity.HasKey(x => x.DealContingencyId);
+                entity.Property(x => x.ContingencyName).HasMaxLength(100).IsRequired();
+                entity.Property(x => x.Description).HasMaxLength(500);
+
+                entity.HasOne(x => x.Deal)
+                    .WithMany(d => d.Contingencies)
+                    .HasForeignKey(x => x.DealId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<DealClause>(entity =>
+            {
+                entity.HasKey(x => x.DealClauseId);
+                entity.Property(x => x.ClauseId).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.Title).HasMaxLength(200);
+
+                entity.HasOne(x => x.Deal)
+                    .WithMany(d => d.DealClauses)
+                    .HasForeignKey(x => x.DealId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<Activity>(entity =>
@@ -216,17 +299,17 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.Type).HasMaxLength(100);
                 entity.Property(x => x.Notes).HasMaxLength(2000);
 
-                entity.HasOne<Lead>()
+                entity.HasOne(x => x.RelatedLead)
                     .WithMany()
                     .HasForeignKey(x => x.RelatedLeadId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                entity.HasOne<Customer>()
+                entity.HasOne(x => x.RelatedCustomer)
                     .WithMany()
                     .HasForeignKey(x => x.RelatedCustomerId)
                     .OnDelete(DeleteBehavior.SetNull);
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.LoggedByAgent)
                     .WithMany()
                     .HasForeignKey(x => x.LoggedByAgentId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -237,12 +320,12 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.HasKey(x => x.ShowingDetailId);
                 entity.Property(x => x.FeedbackNotes).HasMaxLength(2000);
 
-                entity.HasOne<Activity>()
+                entity.HasOne(x => x.Activity)
                     .WithOne()
                     .HasForeignKey<PropertyShowingDetail>(x => x.ActivityId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                entity.HasOne<Property>()
+                entity.HasOne(x => x.Property)
                     .WithMany()
                     .HasForeignKey(x => x.PropertyId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -255,17 +338,17 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.Priority).HasMaxLength(20);
                 entity.Property(x => x.Status).HasMaxLength(50);
 
-                entity.HasOne<Customer>()
+                entity.HasOne(x => x.Customer)
                     .WithMany()
                     .HasForeignKey(x => x.CustomerId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.RaisedByUser)
                     .WithMany()
                     .HasForeignKey(x => x.RaisedByUserId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.AssignedToUser)
                     .WithMany()
                     .HasForeignKey(x => x.AssignedToUserId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -286,7 +369,7 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.SettingValue).HasMaxLength(2000);
                 entity.HasIndex(x => x.SettingKey).IsUnique();
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.UpdatedByUser)
                     .WithMany()
                     .HasForeignKey(x => x.UpdatedByUserId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -298,27 +381,27 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.Status).HasMaxLength(50);
                 entity.Property(x => x.FileLocation).HasMaxLength(500);
 
-                entity.HasOne<User>()
+                entity.HasOne(x => x.PerformedByUser)
                     .WithMany()
                     .HasForeignKey(x => x.PerformedByUserId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // --- Global query filters ---
+            // --- Global query filters (3NF Transitively Derived via FK chains) ---
             builder.Entity<Role>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<User>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<LoginSession>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<Customer>().HasQueryFilter(x => x.TenantId == _tenantId && !x.IsDeleted);
-            builder.Entity<BuyerProfile>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<Property>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<Lead>().HasQueryFilter(x => x.TenantId == _tenantId && !x.IsDeleted);
-            builder.Entity<Deal>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<Activity>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<PropertyShowingDetail>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<SupportTicket>().HasQueryFilter(x => x.TenantId == _tenantId);
+            builder.Entity<User>().HasQueryFilter(x => x.Role.TenantId == _tenantId);
+            builder.Entity<LoginSession>().HasQueryFilter(x => x.User.Role.TenantId == _tenantId);
+            builder.Entity<Customer>().HasQueryFilter(x => x.CreatedByUser.Role.TenantId == _tenantId && !x.IsDeleted);
+            builder.Entity<BuyerProfile>().HasQueryFilter(x => x.Customer.CreatedByUser.Role.TenantId == _tenantId);
+            builder.Entity<Property>().HasQueryFilter(x => x.CreatedByUser.Role.TenantId == _tenantId);
+            builder.Entity<Lead>().HasQueryFilter(x => x.CreatedByUser.Role.TenantId == _tenantId && !x.IsDeleted);
+            builder.Entity<Deal>().HasQueryFilter(x => x.CreatedByUser.Role.TenantId == _tenantId);
+            builder.Entity<Activity>().HasQueryFilter(x => x.LoggedByAgent.Role.TenantId == _tenantId);
+            builder.Entity<PropertyShowingDetail>().HasQueryFilter(x => x.Activity.LoggedByAgent.Role.TenantId == _tenantId);
+            builder.Entity<SupportTicket>().HasQueryFilter(x => x.RaisedByUser.Role.TenantId == _tenantId);
             builder.Entity<Subscription>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<SystemSetting>().HasQueryFilter(x => x.TenantId == _tenantId);
-            builder.Entity<BackupLog>().HasQueryFilter(x => x.TenantId == _tenantId);
+            builder.Entity<SystemSetting>().HasQueryFilter(x => x.UpdatedByUser.Role.TenantId == _tenantId);
+            builder.Entity<BackupLog>().HasQueryFilter(x => x.PerformedByUser.Role.TenantId == _tenantId);
         }
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)

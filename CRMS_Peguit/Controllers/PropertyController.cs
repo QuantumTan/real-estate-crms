@@ -32,7 +32,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 query = query.Where(p =>
                     (p.ListedByAgentId.HasValue && p.ListedByAgentId.Value > 0)
                         ? p.ListedByAgentId.Value == currentUserId
-                        : (p.CreatedByUserId.HasValue && p.CreatedByUserId.Value == currentUserId));
+                        : p.CreatedByUserId == currentUserId);
             }
 
             return query
@@ -57,9 +57,8 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Property Add(Property property)
         {
-            property.TenantId = TenantId;
             property.CreatedAt = DateTime.UtcNow;
-            property.CreatedByUserId = CurrentSession.UserId;
+            property.CreatedByUserId = CurrentSession.UserId > 0 ? CurrentSession.UserId : 1;
 
             if (RbacService.CanAssignRecords)
             {
@@ -151,6 +150,11 @@ namespace CRMS_Peguit.winforms.Controllers
             var oldAgentId = item.ListedByAgentId;
             var newAgentId = agentId <= 0 ? null : agentId;
 
+            if (newAgentId.HasValue && !_db.Users.Any(u => u.UserId == newAgentId.Value))
+            {
+                newAgentId = null;
+            }
+
             item.ListedByAgentId = newAgentId;
             item.AssignmentStatus = approve ? "approved" : "pending_review";
             item.AssignmentReviewedByUserId = CurrentSession.UserId;
@@ -182,16 +186,16 @@ namespace CRMS_Peguit.winforms.Controllers
             return _db.Customers
                 .AsNoTracking()
                 .Where(c => sellerTypes.Contains(c.Type.ToLower()))
-                .OrderBy(c => c.LastName)
-                .ThenBy(c => c.FirstName)
+                .OrderBy(c => c.Person.LastName)
+                .ThenBy(c => c.Person.FirstName)
                 .Select(c => new
                 {
                     c.CustomerId,
-                    c.FirstName,
-                    c.MiddleName,
-                    c.LastName,
-                    c.Suffix,
-                    c.Email
+                    c.Person.FirstName,
+                    c.Person.MiddleName,
+                    c.Person.LastName,
+                    c.Person.Suffix,
+                    c.Person.Email
                 })
                 .AsEnumerable()
                 .Select(c => new CustomerPickerItem(
@@ -212,8 +216,8 @@ namespace CRMS_Peguit.winforms.Controllers
             return _db.Users
                 .AsNoTracking()
                 .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
-                .OrderBy(u => u.LastName)
-                .ThenBy(u => u.FirstName)
+                .OrderBy(u => u.Person.LastName)
+                .ThenBy(u => u.Person.FirstName)
                 .AsEnumerable()
                 .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
                 .ToList();
@@ -226,10 +230,10 @@ namespace CRMS_Peguit.winforms.Controllers
                 .Where(c => c.CustomerId == ownerCustomerId)
                 .Select(c => new
                 {
-                    c.FirstName,
-                    c.MiddleName,
-                    c.LastName,
-                    c.Suffix
+                    c.Person.FirstName,
+                    c.Person.MiddleName,
+                    c.Person.LastName,
+                    c.Person.Suffix
                 })
                 .AsEnumerable()
                 .Select(c => BuildFullName(c.FirstName, c.MiddleName, c.LastName, c.Suffix))
@@ -251,19 +255,50 @@ namespace CRMS_Peguit.winforms.Controllers
 
         private void LogActivity(string type, int? leadId, int? customerId, string notes)
         {
-            if (CurrentSession.UserId <= 0) return;
-
-            _db.Activities.Add(new Activity
+            try
             {
-                TenantId = TenantId,
-                Type = type,
-                RelatedLeadId = leadId,
-                RelatedCustomerId = customerId,
-                LoggedByAgentId = CurrentSession.UserId,
-                Notes = notes,
-                ActivityDate = DateTime.UtcNow
-            });
-            _db.SaveChanges();
+                if (CurrentSession.UserId <= 0) return;
+
+                int agentId = CurrentSession.UserId;
+                if (!_db.Users.Any(u => u.UserId == agentId))
+                {
+                    var userByEmail = CurrentSession.CurrentUser != null && !string.IsNullOrEmpty(CurrentSession.CurrentUser.Email)
+                        ? _db.Users.FirstOrDefault(u => u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
+                        : null;
+
+                    if (userByEmail != null)
+                    {
+                        agentId = userByEmail.UserId;
+                    }
+                    else
+                    {
+                        var fallback = _db.Users.Select(u => u.UserId).FirstOrDefault();
+                        if (fallback > 0)
+                        {
+                            agentId = fallback;
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+                }
+
+                _db.Activities.Add(new Activity
+                {
+                    Type = type,
+                    RelatedLeadId = leadId,
+                    RelatedCustomerId = customerId,
+                    LoggedByAgentId = agentId,
+                    Notes = notes,
+                    ActivityDate = DateTime.UtcNow
+                });
+                _db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LogActivity error ({type}): {ex.Message}");
+            }
         }
 
         private static void ApplyAssignmentDefaults(Property property)

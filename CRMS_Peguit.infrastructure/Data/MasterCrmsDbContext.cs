@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
-using CRMS_Peguit.domain.Entities;
 
 namespace CRMS_Peguit.infrastructure.data
 {

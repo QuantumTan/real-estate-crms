@@ -242,8 +242,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             // --- Card 1: Pipeline Stage Progression ---
             var cardPipeline = CreateCardPanel(ref currentY);
-            cardPipeline.Controls.Add(UiDetailCardHelper.CreateCardHeader("📊  Deal Stage Progression"));
-            cardPipeline.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardPipeline, UiDetailCardHelper.CreateCardHeader("📊  Deal Stage Progression"));
+            UiDetailCardHelper.AddControl(cardPipeline, UiDetailCardHelper.CreateDivider());
 
             bool isLost = string.Equals(_deal!.Stage, "Lost", StringComparison.OrdinalIgnoreCase);
             if (isLost)
@@ -264,20 +264,20 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     TextAlign = ContentAlignment.MiddleLeft
                 };
                 lostBanner.Controls.Add(lblLost);
-                cardPipeline.Controls.Add(lostBanner);
+                UiDetailCardHelper.AddControl(cardPipeline, lostBanner);
             }
             else
             {
                 var stepper = CreatePipelineStepper();
-                cardPipeline.Controls.Add(stepper);
+                UiDetailCardHelper.AddControl(cardPipeline, stepper);
             }
             FinalizeCardHeight(cardPipeline, ref currentY);
             _pnlContent.Controls.Add(cardPipeline);
 
             // --- Card 2: Commercial Financial Terms ---
             var cardFinancials = CreateCardPanel(ref currentY);
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateCardHeader("💳  Commercial Terms & Financing Structure"));
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateCardHeader("💳  Commercial Terms & Financing Structure"));
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateDivider());
 
             // 4 summary tiles
             var pnlFinancialTiles = new Panel
@@ -289,21 +289,21 @@ namespace CRMS_Peguit.winforms.Views.Deals
             };
 
             decimal resFee = _deal.ReservationFee ?? 0;
-            decimal downAmt = _deal.DownPaymentAmount ?? (_deal.Value * ((_deal.DownPaymentPercent ?? 20) / 100m));
-            decimal balAmt = _deal.BalanceAmount ?? Math.Max(0, _deal.Value - downAmt);
+            decimal downAmt = _deal.DownPaymentAmount;
+            decimal balAmt = _deal.BalanceAmount;
 
             AddSummaryTile(pnlFinancialTiles, 0, "TOTAL PURCHASE PRICE", $"₱{_deal.Value:N0}", Color.FromArgb(15, 23, 42));
             AddSummaryTile(pnlFinancialTiles, 164, "RESERVATION DEPOSIT", $"₱{resFee:N0}", Color.FromArgb(30, 41, 59));
             AddSummaryTile(pnlFinancialTiles, 328, $"DOWNPAYMENT ({_deal.DownPaymentPercent ?? 20:N0}%)", $"₱{downAmt:N0}", Color.FromArgb(21, 128, 61));
             AddSummaryTile(pnlFinancialTiles, 492, "BALANCE TO FINANCE", $"₱{balAmt:N0}", Color.FromArgb(29, 78, 216));
-            cardFinancials.Controls.Add(pnlFinancialTiles);
+            UiDetailCardHelper.AddControl(cardFinancials, pnlFinancialTiles);
 
             string closeDateStr = _deal.ExpectedCloseDate.HasValue ? _deal.ExpectedCloseDate.Value.ToString("MMMM d, yyyy") : "Not set";
             decimal commVal = _deal.Value * _deal.CommissionRate;
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateKeyValueRow(
                 "Payment Scheme", _deal.PaymentScheme ?? "Spot Cash",
                 "Target Closing Date", closeDateStr));
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateKeyValueRow(
                 "Brokerage Commission", $"{_deal.CommissionRate:P1} (₱{commVal:N2})",
                 "Contract Status", string.IsNullOrWhiteSpace(_deal.Stage) ? "Offer" : _deal.Stage));
             FinalizeCardHeight(cardFinancials, ref currentY);
@@ -311,13 +311,13 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             // --- Card 3: Statutory Tax & Closing Cost Allocation ---
             var cardTaxes = CreateCardPanel(ref currentY);
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateCardHeader("⚖️  Statutory Tax & Closing Cost Allocation"));
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateCardHeader("⚖️  Statutory Tax & Closing Cost Allocation"));
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateDivider());
 
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateKeyValueRow(
                 "Capital Gains Tax (6%)", $"Shouldered by {_deal.CgtPayer}",
                 "Doc Stamp Tax (1.5%)", $"Shouldered by {_deal.DstPayer}"));
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateKeyValueRow(
                 "Local Transfer Tax", $"Shouldered by {_deal.TransferTaxPayer}",
                 "Title Registration Fees", $"Shouldered by {_deal.RegistrationFeePayer}"));
             FinalizeCardHeight(cardTaxes, ref currentY);
@@ -326,8 +326,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
             // --- Card 4: Closing Contingencies Tracker ---
             var contingencies = DealContingency.DeserializeList(_deal.ContingenciesJson);
             var cardContingencies = CreateCardPanel(ref currentY);
-            cardContingencies.Controls.Add(UiDetailCardHelper.CreateCardHeader("✅  Closing Contingencies & Conditions Precedent", contingencies.Count.ToString()));
-            cardContingencies.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardContingencies, UiDetailCardHelper.CreateCardHeader("✅  Closing Contingencies & Conditions Precedent", contingencies.Count.ToString()));
+            UiDetailCardHelper.AddControl(cardContingencies, UiDetailCardHelper.CreateDivider());
 
             if (contingencies.Count == 0)
             {
@@ -340,14 +340,14 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     Height = 36,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
-                cardContingencies.Controls.Add(lblEmpty);
+                UiDetailCardHelper.AddControl(cardContingencies, lblEmpty);
             }
             else
             {
                 for (int i = 0; i < contingencies.Count; i++)
                 {
                     var itemPanel = CreateContingencyItem(contingencies[i], i);
-                    cardContingencies.Controls.Add(itemPanel);
+                    UiDetailCardHelper.AddControl(cardContingencies, itemPanel);
                 }
             }
             FinalizeCardHeight(cardContingencies, ref currentY);
@@ -355,8 +355,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             // --- Card 5: Contract Clauses & Special Stipulations ---
             var cardClauses = CreateCardPanel(ref currentY);
-            cardClauses.Controls.Add(UiDetailCardHelper.CreateCardHeader("📜  Agreed Brokerage Clauses & Special Stipulations"));
-            cardClauses.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardClauses, UiDetailCardHelper.CreateCardHeader("📜  Agreed Brokerage Clauses & Special Stipulations"));
+            UiDetailCardHelper.AddControl(cardClauses, UiDetailCardHelper.CreateDivider());
 
             var activeIds = (_deal.ApprovedClauseIds ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var allClauses = DealClauseLibrary.GetStandardClauses();
@@ -366,7 +366,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             foreach (var clause in activeClauses)
             {
                 var clausePanel = CreateClauseItem(clause);
-                cardClauses.Controls.Add(clausePanel);
+                UiDetailCardHelper.AddControl(cardClauses, clausePanel);
             }
 
             if (!string.IsNullOrWhiteSpace(_deal.SpecialStipulations))
@@ -401,9 +401,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     AutoSize = true,
                     MaximumSize = new Size(580, 0)
                 };
-                pnlStip.Controls.Add(lblStipBody);
                 pnlStip.Controls.Add(lblStipTitle);
-                cardClauses.Controls.Add(pnlStip);
+                lblStipTitle.SendToBack();
+                pnlStip.Controls.Add(lblStipBody);
+                lblStipBody.SendToBack();
+                UiDetailCardHelper.AddControl(cardClauses, pnlStip);
             }
             FinalizeCardHeight(cardClauses, ref currentY);
             _pnlContent.Controls.Add(cardClauses);

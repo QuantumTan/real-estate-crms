@@ -226,12 +226,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             // --- Card 1: Contact Information ---
             var cardContact = CreateCardPanel(ref currentY);
-            cardContact.Controls.Add(UiDetailCardHelper.CreateCardHeader("👤  Contact Information"));
-            cardContact.Controls.Add(UiDetailCardHelper.CreateDivider());
-            cardContact.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateCardHeader("👤  Contact Information"));
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateKeyValueRow(
                 "Email Address", string.IsNullOrWhiteSpace(_customer!.Email) ? "Not Provided" : _customer.Email,
                 "Phone Number", string.IsNullOrWhiteSpace(_customer.Phone) ? "Not Provided" : _customer.Phone));
-            cardContact.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateKeyValueRow(
                 "Customer Type", _customer.Type,
                 "Account Status", _customer.Status));
             FinalizeCardHeight(cardContact, ref currentY);
@@ -239,15 +239,15 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             // --- Card 2: Ownership & Assignment ---
             var cardOwner = CreateCardPanel(ref currentY);
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateCardHeader("👥  Ownership & Assignment"));
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👥  Ownership & Assignment"));
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateDivider());
             var agentName = _controller!.GetAssignedAgentName(_customer.AssignedAgentId);
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                 "Assigned Agent", agentName ?? "Unassigned",
                 "Assignment Review", _customer.AssignmentStatus));
             if (!string.IsNullOrWhiteSpace(_customer.AssignmentReviewNotes))
             {
-                cardOwner.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                     "Review Notes", _customer.AssignmentReviewNotes));
             }
             FinalizeCardHeight(cardOwner, ref currentY);
@@ -261,8 +261,8 @@ namespace CRMS_Peguit.winforms.Views.Customers
             {
                 var properties = _controller.GetOwnedProperties(_customer.CustomerId);
                 var cardProps = CreateCardPanel(ref currentY);
-                cardProps.Controls.Add(UiDetailCardHelper.CreateCardHeader("🏢  Owned Properties", properties.Count.ToString()));
-                cardProps.Controls.Add(UiDetailCardHelper.CreateDivider());
+                UiDetailCardHelper.AddControl(cardProps, UiDetailCardHelper.CreateCardHeader("🏢  Owned Properties", properties.Count.ToString()));
+                UiDetailCardHelper.AddControl(cardProps, UiDetailCardHelper.CreateDivider());
 
                 if (properties.Count == 0)
                 {
@@ -275,14 +275,14 @@ namespace CRMS_Peguit.winforms.Views.Customers
                         Height = 36,
                         TextAlign = ContentAlignment.MiddleLeft
                     };
-                    cardProps.Controls.Add(lblEmpty);
+                    UiDetailCardHelper.AddControl(cardProps, lblEmpty);
                 }
                 else
                 {
                     foreach (var p in properties)
                     {
                         var propTile = CreatePropertyTile(p);
-                        cardProps.Controls.Add(propTile);
+                        UiDetailCardHelper.AddControl(cardProps, propTile);
                     }
                 }
                 FinalizeCardHeight(cardProps, ref currentY);
@@ -292,8 +292,8 @@ namespace CRMS_Peguit.winforms.Views.Customers
             // --- Card 4: Recent Activities ---
             var activities = _controller.GetActivityHistory(_customer.CustomerId);
             var cardActivities = CreateCardPanel(ref currentY);
-            cardActivities.Controls.Add(UiDetailCardHelper.CreateCardHeader("⏱  Recent Activities", activities.Count.ToString()));
-            cardActivities.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardActivities, UiDetailCardHelper.CreateCardHeader("⏱  Recent Activities", activities.Count.ToString()));
+            UiDetailCardHelper.AddControl(cardActivities, UiDetailCardHelper.CreateDivider());
 
             if (activities.Count == 0)
             {
@@ -306,14 +306,14 @@ namespace CRMS_Peguit.winforms.Views.Customers
                     Height = 36,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
-                cardActivities.Controls.Add(lblEmpty);
+                UiDetailCardHelper.AddControl(cardActivities, lblEmpty);
             }
             else
             {
                 foreach (var a in activities.Take(15))
                 {
                     var item = CreateTimelineItem(a);
-                    cardActivities.Controls.Add(item);
+                    UiDetailCardHelper.AddControl(cardActivities, item);
                 }
             }
             FinalizeCardHeight(cardActivities, ref currentY);
@@ -493,10 +493,11 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 if (_btnEdit != null && _btnEdit.Visible)
                 {
                     _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
+                    right -= (_btnEdit.Width + 10);
                 }
-                if (_btnMessage != null)
+                if (_btnMessage != null && _btnMessage.Visible)
                 {
-                    _btnMessage.Location = new Point(24, 13);
+                    _btnMessage.Location = new Point(right - _btnMessage.Width, 13);
                 }
             }
 

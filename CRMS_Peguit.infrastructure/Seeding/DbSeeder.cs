@@ -1,5 +1,6 @@
+using System;
+using System.Threading.Tasks;
 using CRMS_Peguit.domain.entities;
-using CRMS_Peguit.domain.Entities;
 using CRMS_Peguit.infrastructure.data;
 using CRMS_Peguit.infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
@@ -23,14 +24,15 @@ namespace CRMS_Peguit.infrastructure.Seeding
             db.Roles.AddRange(adminRole, managerRole, agentRole);
             await db.SaveChangesAsync(); // so RoleId values are generated before use
 
+            var adminPerson = new Person { FirstName = "System", LastName = "Admin", Email = "admin@test.com" };
+            var managerPerson = new Person { FirstName = "Test", LastName = "Manager", Email = "manager@test.com" };
+            var agentPerson = new Person { FirstName = "Test", LastName = "Agent", Email = "agent@test.com" };
+
             var users = new[]
             {
                 new User
                 {
-                    TenantId = tenantId,
-                    FirstName = "System",
-                    LastName = "Admin",
-                    Email = "admin@test.com",
+                    Person = adminPerson,
                     PasswordHash = PasswordHasher.Hash("Admin123!"),
                     RoleId = adminRole.RoleId,
                     Status = "Active",
@@ -38,10 +40,7 @@ namespace CRMS_Peguit.infrastructure.Seeding
                 },
                 new User
                 {
-                    TenantId = tenantId,
-                    FirstName = "Test",
-                    LastName = "Manager",
-                    Email = "manager@test.com",
+                    Person = managerPerson,
                     PasswordHash = PasswordHasher.Hash("Manager123!"),
                     RoleId = managerRole.RoleId,
                     Status = "Active",
@@ -49,10 +48,7 @@ namespace CRMS_Peguit.infrastructure.Seeding
                 },
                 new User
                 {
-                    TenantId = tenantId,
-                    FirstName = "Test",
-                    LastName = "Agent",
-                    Email = "agent@test.com",
+                    Person = agentPerson,
                     PasswordHash = PasswordHasher.Hash("Agent123!"),
                     RoleId = agentRole.RoleId,
                     Status = "Active",
@@ -68,38 +64,48 @@ namespace CRMS_Peguit.infrastructure.Seeding
 
         public static async Task SeedSampleDataAsync(RealEstateDbContext db, int tenantId = 1)
         {
-            if (await db.Customers.AnyAsync(c => c.TenantId == tenantId))
+            if (await db.Customers.AnyAsync())
                 return;
 
-            var agent = await db.Users.FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Email == "agent@test.com");
+            var agent = await db.Users.Include(u => u.Person).FirstOrDefaultAsync(u => u.Person.Email == "agent@test.com");
             int agentId = agent?.UserId ?? 1;
+
+            var custPerson1 = new Person
+            {
+                FirstName = "Maria",
+                LastName = "Santos",
+                Email = "maria.santos@example.com",
+                Phone = "09171234567"
+            };
+
+            var custPerson2 = new Person
+            {
+                FirstName = "Juan",
+                LastName = "Dela Cruz",
+                Email = "juan.delacruz@example.com",
+                Phone = "09181234567"
+            };
 
             var customers = new[]
             {
                 new Customer
                 {
-                    TenantId = tenantId,
-                    FirstName = "Maria",
-                    LastName = "Santos",
-                    Email = "maria.santos@example.com",
-                    Phone = "09171234567",
+                    Person = custPerson1,
                     Type = "buyer",
                     Status = "active",
                     AssignmentStatus = "approved",
                     AssignedAgentId = agentId,
+                    CreatedByUserId = agentId,
                     CreatedAt = DateTime.UtcNow
                 },
                 new Customer
                 {
-                    TenantId = tenantId,
-                    FirstName = "Juan",
-                    LastName = "Dela Cruz",
-                    Email = "juan.delacruz@example.com",
-                    Phone = "09181234567",
+                    Person = custPerson2,
                     Type = "seller",
                     Status = "active",
                     AssignmentStatus = "approved",
                     AssignedAgentId = agentId,
+                    CreatedByUserId = agentId,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -111,24 +117,24 @@ namespace CRMS_Peguit.infrastructure.Seeding
             {
                 new Property
                 {
-                    TenantId = tenantId,
                     Address = "Block 12 Lot 5, Grand Villas, Davao City",
                     PropertyType = "house",
                     Price = 4500000m,
                     Status = "available",
                     OwnerCustomerId = customers[1].CustomerId,
                     ListedByAgentId = agentId,
+                    CreatedByUserId = agentId,
                     CreatedAt = DateTime.UtcNow
                 },
                 new Property
                 {
-                    TenantId = tenantId,
                     Address = "Unit 1502, Azure Modern Condominium, Cebu City",
                     PropertyType = "condo",
                     Price = 3200000m,
                     Status = "available",
                     OwnerCustomerId = customers[1].CustomerId,
                     ListedByAgentId = agentId,
+                    CreatedByUserId = agentId,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -136,20 +142,25 @@ namespace CRMS_Peguit.infrastructure.Seeding
             db.Properties.AddRange(properties);
             await db.SaveChangesAsync();
 
+            var leadPerson = new Person
+            {
+                FirstName = "Carlos",
+                LastName = "Mendoza",
+                Email = "carlos.mendoza@example.com",
+                Phone = "09201234567"
+            };
+
             var leads = new[]
             {
                 new Lead
                 {
-                    TenantId = tenantId,
-                    FirstName = "Carlos",
-                    LastName = "Mendoza",
-                    Email = "carlos.mendoza@example.com",
-                    Phone = "09201234567",
+                    Person = leadPerson,
                     Source = "Facebook",
                     Stage = "qualified",
                     Priority = "high",
                     ExpectedValue = 4500000m,
                     AssignedAgentId = agentId,
+                    CreatedByUserId = agentId,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -161,10 +172,10 @@ namespace CRMS_Peguit.infrastructure.Seeding
             {
                 new Deal
                 {
-                    TenantId = tenantId,
                     CustomerId = customers[0].CustomerId,
                     PropertyId = properties[0].PropertyId,
                     AgentId = agentId,
+                    CreatedByUserId = agentId,
                     Value = 4500000m,
                     CommissionRate = 0.05m,
                     Stage = "Offer",

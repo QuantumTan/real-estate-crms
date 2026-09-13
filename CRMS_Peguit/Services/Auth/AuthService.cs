@@ -59,8 +59,10 @@ namespace CRMS_Peguit.winforms.Auth
                     var localHash = PasswordHasher.Hash(password);
                     _localCache.SaveSuccessfulLogin(companyId, result.UserId, result.FullName, result.Email, localHash, result.RoleName);
 
+                    int effectiveUserId = EnsureLocalUser(result.UserId, result.TenantId, result.FullName, result.Email, localHash, result.RoleName);
+
                     CurrentSession.Start(
-                        result.UserId,
+                        effectiveUserId,
                         result.TenantId,
                         result.FullName,
                         result.Email,
@@ -91,7 +93,7 @@ namespace CRMS_Peguit.winforms.Auth
                 using var db = LocalDb.CreateContext(tenantId);
                 var user = db.Users
                     .AsNoTracking()
-                    .Where(u => u.Email.ToLower() == email.Trim().ToLower())
+                    .Where(u => u.Person.Email.ToLower() == email.Trim().ToLower())
                     .SingleOrDefault();
 
                 if (user != null)
@@ -107,7 +109,7 @@ namespace CRMS_Peguit.winforms.Auth
 
                         CurrentSession.Start(
                             user.UserId,
-                            user.TenantId > 0 ? user.TenantId : tenantId,
+                            (role != null && role.TenantId > 0) ? role.TenantId : tenantId,
                             displayName,
                             user.Email,
                             roleName,
@@ -169,8 +171,10 @@ namespace CRMS_Peguit.winforms.Auth
                 };
             }
 
+            int effectiveUserId = EnsureLocalUser(cached.UserId, tenantId, cached.FullName, cached.Email, cached.PasswordHash, cached.RoleName);
+
             CurrentSession.Start(
-                cached.UserId,
+                effectiveUserId,
                 tenantId,
                 cached.FullName,
                 cached.Email,
@@ -183,6 +187,79 @@ namespace CRMS_Peguit.winforms.Auth
                 Success = true,
                 WasOffline = true
             };
+        }
+
+        private int EnsureLocalUser(int userId, int tenantId, string fullName, string email, string? passwordHash, string roleName)
+        {
+            try
+            {
+                if (tenantId <= 0) tenantId = 1;
+                using var db = LocalDb.CreateContext(tenantId);
+
+                // 1. Ensure Role exists
+                var role = db.Roles.FirstOrDefault(r => r.RoleName.ToLower() == roleName.Trim().ToLower());
+                if (role == null)
+                {
+                    role = new domain.entities.Role { TenantId = tenantId, RoleName = roleName.Trim() };
+                    db.Roles.Add(role);
+                    db.SaveChanges();
+                }
+
+                // 2. Check if user exists by UserId
+                var userById = db.Users.FirstOrDefault(u => u.UserId == userId);
+                if (userById != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(passwordHash))
+                        userById.PasswordHash = passwordHash;
+                    userById.RoleId = role.RoleId;
+                    userById.Status = "active";
+                    db.SaveChanges();
+                    return userId;
+                }
+
+                // 3. Check if user exists by Email
+                var userByEmail = db.Users.FirstOrDefault(u => u.Person.Email.ToLower() == email.Trim().ToLower());
+                if (userByEmail != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(passwordHash))
+                        userByEmail.PasswordHash = passwordHash;
+                    userByEmail.RoleId = role.RoleId;
+                    userByEmail.Status = "active";
+                    db.SaveChanges();
+                    return userByEmail.UserId;
+                }
+
+                // 4. User does not exist locally; insert using IDENTITY_INSERT
+                var parts = fullName.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                string firstName = parts.Length > 0 ? parts[0] : "User";
+                string lastName = parts.Length > 1 ? parts[1] : "";
+
+                db.Database.ExecuteSqlRaw(@"
+                    IF NOT EXISTS (SELECT 1 FROM Users WHERE UserId = {0})
+                    BEGIN
+                        DECLARE @PersonId INT;
+                        SELECT TOP 1 @PersonId = PersonId FROM Persons WHERE Email = {3};
+                        IF @PersonId IS NULL
+                        BEGIN
+                            INSERT INTO Persons (FirstName, LastName, Email, CreatedAt)
+                            VALUES ({1}, {2}, {3}, GETUTCDATE());
+                            SET @PersonId = SCOPE_IDENTITY();
+                        END
+
+                        SET IDENTITY_INSERT Users ON;
+                        INSERT INTO Users (UserId, PersonId, PasswordHash, RoleId, Status, CreatedAt)
+                        VALUES ({0}, @PersonId, {4}, {5}, 'active', GETUTCDATE());
+                        SET IDENTITY_INSERT Users OFF;
+                    END",
+                    userId, firstName, lastName, email.Trim(), passwordHash ?? "", role.RoleId);
+
+                return userId;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"EnsureLocalUser error: {ex.Message}");
+                return userId;
+            }
         }
 
         private record LoginApiResponse(string Token, int UserId, int TenantId, string FullName, string Email, string RoleName);

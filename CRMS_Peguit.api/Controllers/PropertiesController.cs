@@ -33,10 +33,10 @@ namespace CRMS_Peguit.api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Property property)
         {
-            var tenantResolver = HttpContext.RequestServices
-                .GetRequiredService<ITenantResolver>();
-
-            property.TenantId = tenantResolver.GetTenantId();
+            if (property.CreatedByUserId <= 0)
+            {
+                property.CreatedByUserId = 1;
+            }
             property.CreatedAt = DateTime.UtcNow;
             property.ListedByAgentId = null; // R23. Default state is Unassigned
             property.AssignmentStatus = string.IsNullOrWhiteSpace(property.AssignmentStatus)

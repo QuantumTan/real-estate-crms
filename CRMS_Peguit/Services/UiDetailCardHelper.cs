@@ -49,6 +49,17 @@ namespace CRMS_Peguit.winforms.Models.Services
         }
 
         /// <summary>
+        /// Adds a child control to a card panel docked to Top and calls SendToBack()
+        /// so that Top-docked controls stack in natural top-to-bottom order.
+        /// </summary>
+        public static void AddControl(Panel card, Control control)
+        {
+            if (card is null || control is null) return;
+            card.Controls.Add(control);
+            control.SendToBack();
+        }
+
+        /// <summary>
         /// Creates a card header with section title and optional count badge.
         /// </summary>
         public static Panel CreateCardHeader(string title, string? countText = null)

@@ -312,25 +312,9 @@ namespace CRMS_Peguit.winforms.Views.Leads
             txtNotes.Size = new Size(460, 120);
             txtNotes.TabIndex = 21;
             // 
-            // btnSave
-            // 
-            btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            btnSave.BackColor = Color.FromArgb(37, 103, 156);
-            btnSave.Cursor = Cursors.Hand;
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.FlatStyle = FlatStyle.Flat;
-            btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnSave.ForeColor = Color.White;
-            btnSave.Location = new Point(300, 545);
-            btnSave.Name = "btnSave";
-            btnSave.Size = new Size(85, 38);
-            btnSave.TabIndex = 22;
-            btnSave.Text = "Save";
-            btnSave.UseVisualStyleBackColor = false;
             // 
             // btnCancel
             // 
-            btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             btnCancel.BackColor = Color.White;
             btnCancel.Cursor = Cursors.Hand;
             btnCancel.DialogResult = DialogResult.Cancel;
@@ -338,19 +322,33 @@ namespace CRMS_Peguit.winforms.Views.Leads
             btnCancel.FlatStyle = FlatStyle.Flat;
             btnCancel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCancel.ForeColor = Color.FromArgb(8, 52, 87);
-            btnCancel.Location = new Point(395, 545);
+            btnCancel.Location = new Point(300, 555);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(85, 38);
-            btnCancel.TabIndex = 23;
+            btnCancel.TabIndex = 22;
             btnCancel.Text = "Cancel";
             btnCancel.UseVisualStyleBackColor = false;
+            // 
+            // btnSave
+            // 
+            btnSave.BackColor = Color.FromArgb(37, 103, 156);
+            btnSave.Cursor = Cursors.Hand;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatStyle = FlatStyle.Flat;
+            btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSave.ForeColor = Color.White;
+            btnSave.Location = new Point(395, 555);
+            btnSave.Name = "btnSave";
+            btnSave.Size = new Size(85, 38);
+            btnSave.TabIndex = 23;
+            btnSave.Text = "Save";
+            btnSave.UseVisualStyleBackColor = false;
             // 
             // LeadInputForm
             // 
             AcceptButton = btnSave;
             AutoScaleDimensions = new SizeF(9F, 23F);
             AutoScaleMode = AutoScaleMode.Font;
-            AutoScroll = true;
             BackColor = Color.FromArgb(243, 247, 250);
             CancelButton = btnCancel;
             ClientSize = new Size(504, 621);
@@ -376,13 +374,12 @@ namespace CRMS_Peguit.winforms.Views.Leads
             Controls.Add(txtExpectedValue);
             Controls.Add(lblNotes);
             Controls.Add(txtNotes);
-            Controls.Add(btnSave);
             Controls.Add(btnCancel);
+            Controls.Add(btnSave);
             Font = new Font("Segoe UI", 10F);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            MinimumSize = new Size(504, 480);
             Name = "LeadInputForm";
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterParent;

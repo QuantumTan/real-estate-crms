@@ -33,12 +33,12 @@ namespace CRMS_Peguit.winforms.Controllers
                 query = query.Where(c =>
                     (c.AssignedAgentId.HasValue && c.AssignedAgentId.Value > 0)
                         ? c.AssignedAgentId.Value == currentUserId
-                        : (c.CreatedByUserId.HasValue && c.CreatedByUserId.Value == currentUserId));
+                        : c.CreatedByUserId == currentUserId);
             }
 
             return query
-                .OrderBy(x => x.LastName)
-                .ThenBy(x => x.FirstName)
+                .OrderBy(x => x.Person.LastName)
+                .ThenBy(x => x.Person.FirstName)
                 .ToList();
         }
 
@@ -58,9 +58,20 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Customer Add(Customer customer)
         {
-            customer.TenantId = TenantId;
+            if (customer.PersonId <= 0 && customer.Person == null)
+            {
+                customer.Person = new Person
+                {
+                    FirstName = customer.FirstName,
+                    MiddleName = customer.MiddleName,
+                    LastName = customer.LastName,
+                    Suffix = customer.Suffix,
+                    Email = customer.Email,
+                    Phone = customer.Phone
+                };
+            }
             customer.CreatedAt = DateTime.UtcNow;
-            customer.CreatedByUserId = CurrentSession.UserId;
+            customer.CreatedByUserId = CurrentSession.UserId > 0 ? CurrentSession.UserId : 1;
             customer.IsDeleted = false;
             customer.DeletedAt = null;
 
@@ -87,6 +98,7 @@ namespace CRMS_Peguit.winforms.Controllers
         public void Update(Customer customer)
         {
             var item = _db.Customers
+                .Include(c => c.Person)
                 .SingleOrDefault(x => x.CustomerId == customer.CustomerId);
             if (item is null) return;
 
@@ -199,6 +211,11 @@ namespace CRMS_Peguit.winforms.Controllers
             var oldAgentId = item.AssignedAgentId;
             var newAgentId = agentId <= 0 ? null : agentId;
 
+            if (newAgentId.HasValue && !_db.Users.Any(u => u.UserId == newAgentId.Value))
+            {
+                newAgentId = null;
+            }
+
             item.AssignedAgentId = newAgentId;
             item.AssignmentStatus = approve ? "approved" : "pending_review";
             item.AssignmentReviewedByUserId = CurrentSession.UserId;
@@ -234,16 +251,11 @@ namespace CRMS_Peguit.winforms.Controllers
             return _db.Users
                 .AsNoTracking()
                 .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
-                .OrderBy(u => u.LastName)
-                .ThenBy(u => u.FirstName)
+                .OrderBy(u => u.Person.LastName)
+                .ThenBy(u => u.Person.FirstName)
                 .AsEnumerable()
                 .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
                 .ToList();
-        }
-
-        public void LogEmail(Customer customer, string subject)
-        {
-            LogActivity("Email", null, customer.CustomerId, $"Email sent to '{customer.FullName}'. Subject: {subject}");
         }
 
         // KPI counts - computed here so CustomersView doesn't need its own queries
@@ -261,21 +273,67 @@ namespace CRMS_Peguit.winforms.Controllers
             };
         }
 
+        public void LogEmail(Customer customer, string subject)
+        {
+            LogActivity("Email", null, customer.CustomerId, $"Email sent to '{customer.FullName}'. Subject: {subject}");
+        }
+
+        public void LogCall(Customer customer, string notes)
+        {
+            LogActivity("Call", null, customer.CustomerId, $"Call logged for '{customer.FullName}': {notes}");
+        }
+
+        public void LogMeeting(Customer customer, string notes)
+        {
+            LogActivity("Meeting", null, customer.CustomerId, $"Meeting held with '{customer.FullName}': {notes}");
+        }
+
         private void LogActivity(string type, int? leadId, int? customerId, string notes)
         {
-            if (CurrentSession.UserId <= 0) return;
-
-            _db.Activities.Add(new Activity
+            try
             {
-                TenantId = TenantId,
-                Type = type,
-                RelatedLeadId = leadId,
-                RelatedCustomerId = customerId,
-                LoggedByAgentId = CurrentSession.UserId,
-                Notes = notes,
-                ActivityDate = DateTime.UtcNow
-            });
-            _db.SaveChanges();
+                if (CurrentSession.UserId <= 0) return;
+
+                int agentId = CurrentSession.UserId;
+                if (!_db.Users.Any(u => u.UserId == agentId))
+                {
+                    var userByEmail = CurrentSession.CurrentUser != null && !string.IsNullOrEmpty(CurrentSession.CurrentUser.Email)
+                        ? _db.Users.FirstOrDefault(u => u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
+                        : null;
+
+                    if (userByEmail != null)
+                    {
+                        agentId = userByEmail.UserId;
+                    }
+                    else
+                    {
+                        var fallback = _db.Users.Select(u => u.UserId).FirstOrDefault();
+                        if (fallback > 0)
+                        {
+                            agentId = fallback;
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+                }
+
+                _db.Activities.Add(new Activity
+                {
+                    Type = type,
+                    RelatedLeadId = leadId,
+                    RelatedCustomerId = customerId,
+                    LoggedByAgentId = agentId,
+                    Notes = notes,
+                    ActivityDate = DateTime.UtcNow
+                });
+                _db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LogActivity error ({type}): {ex.Message}");
+            }
         }
 
         private static void ApplyAssignmentDefaults(Customer customer)

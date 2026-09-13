@@ -19,6 +19,8 @@ namespace CRMS_Peguit.winforms.Views.Customers
             InitializeComponent();
             UiRadiusHelper.StyleButton(btnSave, 8);
             UiRadiusHelper.StyleButton(btnCancel, 8);
+            UiRadiusHelper.AttachHoverFeedback(btnCancel, Color.White, Color.FromArgb(241, 245, 249));
+            UiRadiusHelper.AttachHoverFeedback(btnSave, Theme.Primary, Theme.PrimaryDark);
             btnSave.Click += BtnSaveClick;
             LoadData();
         }

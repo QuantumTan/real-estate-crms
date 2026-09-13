@@ -233,8 +233,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             // --- Card 1: Pipeline Progression Stepper ---
             var cardPipeline = CreateCardPanel(ref currentY);
-            cardPipeline.Controls.Add(UiDetailCardHelper.CreateCardHeader("📊  Pipeline Progression"));
-            cardPipeline.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardPipeline, UiDetailCardHelper.CreateCardHeader("📊  Pipeline Progression"));
+            UiDetailCardHelper.AddControl(cardPipeline, UiDetailCardHelper.CreateDivider());
 
             bool isLost = string.Equals(_lead!.Stage, "lost", StringComparison.OrdinalIgnoreCase);
             if (isLost)
@@ -260,20 +260,20 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     TextAlign = ContentAlignment.MiddleLeft
                 };
                 lostBanner.Controls.Add(lblLost);
-                cardPipeline.Controls.Add(lostBanner);
+                UiDetailCardHelper.AddControl(cardPipeline, lostBanner);
             }
             else
             {
                 var stepper = CreatePipelineStepper();
-                cardPipeline.Controls.Add(stepper);
+                UiDetailCardHelper.AddControl(cardPipeline, stepper);
             }
             FinalizeCardHeight(cardPipeline, ref currentY);
             _pnlContent.Controls.Add(cardPipeline);
 
             // --- Card 2: Lead Information ---
             var cardLeadInfo = CreateCardPanel(ref currentY);
-            cardLeadInfo.Controls.Add(UiDetailCardHelper.CreateCardHeader("👤  Lead Information"));
-            cardLeadInfo.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardLeadInfo, UiDetailCardHelper.CreateCardHeader("👤  Lead Information"));
+            UiDetailCardHelper.AddControl(cardLeadInfo, UiDetailCardHelper.CreateDivider());
 
             // Expected Value Highlight Tile (if present)
             if (_lead.ExpectedValue.HasValue && _lead.ExpectedValue.Value > 0)
@@ -312,13 +312,13 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 };
                 valBanner.Controls.Add(lblValCap);
                 valBanner.Controls.Add(lblValAmt);
-                cardLeadInfo.Controls.Add(valBanner);
+                UiDetailCardHelper.AddControl(cardLeadInfo, valBanner);
             }
 
-            cardLeadInfo.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardLeadInfo, UiDetailCardHelper.CreateKeyValueRow(
                 "Email Address", string.IsNullOrWhiteSpace(_lead.Email) ? "Not Provided" : _lead.Email,
                 "Phone Number", string.IsNullOrWhiteSpace(_lead.Phone) ? "Not Provided" : _lead.Phone));
-            cardLeadInfo.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardLeadInfo, UiDetailCardHelper.CreateKeyValueRow(
                 "Lead Source", string.IsNullOrWhiteSpace(_lead.Source) ? "Direct / Other" : _lead.Source,
                 "Priority Level", string.IsNullOrWhiteSpace(_lead.Priority) ? "Normal" : _lead.Priority));
             FinalizeCardHeight(cardLeadInfo, ref currentY);
@@ -326,15 +326,15 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             // --- Card 3: Ownership & Assignment ---
             var cardOwner = CreateCardPanel(ref currentY);
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateCardHeader("👥  Assignment & Review"));
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👥  Assignment & Review"));
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateDivider());
             var agentName = _controller!.GetAssignedAgentName(_lead.AssignedAgentId);
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                 "Assigned Agent", agentName ?? "Unassigned",
                 "Assignment Review", _lead.AssignmentStatus));
             if (!string.IsNullOrWhiteSpace(_lead.AssignmentReviewNotes))
             {
-                cardOwner.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                     "Review Notes", _lead.AssignmentReviewNotes));
             }
             FinalizeCardHeight(cardOwner, ref currentY);
@@ -342,8 +342,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             // --- Card 4: Notes ---
             var cardNotes = CreateCardPanel(ref currentY);
-            cardNotes.Controls.Add(UiDetailCardHelper.CreateCardHeader("📝  Notes & Remarks"));
-            cardNotes.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardNotes, UiDetailCardHelper.CreateCardHeader("📝  Notes & Remarks"));
+            UiDetailCardHelper.AddControl(cardNotes, UiDetailCardHelper.CreateDivider());
 
             var pnlNoteBox = new Panel
             {
@@ -371,7 +371,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 MaximumSize = new Size(580, 0)
             };
             pnlNoteBox.Controls.Add(lblNoteText);
-            cardNotes.Controls.Add(pnlNoteBox);
+            UiDetailCardHelper.AddControl(cardNotes, pnlNoteBox);
 
             FinalizeCardHeight(cardNotes, ref currentY);
             _pnlContent.Controls.Add(cardNotes);
@@ -379,8 +379,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
             // --- Card 5: Recent Activities ---
             var activities = _controller.GetActivityHistory(_lead.LeadId);
             var cardActivities = CreateCardPanel(ref currentY);
-            cardActivities.Controls.Add(UiDetailCardHelper.CreateCardHeader("⏱  Recent Activities", activities.Count.ToString()));
-            cardActivities.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardActivities, UiDetailCardHelper.CreateCardHeader("⏱  Recent Activities", activities.Count.ToString()));
+            UiDetailCardHelper.AddControl(cardActivities, UiDetailCardHelper.CreateDivider());
 
             if (activities.Count == 0)
             {
@@ -393,14 +393,14 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     Height = 36,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
-                cardActivities.Controls.Add(lblEmpty);
+                UiDetailCardHelper.AddControl(cardActivities, lblEmpty);
             }
             else
             {
                 foreach (var a in activities.Take(15))
                 {
                     var item = CreateTimelineItem(a);
-                    cardActivities.Controls.Add(item);
+                    UiDetailCardHelper.AddControl(cardActivities, item);
                 }
             }
             FinalizeCardHeight(cardActivities, ref currentY);
@@ -629,10 +629,11 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 if (_btnEdit != null && _btnEdit.Visible)
                 {
                     _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
+                    right -= (_btnEdit.Width + 10);
                 }
-                if (_btnMessage != null)
+                if (_btnMessage != null && _btnMessage.Visible)
                 {
-                    _btnMessage.Location = new Point(24, 13);
+                    _btnMessage.Location = new Point(right - _btnMessage.Width, 13);
                 }
             }
 

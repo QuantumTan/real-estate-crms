@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
-using CRMS_Peguit.domain.Entities;
 using CRMS_Peguit.infrastructure.data;
 using CRMS_Peguit.infrastructure.Security;
 using CRMS_Peguit.winforms.Auth;
@@ -15,11 +14,11 @@ namespace CRMS_Peguit.winforms.Controllers
     public class UserController : IDisposable
     {
         private readonly RealEstateDbContext _db;
-        private int TenantId => CurrentSession.TenantId;
+        public int TenantId => CurrentSession.TenantId;
 
         public UserController()
         {
-            _db = LocalDb.CreateContext(TenantId);
+            _db = LocalDb.CreateContext(tenantId: TenantId);
         }
 
         private void EnsureAdmin()
@@ -34,15 +33,14 @@ namespace CRMS_Peguit.winforms.Controllers
         public async Task<List<User>> GetAllAsync(bool includeInactive = false)
         {
             EnsureAdmin();
-            var query = _db.Users.AsNoTracking().Where(u => u.TenantId == TenantId);
+            var query = _db.Users.AsNoTracking();
 
             if (!includeInactive)
             {
                 query = query.Where(u => u.Status == "active");
             }
 
-            // Exclude Admins and SuperAdmins from the managed list? 
-            // The prompt says "manage users with roles 'Manager' and 'Agent'".
+            // Exclude Admins and SuperAdmins from the managed list
             var managedRoleIds = await _db.Roles
                 .Where(r => r.RoleName == "Manager" || r.RoleName == "Agent")
                 .Select(r => r.RoleId)
@@ -50,13 +48,13 @@ namespace CRMS_Peguit.winforms.Controllers
 
             query = query.Where(u => managedRoleIds.Contains(u.RoleId));
 
-            return await query.OrderBy(u => u.FirstName).ThenBy(u => u.LastName).ToListAsync();
+            return await query.OrderBy(u => u.Person.FirstName).ThenBy(u => u.Person.LastName).ToListAsync();
         }
 
         public async Task<User?> GetByIdAsync(int id)
         {
             EnsureAdmin();
-            return await _db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.UserId == id && u.TenantId == TenantId);
+            return await _db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.UserId == id);
         }
 
         public async Task<List<Role>> GetManagedRolesAsync()
@@ -71,7 +69,7 @@ namespace CRMS_Peguit.winforms.Controllers
         {
             EnsureAdmin();
 
-            if (await _db.Users.AnyAsync(u => u.Email == user.Email && u.TenantId == TenantId))
+            if (await _db.Users.AnyAsync(u => u.Person.Email == user.Email))
             {
                 throw new InvalidOperationException("A user with this email already exists in your tenant.");
             }
@@ -82,7 +80,18 @@ namespace CRMS_Peguit.winforms.Controllers
                 throw new InvalidOperationException("Invalid role selected. You can only create Managers and Agents.");
             }
 
-            user.TenantId = TenantId;
+            if (user.PersonId <= 0 && user.Person == null)
+            {
+                user.Person = new Person
+                {
+                    FirstName = user.FirstName,
+                    MiddleName = user.MiddleName,
+                    LastName = user.LastName,
+                    Suffix = user.Suffix,
+                    Email = user.Email
+                };
+            }
+
             user.PasswordHash = PasswordHasher.Hash(plainTextPassword);
             user.Status = "active";
             user.CreatedAt = DateTime.UtcNow;
@@ -94,7 +103,6 @@ namespace CRMS_Peguit.winforms.Controllers
             }
             catch (DbUpdateException ex)
             {
-                // Surface the real database error (e.g. unique index violation)
                 var inner = ex.InnerException?.Message ?? ex.Message;
                 throw new InvalidOperationException($"Database error: {inner}", ex);
             }
@@ -104,7 +112,7 @@ namespace CRMS_Peguit.winforms.Controllers
         {
             EnsureAdmin();
 
-            if (await _db.Users.AnyAsync(u => u.Email == user.Email && u.TenantId == TenantId && u.UserId != user.UserId))
+            if (await _db.Users.AnyAsync(u => u.Person.Email == user.Email && u.UserId != user.UserId))
             {
                 throw new InvalidOperationException("A user with this email already exists in your tenant.");
             }
@@ -115,7 +123,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 throw new InvalidOperationException("Invalid role selected. You can only assign Manager or Agent roles.");
             }
 
-            var existing = await _db.Users.SingleOrDefaultAsync(u => u.UserId == user.UserId && u.TenantId == TenantId);
+            var existing = await _db.Users.Include(u => u.Person).SingleOrDefaultAsync(u => u.UserId == user.UserId);
             if (existing == null) throw new InvalidOperationException("User not found.");
 
             existing.FirstName = user.FirstName;
@@ -137,7 +145,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 throw new InvalidOperationException("You cannot deactivate your own account.");
             }
 
-            var user = await _db.Users.SingleOrDefaultAsync(u => u.UserId == id && u.TenantId == TenantId);
+            var user = await _db.Users.SingleOrDefaultAsync(u => u.UserId == id);
             if (user == null) throw new InvalidOperationException("User not found.");
 
             user.Status = "inactive";
@@ -148,7 +156,7 @@ namespace CRMS_Peguit.winforms.Controllers
         {
             EnsureAdmin();
 
-            var user = await _db.Users.SingleOrDefaultAsync(u => u.UserId == id && u.TenantId == TenantId);
+            var user = await _db.Users.SingleOrDefaultAsync(u => u.UserId == id);
             if (user == null) throw new InvalidOperationException("User not found.");
 
             user.Status = "active";
@@ -159,7 +167,7 @@ namespace CRMS_Peguit.winforms.Controllers
         {
             EnsureAdmin();
 
-            var user = await _db.Users.SingleOrDefaultAsync(u => u.UserId == id && u.TenantId == TenantId);
+            var user = await _db.Users.SingleOrDefaultAsync(u => u.UserId == id);
             if (user == null) throw new InvalidOperationException("User not found.");
 
             user.PasswordHash = PasswordHasher.Hash(newPassword);

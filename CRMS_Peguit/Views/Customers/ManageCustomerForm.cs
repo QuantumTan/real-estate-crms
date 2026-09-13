@@ -32,7 +32,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             dataGridView1.DataSource = _controller.GetAll();
 
             HideColumn(nameof(Customer.CustomerId));
-            HideColumn(nameof(Customer.TenantId));
+            HideColumn(nameof(Customer.PersonId));
             HideColumn(nameof(Customer.IsDeleted));
             HideColumn(nameof(Customer.DeletedAt));
 

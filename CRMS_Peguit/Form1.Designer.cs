@@ -578,7 +578,7 @@ namespace CRMS_Peguit.winforms
             this.lblBellIcon.Cursor = System.Windows.Forms.Cursors.Hand;
             this.lblBellIcon.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.lblBellIcon.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblBellIcon.Location = new System.Drawing.Point(830, 16);
+            this.lblBellIcon.Location = new System.Drawing.Point(800, 16);
             this.lblBellIcon.Name = "lblBellIcon";
             this.lblBellIcon.Size = new System.Drawing.Size(28, 28);
             this.lblBellIcon.TabIndex = 2;
@@ -591,7 +591,7 @@ namespace CRMS_Peguit.winforms
             this.lblHeaderAvatar.BackColor = System.Drawing.Color.FromArgb(41, 98, 150);
             this.lblHeaderAvatar.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.lblHeaderAvatar.ForeColor = System.Drawing.Color.White;
-            this.lblHeaderAvatar.Location = new System.Drawing.Point(870, 14);
+            this.lblHeaderAvatar.Location = new System.Drawing.Point(838, 14);
             this.lblHeaderAvatar.Name = "lblHeaderAvatar";
             this.lblHeaderAvatar.Size = new System.Drawing.Size(32, 32);
             this.lblHeaderAvatar.TabIndex = 3;
@@ -603,9 +603,9 @@ namespace CRMS_Peguit.winforms
             this.lblHeaderUserName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblHeaderUserName.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
             this.lblHeaderUserName.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblHeaderUserName.Location = new System.Drawing.Point(908, 12);
+            this.lblHeaderUserName.Location = new System.Drawing.Point(876, 12);
             this.lblHeaderUserName.Name = "lblHeaderUserName";
-            this.lblHeaderUserName.Size = new System.Drawing.Size(120, 36);
+            this.lblHeaderUserName.Size = new System.Drawing.Size(155, 36);
             this.lblHeaderUserName.TabIndex = 4;
             this.lblHeaderUserName.Text = "Sam Johnson\r\nAgent";
             this.lblHeaderUserName.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
