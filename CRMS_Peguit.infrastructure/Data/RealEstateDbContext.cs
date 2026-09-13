@@ -181,6 +181,18 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.Property(x => x.Value).HasColumnType("decimal(18,2)");
                 entity.Property(x => x.CommissionRate).HasColumnType("decimal(5,2)");
                 entity.Property(x => x.Stage).HasMaxLength(50);
+                entity.Property(x => x.PaymentScheme).HasMaxLength(50).IsRequired(false);
+                entity.Property(x => x.ReservationFee).HasColumnType("decimal(18,2)").IsRequired(false);
+                entity.Property(x => x.DownPaymentPercent).HasColumnType("decimal(5,2)").IsRequired(false);
+                entity.Property(x => x.DownPaymentAmount).HasColumnType("decimal(18,2)").IsRequired(false);
+                entity.Property(x => x.BalanceAmount).HasColumnType("decimal(18,2)").IsRequired(false);
+                entity.Property(x => x.CgtPayer).HasMaxLength(50).IsRequired(false);
+                entity.Property(x => x.DstPayer).HasMaxLength(50).IsRequired(false);
+                entity.Property(x => x.TransferTaxPayer).HasMaxLength(50).IsRequired(false);
+                entity.Property(x => x.RegistrationFeePayer).HasMaxLength(50).IsRequired(false);
+                entity.Property(x => x.ContingenciesJson).HasMaxLength(4000).IsRequired(false);
+                entity.Property(x => x.ApprovedClauseIds).HasMaxLength(500).IsRequired(false);
+                entity.Property(x => x.SpecialStipulations).HasMaxLength(4000).IsRequired(false);
 
                 entity.HasOne<Customer>()
                     .WithMany()

@@ -62,7 +62,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.lblSubtitle.Name = "lblSubtitle";
             this.lblSubtitle.Size = new System.Drawing.Size(120, 17);
             this.lblSubtitle.TabIndex = 1;
-            this.lblSubtitle.Text = "0 total · $0 pipeline";
+            this.lblSubtitle.Text = "0 total · ₱0 pipeline";
             // 
             // txtSearch
             // 
@@ -78,7 +78,6 @@ namespace CRMS_Peguit.winforms.Views.Deals
             // 
             // btnFilterAll
             // 
-            this.btnFilterAll.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterAll.BackColor = System.Drawing.Color.FromArgb(15, 91, 158);
             this.btnFilterAll.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterAll.FlatAppearance.BorderSize = 0;
@@ -94,7 +93,6 @@ namespace CRMS_Peguit.winforms.Views.Deals
             // 
             // btnFilterOffer
             // 
-            this.btnFilterOffer.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterOffer.BackColor = System.Drawing.Color.White;
             this.btnFilterOffer.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterOffer.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -110,7 +108,6 @@ namespace CRMS_Peguit.winforms.Views.Deals
             // 
             // btnFilterContract
             // 
-            this.btnFilterContract.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterContract.BackColor = System.Drawing.Color.White;
             this.btnFilterContract.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterContract.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -126,7 +123,6 @@ namespace CRMS_Peguit.winforms.Views.Deals
             // 
             // btnFilterClosed
             // 
-            this.btnFilterClosed.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterClosed.BackColor = System.Drawing.Color.White;
             this.btnFilterClosed.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterClosed.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -142,7 +138,6 @@ namespace CRMS_Peguit.winforms.Views.Deals
             // 
             // btnFilterLost
             // 
-            this.btnFilterLost.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterLost.BackColor = System.Drawing.Color.White;
             this.btnFilterLost.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterLost.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -155,12 +150,6 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.btnFilterLost.TabIndex = 7;
             this.btnFilterLost.Text = "Lost";
             this.btnFilterLost.UseVisualStyleBackColor = false;
-            // 
-            // pnlCard
-            // 
-            this.pnlCard.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.pnlCard.BackColor = System.Drawing.Color.White;
             this.pnlCard.Controls.Add(this.grid);
             this.pnlCard.Location = new System.Drawing.Point(30, 126);

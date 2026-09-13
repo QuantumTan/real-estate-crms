@@ -23,9 +23,9 @@ namespace CRMS_Peguit.infrastructure.repositories
 
     public class CustomerRepository : ICustomerRepository
     {
-        private readonly MasterCrmsDbContext _dbContext;
+        private readonly RealEstateDbContext _dbContext;
 
-        public CustomerRepository(MasterCrmsDbContext dbContext)
+        public CustomerRepository(RealEstateDbContext dbContext)
         {
             _dbContext = dbContext;
         }

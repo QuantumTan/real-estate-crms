@@ -62,6 +62,118 @@ namespace CRMS_Peguit.infrastructure.Seeding
 
             db.Users.AddRange(users);
             await db.SaveChangesAsync();
+
+            await SeedSampleDataAsync(db, tenantId);
+        }
+
+        public static async Task SeedSampleDataAsync(RealEstateDbContext db, int tenantId = 1)
+        {
+            if (await db.Customers.AnyAsync(c => c.TenantId == tenantId))
+                return;
+
+            var agent = await db.Users.FirstOrDefaultAsync(u => u.TenantId == tenantId && u.Email == "agent@test.com");
+            int agentId = agent?.UserId ?? 1;
+
+            var customers = new[]
+            {
+                new Customer
+                {
+                    TenantId = tenantId,
+                    FirstName = "Maria",
+                    LastName = "Santos",
+                    Email = "maria.santos@example.com",
+                    Phone = "09171234567",
+                    Type = "buyer",
+                    Status = "active",
+                    AssignmentStatus = "approved",
+                    AssignedAgentId = agentId,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Customer
+                {
+                    TenantId = tenantId,
+                    FirstName = "Juan",
+                    LastName = "Dela Cruz",
+                    Email = "juan.delacruz@example.com",
+                    Phone = "09181234567",
+                    Type = "seller",
+                    Status = "active",
+                    AssignmentStatus = "approved",
+                    AssignedAgentId = agentId,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            db.Customers.AddRange(customers);
+            await db.SaveChangesAsync();
+
+            var properties = new[]
+            {
+                new Property
+                {
+                    TenantId = tenantId,
+                    Address = "Block 12 Lot 5, Grand Villas, Davao City",
+                    PropertyType = "house",
+                    Price = 4500000m,
+                    Status = "available",
+                    OwnerCustomerId = customers[1].CustomerId,
+                    ListedByAgentId = agentId,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Property
+                {
+                    TenantId = tenantId,
+                    Address = "Unit 1502, Azure Modern Condominium, Cebu City",
+                    PropertyType = "condo",
+                    Price = 3200000m,
+                    Status = "available",
+                    OwnerCustomerId = customers[1].CustomerId,
+                    ListedByAgentId = agentId,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            db.Properties.AddRange(properties);
+            await db.SaveChangesAsync();
+
+            var leads = new[]
+            {
+                new Lead
+                {
+                    TenantId = tenantId,
+                    FirstName = "Carlos",
+                    LastName = "Mendoza",
+                    Email = "carlos.mendoza@example.com",
+                    Phone = "09201234567",
+                    Source = "Facebook",
+                    Stage = "qualified",
+                    Priority = "high",
+                    ExpectedValue = 4500000m,
+                    AssignedAgentId = agentId,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            db.Leads.AddRange(leads);
+            await db.SaveChangesAsync();
+
+            var deals = new[]
+            {
+                new Deal
+                {
+                    TenantId = tenantId,
+                    CustomerId = customers[0].CustomerId,
+                    PropertyId = properties[0].PropertyId,
+                    AgentId = agentId,
+                    Value = 4500000m,
+                    CommissionRate = 0.05m,
+                    Stage = "Offer",
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            db.Deals.AddRange(deals);
+            await db.SaveChangesAsync();
         }
     }
 }
