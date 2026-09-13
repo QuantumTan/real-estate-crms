@@ -23,6 +23,7 @@ namespace CRMS_Peguit.winforms.Views.Management
 
         private string _filterType = "All";
         private List<PendingApprovalItem> _allItems = new();
+        private Label _lblEmptyState = null!;
 
         public ApprovalsView()
         {
@@ -30,10 +31,29 @@ namespace CRMS_Peguit.winforms.Views.Management
 
             _approvalController = new ApprovalController();
 
+            InitEmptyState();
             ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
             RefreshGrid();
+
+            this.Load += (_, _) => LayoutToolbar();
+            this.Resize += (_, _) => LayoutToolbar();
+        }
+
+        private void InitEmptyState()
+        {
+            _lblEmptyState = new Label
+            {
+                Text = "🔍 No pending approval items match your filter criteria.\nAll caught up!",
+                Font = new Font("Segoe UI", 11f),
+                ForeColor = Theme.TextSecondary,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+            pnlCard.Controls.Add(_lblEmptyState);
+            _lblEmptyState.BringToFront();
         }
 
         private void ApplyStyling()
@@ -56,19 +76,9 @@ namespace CRMS_Peguit.winforms.Views.Management
             btnFilterCustomers.Click += (_, _) => SetFilter("Customers");
             btnFilterProperties.Click += (_, _) => SetFilter("Properties");
 
-            // Modern Grid Styling matching Nexa CRM
-            grid.EnableHeadersVisualStyles = false;
-            grid.GridColor = Color.FromArgb(241, 245, 249);
-            grid.RowTemplate.Height = 52;
-            grid.DefaultCellStyle.BackColor = Color.White;
-            grid.DefaultCellStyle.ForeColor = Color.FromArgb(15, 23, 42);
-            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
-            grid.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 23, 42);
-            grid.DefaultCellStyle.Font = new Font("Segoe UI", 9.5f);
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
-            grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(100, 116, 139);
-            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            grid.ColumnHeadersHeight = 44;
+            // Modern Grid Styling & Search Padding
+            UiGridHelper.ApplyModernGridStyle(grid, 52);
+            UiRadiusHelper.SetPadding(txtSearch, 10, 10);
 
             grid.CellPainting += Grid_CellPainting;
             grid.CellContentClick += Grid_CellContentClick;
@@ -132,6 +142,7 @@ namespace CRMS_Peguit.winforms.Views.Management
         private void ApplyFilterAndDisplay()
         {
             grid.Columns.Clear();
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
 
             IEnumerable<PendingApprovalItem> query = _allItems;
 
@@ -171,6 +182,8 @@ namespace CRMS_Peguit.winforms.Views.Management
 
             grid.DataSource = displayList;
 
+            grid.ShowCellToolTips = true;
+
             var idCol = grid.Columns["Id"];
             if (idCol is not null) idCol.Visible = false;
 
@@ -178,34 +191,42 @@ namespace CRMS_Peguit.winforms.Views.Management
             {
                 typeCol.HeaderText = "TYPE";
                 typeCol.FillWeight = 85;
+                typeCol.MinimumWidth = 80;
             }
             if (grid.Columns["Title"] is DataGridViewColumn titleCol)
             {
                 titleCol.HeaderText = "TITLE / RECORD";
                 titleCol.FillWeight = 190;
+                titleCol.MinimumWidth = 160;
             }
             if (grid.Columns["SubmittedBy"] is DataGridViewColumn subCol)
             {
                 subCol.HeaderText = "SUBMITTED BY";
                 subCol.FillWeight = 115;
+                subCol.MinimumWidth = 100;
             }
             if (grid.Columns["DateSubmitted"] is DataGridViewColumn dateCol)
             {
                 dateCol.HeaderText = "DATE SUBMITTED";
                 dateCol.FillWeight = 95;
+                dateCol.MinimumWidth = 95;
             }
             if (grid.Columns["AssignedTo"] is DataGridViewColumn assignCol)
             {
                 assignCol.HeaderText = "ASSIGNED AGENT";
                 assignCol.FillWeight = 120;
+                assignCol.MinimumWidth = 110;
             }
             if (grid.Columns["Status"] is DataGridViewColumn statusCol)
             {
                 statusCol.HeaderText = "STATUS";
                 statusCol.FillWeight = 100;
+                statusCol.MinimumWidth = 90;
             }
 
             grid.Columns.Add(new ActionsColumn());
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            _lblEmptyState.Visible = (grid.Rows.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
@@ -403,6 +424,70 @@ namespace CRMS_Peguit.winforms.Views.Management
                 return _allItems.FirstOrDefault(x => x.Id == id && x.Type == type);
             }
             return null;
+        }
+
+        private void LayoutToolbar()
+        {
+            if (this.IsDisposed) return;
+
+            int rightPadding = 30;
+            int leftMargin = 30;
+            int totalWidth = ClientSize.Width;
+            int y = 88;
+
+            // Position header action buttons
+            int rightEdge = totalWidth - rightPadding;
+            btnRefresh.Left = rightEdge - btnRefresh.Width;
+            btnRefresh.Top = 24;
+
+            // Layout filter pills
+            var pills = new[] { btnFilterProperties, btnFilterCustomers, btnFilterLeads, btnFilterAll };
+            int filterRight = totalWidth - rightPadding;
+            int totalFilterWidth = 0;
+            foreach (var p in pills) totalFilterWidth += p.Width + 6;
+
+            int availableForSearch = totalWidth - leftMargin - rightPadding - totalFilterWidth - 20;
+
+            if (availableForSearch >= 180)
+            {
+                // Single row: search on left, filters aligned to right
+                foreach (var p in pills)
+                {
+                    p.Top = y;
+                    p.Left = filterRight - p.Width;
+                    filterRight = p.Left - 6;
+                }
+
+                txtSearch.Top = y;
+                txtSearch.Left = leftMargin;
+                txtSearch.Width = Math.Min(360, availableForSearch);
+
+                pnlCard.Top = 126;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+            }
+            else
+            {
+                // Two rows: search on row 1, filter pills wrapped to row 2
+                txtSearch.Top = y;
+                txtSearch.Left = leftMargin;
+                txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
+
+                int filterX = leftMargin;
+                int pillY = y + 36;
+                var forwardPills = new[] { btnFilterAll, btnFilterLeads, btnFilterCustomers, btnFilterProperties };
+                foreach (var p in forwardPills)
+                {
+                    p.Top = pillY;
+                    p.Left = filterX;
+                    filterX += p.Width + 6;
+                }
+
+                pnlCard.Top = pillY + 38;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+            }
+
+            pnlCard.Left = leftMargin;
+            pnlCard.Width = Math.Max(100, totalWidth - leftMargin - rightPadding);
         }
     }
 }

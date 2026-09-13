@@ -11,16 +11,37 @@ namespace CRMS_Peguit.winforms.Views.Customers
     {
         private readonly CustomerController _controller;
         private string _filterStatus = "All";
+        private Button? _btnExport;
+        private Label _lblEmptyState = null!;
 
         public CustomersView()
         {
             InitializeComponent();
             _controller = new CustomerController();
 
+            InitEmptyState();
             ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
             RefreshGrid();
+
+            this.Load += (_, _) => LayoutToolbar();
+            this.Resize += (_, _) => LayoutToolbar();
+        }
+
+        private void InitEmptyState()
+        {
+            _lblEmptyState = new Label
+            {
+                Text = "🔍 No customers match your search or filter criteria.\nTry adjusting your search terms or filter.",
+                Font = new Font("Segoe UI", 11f),
+                ForeColor = Theme.TextSecondary,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+            pnlCard.Controls.Add(_lblEmptyState);
+            _lblEmptyState.BringToFront();
         }
 
         private void ApplyStyling()
@@ -41,23 +62,21 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             if (RbacService.CanExportData)
             {
-                var btnExport = new Button
+                _btnExport = new Button
                 {
                     Text = "📥 Export CSV",
-                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
                     BackColor = Color.White,
                     ForeColor = Color.FromArgb(15, 91, 158),
                     Cursor = Cursors.Hand,
                     FlatStyle = FlatStyle.Flat,
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                    Size = new Size(130, 36),
-                    Location = new Point(btnAdd.Visible ? btnAdd.Left - 140 : btnAdd.Left, btnAdd.Top)
+                    Size = new Size(130, 36)
                 };
-                btnExport.FlatAppearance.BorderColor = Color.FromArgb(15, 91, 158);
-                btnExport.Click += (_, _) => ExportToCsv();
-                UiRadiusHelper.StyleButton(btnExport, 8);
-                Controls.Add(btnExport);
-                btnExport.BringToFront();
+                _btnExport.FlatAppearance.BorderColor = Color.FromArgb(15, 91, 158);
+                _btnExport.Click += (_, _) => ExportToCsv();
+                UiRadiusHelper.StyleButton(_btnExport, 8);
+                Controls.Add(_btnExport);
+                _btnExport.BringToFront();
             }
 
             btnFilterAll.Click += (_, _) => SetFilter("All");
@@ -65,19 +84,9 @@ namespace CRMS_Peguit.winforms.Views.Customers
             btnFilterFollowUp.Click += (_, _) => SetFilter("Follow Up");
             btnFilterInactive.Click += (_, _) => SetFilter("Inactive");
 
-            // Modern Grid Styling
-            grid.EnableHeadersVisualStyles = false;
-            grid.GridColor = Color.FromArgb(241, 245, 249);
-            grid.RowTemplate.Height = 52;
-            grid.DefaultCellStyle.BackColor = Color.White;
-            grid.DefaultCellStyle.ForeColor = Color.FromArgb(15, 23, 42);
-            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
-            grid.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 23, 42);
-            grid.DefaultCellStyle.Font = new Font("Segoe UI", 9.5f);
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
-            grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(100, 116, 139);
-            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            grid.ColumnHeadersHeight = 44;
+            // Modern Grid Styling & Search Padding
+            UiGridHelper.ApplyModernGridStyle(grid, 52);
+            UiRadiusHelper.SetPadding(txtSearch, 10, 10);
 
             grid.CellPainting += Grid_CellPainting;
             grid.CellContentClick += GridCellContentClick;
@@ -127,6 +136,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
         private void RefreshGrid()
         {
             grid.Columns.Clear();
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
 
             var allList = _controller.GetAll().ToList();
             int total = allList.Count;
@@ -179,43 +189,54 @@ namespace CRMS_Peguit.winforms.Views.Customers
             var idCol = grid.Columns["CustomerId"];
             if (idCol is not null) idCol.Visible = false;
 
+            grid.ShowCellToolTips = true;
+
             if (grid.Columns["Name"] is DataGridViewColumn nameCol)
             {
                 nameCol.HeaderText = "NAME";
                 nameCol.FillWeight = 160;
+                nameCol.MinimumWidth = 140;
             }
             if (grid.Columns["Company"] is DataGridViewColumn compCol)
             {
                 compCol.HeaderText = "COMPANY";
                 compCol.FillWeight = 90;
+                compCol.MinimumWidth = 80;
             }
             if (grid.Columns["Phone"] is DataGridViewColumn phoneCol)
             {
                 phoneCol.HeaderText = "PHONE";
                 phoneCol.FillWeight = 100;
+                phoneCol.MinimumWidth = 90;
             }
             if (grid.Columns["Email"] is DataGridViewColumn emailCol)
             {
                 emailCol.HeaderText = "EMAIL";
                 emailCol.FillWeight = 140;
+                emailCol.MinimumWidth = 120;
             }
             if (grid.Columns["AssignedTo"] is DataGridViewColumn assignCol)
             {
                 assignCol.HeaderText = "ASSIGNED TO";
                 assignCol.FillWeight = 110;
+                assignCol.MinimumWidth = 100;
             }
             if (grid.Columns["Status"] is DataGridViewColumn statusCol)
             {
                 statusCol.HeaderText = "STATUS";
                 statusCol.FillWeight = 90;
+                statusCol.MinimumWidth = 80;
             }
             if (grid.Columns["LastContacted"] is DataGridViewColumn lastCol)
             {
                 lastCol.HeaderText = "LAST CONTACTED";
                 lastCol.FillWeight = 100;
+                lastCol.MinimumWidth = 90;
             }
 
-            grid.Columns.Add(new ActionsColumn());
+            UiGridHelper.AddActionsColumn(grid, 64);
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            _lblEmptyState.Visible = (grid.Rows.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
@@ -507,6 +528,79 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 System.IO.File.WriteAllText(sfd.FileName, sb.ToString());
                 MessageBox.Show("Customers exported successfully.", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+        }
+
+        private void LayoutToolbar()
+        {
+            if (this.IsDisposed) return;
+
+            int rightPadding = 30;
+            int leftMargin = 30;
+            int totalWidth = ClientSize.Width;
+            int y = 88;
+
+            // Position header action buttons
+            int rightEdge = totalWidth - rightPadding;
+            if (btnAdd.Visible)
+            {
+                btnAdd.Left = rightEdge - btnAdd.Width;
+                btnAdd.Top = 24;
+                rightEdge = btnAdd.Left - 10;
+            }
+            if (_btnExport != null && _btnExport.Visible)
+            {
+                _btnExport.Left = rightEdge - _btnExport.Width;
+                _btnExport.Top = 24;
+            }
+
+            // Layout filter pills
+            var pills = new[] { btnFilterInactive, btnFilterFollowUp, btnFilterActive, btnFilterAll };
+            int filterRight = totalWidth - rightPadding;
+            int totalFilterWidth = 0;
+            foreach (var p in pills) totalFilterWidth += p.Width + 6;
+
+            int availableForSearch = totalWidth - leftMargin - rightPadding - totalFilterWidth - 20;
+
+            if (availableForSearch >= 180)
+            {
+                // Single row: search on left, filters aligned to right
+                foreach (var p in pills)
+                {
+                    p.Top = y;
+                    p.Left = filterRight - p.Width;
+                    filterRight = p.Left - 6;
+                }
+
+                txtSearch.Top = y;
+                txtSearch.Left = leftMargin;
+                txtSearch.Width = Math.Min(360, availableForSearch);
+
+                pnlCard.Top = 126;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+            }
+            else
+            {
+                // Two rows: search on row 1, filter pills wrapped to row 2
+                txtSearch.Top = y;
+                txtSearch.Left = leftMargin;
+                txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
+
+                int filterX = leftMargin;
+                int pillY = y + 36;
+                var forwardPills = new[] { btnFilterAll, btnFilterActive, btnFilterFollowUp, btnFilterInactive };
+                foreach (var p in forwardPills)
+                {
+                    p.Top = pillY;
+                    p.Left = filterX;
+                    filterX += p.Width + 6;
+                }
+
+                pnlCard.Top = pillY + 38;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+            }
+
+            pnlCard.Left = leftMargin;
+            pnlCard.Width = Math.Max(100, totalWidth - leftMargin - rightPadding);
         }
 
         private void lblTitle_Click(object sender, EventArgs e)

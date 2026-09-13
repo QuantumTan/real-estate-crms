@@ -33,18 +33,7 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             UiRadiusHelper.StyleCard(pnlStats, 10);
             UiRadiusHelper.StyleCard(pnlGridCard, 12);
 
-            gridLeads.EnableHeadersVisualStyles = false;
-            gridLeads.GridColor = Color.FromArgb(241, 245, 249);
-            gridLeads.RowTemplate.Height = 48;
-            gridLeads.DefaultCellStyle.BackColor = Color.White;
-            gridLeads.DefaultCellStyle.ForeColor = Color.FromArgb(15, 23, 42);
-            gridLeads.DefaultCellStyle.SelectionBackColor = Color.FromArgb(241, 245, 249);
-            gridLeads.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 23, 42);
-            gridLeads.DefaultCellStyle.Font = new Font("Segoe UI", 9.5f);
-            gridLeads.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252);
-            gridLeads.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(100, 116, 139);
-            gridLeads.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            gridLeads.ColumnHeadersHeight = 40;
+            UiGridHelper.ApplyModernGridStyle(gridLeads, 48);
         }
 
         private void BindEvents()
@@ -159,7 +148,7 @@ namespace CRMS_Peguit.winforms.Views.Marketing
                 Name = l.FullName,
                 CampaignSource = string.IsNullOrWhiteSpace(l.Source) ? "Untagged" : l.Source,
                 Stage = (l.Stage ?? "New").ToUpper(),
-                Value = l.ExpectedValue.HasValue ? $"${l.ExpectedValue.Value:N0}" : "-",
+                Value = l.ExpectedValue.HasValue ? $"₱{l.ExpectedValue.Value:N0}" : "-",
                 Contact = string.IsNullOrWhiteSpace(l.Phone) ? l.Email ?? "-" : l.Phone,
                 AssignedAgent = _leadController.GetAssignedAgentName(l.AssignedAgentId) ?? "Unassigned",
                 CapturedDate = l.CreatedAt.ToString("MMM dd, yyyy")
@@ -233,6 +222,20 @@ namespace CRMS_Peguit.winforms.Views.Marketing
                 Font = new Font("Segoe UI", 10f)
             };
 
+            var btnCancel = new Button
+            {
+                Text = "Cancel",
+                DialogResult = DialogResult.Cancel,
+                Location = new Point(134, 105),
+                Size = new Size(90, 38),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(8, 52, 87),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9.5f)
+            };
+            btnCancel.FlatAppearance.BorderColor = Color.FromArgb(180, 198, 217);
+            UiRadiusHelper.StyleButton(btnCancel, 8);
+
             var btnSubmit = new Button
             {
                 Text = "Save Campaign",
@@ -248,8 +251,10 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 
             inputForm.Controls.Add(lblPrompt);
             inputForm.Controls.Add(txtName);
+            inputForm.Controls.Add(btnCancel);
             inputForm.Controls.Add(btnSubmit);
             inputForm.AcceptButton = btnSubmit;
+            inputForm.CancelButton = btnCancel;
 
             if (inputForm.ShowDialog(this) == DialogResult.OK)
             {
