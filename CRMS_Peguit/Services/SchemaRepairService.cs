@@ -20,6 +20,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                 EnsureLeadColumns((SqlConnection)connection);
                 EnsureUserColumns((SqlConnection)connection);
                 EnsurePropertyColumns((SqlConnection)connection);
+                EnsureDealColumns((SqlConnection)connection);
                 EnsureAssignmentColumns((SqlConnection)connection, "Leads");
                 EnsureAssignmentColumns((SqlConnection)connection, "Customers");
                 EnsureAssignmentColumns((SqlConnection)connection, "Properties");
@@ -52,6 +53,23 @@ namespace CRMS_Peguit.winforms.Models.Services
                 "Leads",
                 "Priority",
                 "ALTER TABLE [Leads] ADD [Priority] nvarchar(20) NULL;");
+        }
+
+        private static void EnsureDealColumns(SqlConnection connection)
+        {
+            ExecuteIfMissing(connection, "Deals", "PaymentScheme", "ALTER TABLE [Deals] ADD [PaymentScheme] nvarchar(50) NULL;");
+            ExecuteIfMissing(connection, "Deals", "ReservationFee", "ALTER TABLE [Deals] ADD [ReservationFee] decimal(18,2) NULL;");
+            ExecuteIfMissing(connection, "Deals", "DownPaymentPercent", "ALTER TABLE [Deals] ADD [DownPaymentPercent] decimal(5,2) NULL;");
+            ExecuteIfMissing(connection, "Deals", "DownPaymentAmount", "ALTER TABLE [Deals] ADD [DownPaymentAmount] decimal(18,2) NULL;");
+            ExecuteIfMissing(connection, "Deals", "BalanceAmount", "ALTER TABLE [Deals] ADD [BalanceAmount] decimal(18,2) NULL;");
+            ExecuteIfMissing(connection, "Deals", "CgtPayer", "ALTER TABLE [Deals] ADD [CgtPayer] nvarchar(50) NULL;");
+            ExecuteIfMissing(connection, "Deals", "DstPayer", "ALTER TABLE [Deals] ADD [DstPayer] nvarchar(50) NULL;");
+            ExecuteIfMissing(connection, "Deals", "TransferTaxPayer", "ALTER TABLE [Deals] ADD [TransferTaxPayer] nvarchar(50) NULL;");
+            ExecuteIfMissing(connection, "Deals", "RegistrationFeePayer", "ALTER TABLE [Deals] ADD [RegistrationFeePayer] nvarchar(50) NULL;");
+            ExecuteIfMissing(connection, "Deals", "ContingenciesJson", "ALTER TABLE [Deals] ADD [ContingenciesJson] nvarchar(max) NULL;");
+            ExecuteIfMissing(connection, "Deals", "ApprovedClauseIds", "ALTER TABLE [Deals] ADD [ApprovedClauseIds] nvarchar(500) NULL;");
+            ExecuteIfMissing(connection, "Deals", "SpecialStipulations", "ALTER TABLE [Deals] ADD [SpecialStipulations] nvarchar(max) NULL;");
+            ExecuteIfMissing(connection, "Deals", "ContractSignedDate", "ALTER TABLE [Deals] ADD [ContractSignedDate] datetime2 NULL;");
         }
 
         private static void EnsurePropertyColumns(SqlConnection connection)
