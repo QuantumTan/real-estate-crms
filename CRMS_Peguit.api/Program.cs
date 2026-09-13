@@ -6,13 +6,20 @@ using CRMS_Peguit.api;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load optional local overrides (gitignored) for private credentials
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
 // ==========================================================
 // DATABASE CONNECTION
 // ==========================================================
 
 var masterConnection =
     Environment.GetEnvironmentVariable("CRMS_CONNECTION")
-    ?? builder.Configuration.GetConnectionString("MasterCrms");
+    ?? builder.Configuration.GetConnectionString("MasterCrms")
+    ?? builder.Configuration.GetConnectionString("LocalCrms");
 
 if (string.IsNullOrWhiteSpace(masterConnection))
 {
