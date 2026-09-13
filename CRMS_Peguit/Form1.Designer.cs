@@ -6,6 +6,7 @@ namespace CRMS_Peguit.winforms
 
         private System.Windows.Forms.Panel sidebarPanel = null!;
         private System.Windows.Forms.Label lblLogo = null!;
+        private System.Windows.Forms.Panel pnlUserContainer = null!;
         private System.Windows.Forms.Panel pnlUserProfile = null!;
         private System.Windows.Forms.Label lblUserAvatar = null!;
         private System.Windows.Forms.Label lblUserName = null!;
@@ -34,12 +35,14 @@ namespace CRMS_Peguit.winforms
 
         private System.Windows.Forms.Panel contentWrapperPanel = null!;
         private System.Windows.Forms.Panel topHeaderPanel = null!;
+        private System.Windows.Forms.Button btnToggleSidebar = null!;
         private System.Windows.Forms.Label lblRoleBadge = null!;
         private System.Windows.Forms.TextBox txtGlobalSearch = null!;
         private System.Windows.Forms.Label lblBellIcon = null!;
         private System.Windows.Forms.Label lblHeaderAvatar = null!;
         private System.Windows.Forms.Label lblHeaderUserName = null!;
         private System.Windows.Forms.Panel mainPanel = null!;
+        private System.Windows.Forms.ToolTip mainToolTip = null!;
 
         protected override void Dispose(bool disposing)
         {
@@ -56,6 +59,7 @@ namespace CRMS_Peguit.winforms
         {
             this.sidebarPanel = new System.Windows.Forms.Panel();
             this.lblLogo = new System.Windows.Forms.Label();
+            this.pnlUserContainer = new System.Windows.Forms.Panel();
             this.pnlUserProfile = new System.Windows.Forms.Panel();
             this.lblUserAvatar = new System.Windows.Forms.Label();
             this.lblUserName = new System.Windows.Forms.Label();
@@ -82,13 +86,16 @@ namespace CRMS_Peguit.winforms
             this.btnLogout = new System.Windows.Forms.Button();
             this.contentWrapperPanel = new System.Windows.Forms.Panel();
             this.topHeaderPanel = new System.Windows.Forms.Panel();
+            this.btnToggleSidebar = new System.Windows.Forms.Button();
             this.lblRoleBadge = new System.Windows.Forms.Label();
             this.txtGlobalSearch = new System.Windows.Forms.TextBox();
             this.lblBellIcon = new System.Windows.Forms.Label();
             this.lblHeaderAvatar = new System.Windows.Forms.Label();
             this.lblHeaderUserName = new System.Windows.Forms.Label();
             this.mainPanel = new System.Windows.Forms.Panel();
+            this.mainToolTip = new System.Windows.Forms.ToolTip();
             this.sidebarPanel.SuspendLayout();
+            this.pnlUserContainer.SuspendLayout();
             this.pnlUserProfile.SuspendLayout();
             this.pnlNav.SuspendLayout();
             this.contentWrapperPanel.SuspendLayout();
@@ -100,7 +107,7 @@ namespace CRMS_Peguit.winforms
             this.sidebarPanel.BackColor = System.Drawing.Color.FromArgb(6, 29, 51);
             this.sidebarPanel.Controls.Add(this.pnlNav);
             this.sidebarPanel.Controls.Add(this.btnLogout);
-            this.sidebarPanel.Controls.Add(this.pnlUserProfile);
+            this.sidebarPanel.Controls.Add(this.pnlUserContainer);
             this.sidebarPanel.Controls.Add(this.lblLogo);
             this.sidebarPanel.Dock = System.Windows.Forms.DockStyle.Left;
             this.sidebarPanel.Location = new System.Drawing.Point(0, 0);
@@ -122,6 +129,16 @@ namespace CRMS_Peguit.winforms
             this.lblLogo.Text = "⛛ NEXA CRM SYSTEM";
             this.lblLogo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
+            // pnlUserContainer
+            // 
+            this.pnlUserContainer.Controls.Add(this.pnlUserProfile);
+            this.pnlUserContainer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlUserContainer.Location = new System.Drawing.Point(0, 56);
+            this.pnlUserContainer.Name = "pnlUserContainer";
+            this.pnlUserContainer.Padding = new System.Windows.Forms.Padding(12, 4, 12, 6);
+            this.pnlUserContainer.Size = new System.Drawing.Size(240, 62);
+            this.pnlUserContainer.TabIndex = 1;
+            // 
             // pnlUserProfile
             // 
             this.pnlUserProfile.BackColor = System.Drawing.Color.FromArgb(12, 40, 68);
@@ -129,10 +146,11 @@ namespace CRMS_Peguit.winforms
             this.pnlUserProfile.Controls.Add(this.lblUserName);
             this.pnlUserProfile.Controls.Add(this.lblUserRole);
             this.pnlUserProfile.Controls.Add(this.lblStatusDot);
-            this.pnlUserProfile.Location = new System.Drawing.Point(12, 60);
+            this.pnlUserProfile.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlUserProfile.Location = new System.Drawing.Point(12, 4);
             this.pnlUserProfile.Name = "pnlUserProfile";
             this.pnlUserProfile.Size = new System.Drawing.Size(216, 52);
-            this.pnlUserProfile.TabIndex = 1;
+            this.pnlUserProfile.TabIndex = 0;
             // 
             // lblUserAvatar
             // 
@@ -198,9 +216,11 @@ namespace CRMS_Peguit.winforms
             this.pnlNav.Controls.Add(this.btnLeads);
             this.pnlNav.Controls.Add(this.lblSalesSection);
             this.pnlNav.Controls.Add(this.btnDashboard);
-            this.pnlNav.Location = new System.Drawing.Point(0, 120);
+            this.pnlNav.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlNav.Location = new System.Drawing.Point(0, 118);
             this.pnlNav.Name = "pnlNav";
-            this.pnlNav.Size = new System.Drawing.Size(240, 530);
+            this.pnlNav.Padding = new System.Windows.Forms.Padding(0, 4, 0, 4);
+            this.pnlNav.Size = new System.Drawing.Size(240, 550);
             this.pnlNav.TabIndex = 2;
             // 
             // btnDashboard
@@ -502,6 +522,7 @@ namespace CRMS_Peguit.winforms
             // topHeaderPanel
             // 
             this.topHeaderPanel.BackColor = System.Drawing.Color.White;
+            this.topHeaderPanel.Controls.Add(this.btnToggleSidebar);
             this.topHeaderPanel.Controls.Add(this.lblRoleBadge);
             this.topHeaderPanel.Controls.Add(this.txtGlobalSearch);
             this.topHeaderPanel.Controls.Add(this.lblBellIcon);
@@ -513,15 +534,29 @@ namespace CRMS_Peguit.winforms
             this.topHeaderPanel.Size = new System.Drawing.Size(1040, 58);
             this.topHeaderPanel.TabIndex = 0;
             // 
+            // btnToggleSidebar
+            // 
+            this.btnToggleSidebar.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnToggleSidebar.FlatAppearance.BorderSize = 0;
+            this.btnToggleSidebar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnToggleSidebar.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.btnToggleSidebar.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.btnToggleSidebar.Location = new System.Drawing.Point(12, 12);
+            this.btnToggleSidebar.Name = "btnToggleSidebar";
+            this.btnToggleSidebar.Size = new System.Drawing.Size(36, 34);
+            this.btnToggleSidebar.TabIndex = 0;
+            this.btnToggleSidebar.Text = "☰";
+            this.btnToggleSidebar.UseVisualStyleBackColor = true;
+            // 
             // lblRoleBadge
             // 
             this.lblRoleBadge.BackColor = System.Drawing.Color.FromArgb(238, 246, 255);
             this.lblRoleBadge.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.lblRoleBadge.ForeColor = System.Drawing.Color.FromArgb(29, 108, 176);
-            this.lblRoleBadge.Location = new System.Drawing.Point(20, 15);
+            this.lblRoleBadge.Location = new System.Drawing.Point(54, 15);
             this.lblRoleBadge.Name = "lblRoleBadge";
             this.lblRoleBadge.Size = new System.Drawing.Size(86, 28);
-            this.lblRoleBadge.TabIndex = 0;
+            this.lblRoleBadge.TabIndex = 1;
             this.lblRoleBadge.Text = "• Agent";
             this.lblRoleBadge.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
@@ -531,11 +566,11 @@ namespace CRMS_Peguit.winforms
             this.txtGlobalSearch.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtGlobalSearch.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.txtGlobalSearch.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.txtGlobalSearch.Location = new System.Drawing.Point(120, 16);
+            this.txtGlobalSearch.Location = new System.Drawing.Point(148, 16);
             this.txtGlobalSearch.Name = "txtGlobalSearch";
             this.txtGlobalSearch.PlaceholderText = "🔍 Search leads, properties, deals...";
             this.txtGlobalSearch.Size = new System.Drawing.Size(320, 24);
-            this.txtGlobalSearch.TabIndex = 1;
+            this.txtGlobalSearch.TabIndex = 2;
             // 
             // lblBellIcon
             // 
@@ -592,11 +627,12 @@ namespace CRMS_Peguit.winforms
             this.ClientSize = new System.Drawing.Size(1280, 720);
             this.Controls.Add(this.contentWrapperPanel);
             this.Controls.Add(this.sidebarPanel);
-            this.MinimumSize = new System.Drawing.Size(1024, 640);
+            this.MinimumSize = new System.Drawing.Size(850, 540);
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "NEXA CRM SYSTEM";
             this.sidebarPanel.ResumeLayout(false);
+            this.pnlUserContainer.ResumeLayout(false);
             this.pnlUserProfile.ResumeLayout(false);
             this.pnlNav.ResumeLayout(false);
             this.contentWrapperPanel.ResumeLayout(false);
