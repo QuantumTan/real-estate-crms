@@ -126,7 +126,7 @@ namespace CRMS_Peguit.winforms
             this.lblHeroFooter.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.lblHeroFooter.AutoSize = true;
             this.lblHeroFooter.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this.lblHeroFooter.ForeColor = System.Drawing.Color.FromArgb(90, 115, 142);
+            this.lblHeroFooter.ForeColor = System.Drawing.Color.FromArgb(150, 178, 204);
             this.lblHeroFooter.Location = new System.Drawing.Point(40, 560);
             this.lblHeroFooter.Name = "lblHeroFooter";
             this.lblHeroFooter.Size = new System.Drawing.Size(262, 15);
@@ -135,6 +135,7 @@ namespace CRMS_Peguit.winforms
             // 
             // pnlForm
             // 
+            this.pnlForm.AutoScroll = true;
             this.pnlForm.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
             this.pnlForm.Controls.Add(this.lblWelcome);
             this.pnlForm.Controls.Add(this.lblWelcomeSub);
@@ -251,7 +252,7 @@ namespace CRMS_Peguit.winforms
             // 
             this.chkShowPassword.AutoSize = true;
             this.chkShowPassword.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.chkShowPassword.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.chkShowPassword.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
             this.chkShowPassword.Location = new System.Drawing.Point(82, 335);
             this.chkShowPassword.Name = "chkShowPassword";
             this.chkShowPassword.Size = new System.Drawing.Size(107, 19);

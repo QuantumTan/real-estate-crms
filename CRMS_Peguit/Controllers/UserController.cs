@@ -8,6 +8,7 @@ using CRMS_Peguit.domain.Entities;
 using CRMS_Peguit.infrastructure.data;
 using CRMS_Peguit.infrastructure.Security;
 using CRMS_Peguit.winforms.Auth;
+using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Controllers
 {
@@ -18,16 +19,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public UserController()
         {
-            var connectionString = Environment.GetEnvironmentVariable("CRMS_CONNECTION") 
-                ?? throw new InvalidOperationException("CRMS_CONNECTION environment variable is not set.");
-            
-            var options = new DbContextOptionsBuilder<RealEstateDbContext>()
-                .UseSqlServer(connectionString)
-                .Options;
-
-            // Wait, RealEstateDbContext constructor might not take tenantId as second arg?
-            // CustomerController uses: new RealEstateDbContext(options, TenantId)
-            _db = new RealEstateDbContext(options, TenantId);
+            _db = LocalDb.CreateContext(TenantId);
         }
 
         private void EnsureAdmin()

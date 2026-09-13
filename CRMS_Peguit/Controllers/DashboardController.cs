@@ -38,7 +38,7 @@ namespace CRMS_Peguit.winforms.Controllers
                     Lead = l.FullName,
                     Email = string.IsNullOrWhiteSpace(l.Email) ? "-" : l.Email,
                     Source = string.IsNullOrWhiteSpace(l.Source) ? "Website" : l.Source,
-                    Value = l.ExpectedValue.HasValue ? $"${l.ExpectedValue.Value:N0}" : "-",
+                    Value = l.ExpectedValue.HasValue ? $"₱{l.ExpectedValue.Value:N0}" : "-",
                     Stage = (l.Stage ?? string.Empty).ToUpperInvariant()
                 })
                 .ToList();

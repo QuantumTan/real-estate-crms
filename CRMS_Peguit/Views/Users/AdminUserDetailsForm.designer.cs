@@ -124,6 +124,7 @@ namespace CRMS_Peguit.winforms.Views.Users
             // 
             // btnChangePassword
             // 
+            this.btnChangePassword.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnChangePassword.BackColor = System.Drawing.Color.FromArgb(37, 103, 156);
             this.btnChangePassword.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnChangePassword.FlatAppearance.BorderSize = 0;
@@ -139,6 +140,7 @@ namespace CRMS_Peguit.winforms.Views.Users
             // 
             // btnToggleStatus
             // 
+            this.btnToggleStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnToggleStatus.BackColor = System.Drawing.Color.IndianRed;
             this.btnToggleStatus.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnToggleStatus.FlatAppearance.BorderSize = 0;
@@ -154,6 +156,7 @@ namespace CRMS_Peguit.winforms.Views.Users
             // 
             // btnClose
             // 
+            this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnClose.BackColor = System.Drawing.Color.Gray;
             this.btnClose.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnClose.DialogResult = System.Windows.Forms.DialogResult.OK;
@@ -173,7 +176,9 @@ namespace CRMS_Peguit.winforms.Views.Users
             this.AcceptButton = this.btnClose;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoScroll = true;
             this.BackColor = System.Drawing.Color.White;
+            this.CancelButton = this.btnClose;
             this.ClientSize = new System.Drawing.Size(384, 321);
             this.Controls.Add(this.lblNameHeader);
             this.Controls.Add(this.lblNameValue);
@@ -190,6 +195,7 @@ namespace CRMS_Peguit.winforms.Views.Users
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
+            this.MinimumSize = new System.Drawing.Size(384, 321);
             this.Name = "AdminUserDetailsForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "User Details";

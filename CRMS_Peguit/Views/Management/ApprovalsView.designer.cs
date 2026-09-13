@@ -73,7 +73,6 @@ namespace CRMS_Peguit.winforms.Views.Management
             // 
             // btnRefresh
             // 
-            this.btnRefresh.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnRefresh.BackColor = System.Drawing.Color.White;
             this.btnRefresh.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnRefresh.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -101,7 +100,6 @@ namespace CRMS_Peguit.winforms.Views.Management
             // 
             // btnFilterAll
             // 
-            this.btnFilterAll.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterAll.BackColor = System.Drawing.Color.FromArgb(15, 91, 158);
             this.btnFilterAll.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterAll.FlatAppearance.BorderSize = 0;
@@ -117,7 +115,6 @@ namespace CRMS_Peguit.winforms.Views.Management
             // 
             // btnFilterLeads
             // 
-            this.btnFilterLeads.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterLeads.BackColor = System.Drawing.Color.White;
             this.btnFilterLeads.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterLeads.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -133,7 +130,6 @@ namespace CRMS_Peguit.winforms.Views.Management
             // 
             // btnFilterCustomers
             // 
-            this.btnFilterCustomers.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterCustomers.BackColor = System.Drawing.Color.White;
             this.btnFilterCustomers.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterCustomers.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -149,7 +145,6 @@ namespace CRMS_Peguit.winforms.Views.Management
             // 
             // btnFilterProperties
             // 
-            this.btnFilterProperties.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterProperties.BackColor = System.Drawing.Color.White;
             this.btnFilterProperties.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterProperties.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -165,9 +160,6 @@ namespace CRMS_Peguit.winforms.Views.Management
             // 
             // pnlCard
             // 
-            this.pnlCard.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.pnlCard.BackColor = System.Drawing.Color.White;
             this.pnlCard.Controls.Add(this.grid);
             this.pnlCard.Location = new System.Drawing.Point(30, 126);

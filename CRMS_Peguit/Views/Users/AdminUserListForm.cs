@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -12,16 +12,35 @@ namespace CRMS_Peguit.winforms.Views.Users
     public partial class AdminUserListForm : UserControl
     {
         private readonly UserController _controller;
+        private Label _lblEmptyState = null!;
 
         public AdminUserListForm(string initialRoleFilter = "All Roles")
         {
             InitializeComponent();
             _controller = new UserController();
+
+            InitEmptyState();
+            UiRadiusHelper.StyleCard(pnlCard, 12);
             BindEvents(initialRoleFilter);
             LayoutControls();
             
             this.Load += async (s, e) => await RefreshGridAsync();
             this.Resize += (s, e) => LayoutControls();
+        }
+
+        private void InitEmptyState()
+        {
+            _lblEmptyState = new Label
+            {
+                Text = "🔍 No users match your search or filter criteria.\nTry adjusting your search terms or role filter.",
+                Font = new Font("Segoe UI", 11f),
+                ForeColor = Theme.TextSecondary,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Visible = false
+            };
+            pnlCard.Controls.Add(_lblEmptyState);
+            _lblEmptyState.BringToFront();
         }
         
         private void BindEvents(string initialRoleFilter)
@@ -37,41 +56,68 @@ namespace CRMS_Peguit.winforms.Views.Users
             btnAdd.Click += BtnAddClick;
             UiRadiusHelper.StyleButton(btnAdd, 8);
 
-            grid.GridColor = Theme.Border;
-            grid.RowTemplate.Height = 45;
-            grid.DefaultCellStyle.BackColor = Theme.Surface;
-            grid.DefaultCellStyle.ForeColor = Theme.TextPrimary;
-            grid.DefaultCellStyle.SelectionBackColor = Theme.Border;
-            grid.DefaultCellStyle.SelectionForeColor = Theme.TextPrimary;
-            grid.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
-            grid.DefaultCellStyle.Font = new Font("Segoe UI", 10);
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Theme.Background;
-            grid.ColumnHeadersDefaultCellStyle.ForeColor = Theme.TextPrimary;
-            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            // Modern Grid Styling & Search Padding
+            UiGridHelper.ApplyModernGridStyle(grid, 52);
+            UiRadiusHelper.SetPadding(txtSearch, 10, 10);
 
             grid.CellContentClick += GridCellContentClick;
         }
 
         private void LayoutControls()
         {
-            int availableWidth = Math.Max(0, Width - 60);
-            int x = 30;
-            int y = 90;
+            if (this.IsDisposed) return;
 
-            txtSearch.Location = new Point(x, y);
-            txtSearch.Size = new Size(300, 36);
+            int rightPadding = 30;
+            int leftMargin = 30;
+            int totalWidth = ClientSize.Width;
+            int y = 88;
 
-            cmbRoleFilter.Location = new Point(x + 315, y);
-            cmbRoleFilter.Size = new Size(150, 36);
+            // Position header action button
+            btnAdd.Left = totalWidth - rightPadding - btnAdd.Width;
+            btnAdd.Top = 24;
 
-            chkIncludeInactive.Location = new Point(x + 480, y + 4);
+            // Check if search + role + checkbox fit in single row
+            int filtersWidth = 150 + 12 + chkIncludeInactive.Width;
+            int availableForSearch = totalWidth - leftMargin - rightPadding - filtersWidth - 20;
 
-            btnAdd.Location = new Point(x + availableWidth - 150, y - 2);
-            btnAdd.Size = new Size(150, 38);
+            if (availableForSearch >= 200)
+            {
+                // Single row
+                txtSearch.Top = y;
+                txtSearch.Left = leftMargin;
+                txtSearch.Width = Math.Min(320, availableForSearch);
 
-            int gridY = y + 50;
-            grid.Location = new Point(x, gridY);
-            grid.Size = new Size(availableWidth, Math.Max(0, Height - gridY - 30));
+                cmbRoleFilter.Top = y;
+                cmbRoleFilter.Left = txtSearch.Right + 12;
+                cmbRoleFilter.Width = 140;
+
+                chkIncludeInactive.Top = y + 3;
+                chkIncludeInactive.Left = cmbRoleFilter.Right + 16;
+
+                pnlCard.Top = 126;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 24);
+            }
+            else
+            {
+                // Two rows: search on row 1, role & checkbox on row 2
+                txtSearch.Top = y;
+                txtSearch.Left = leftMargin;
+                txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
+
+                int row2Y = y + 34;
+                cmbRoleFilter.Top = row2Y;
+                cmbRoleFilter.Left = leftMargin;
+                cmbRoleFilter.Width = 140;
+
+                chkIncludeInactive.Top = row2Y + 3;
+                chkIncludeInactive.Left = cmbRoleFilter.Right + 16;
+
+                pnlCard.Top = row2Y + 38;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+            }
+
+            pnlCard.Left = leftMargin;
+            pnlCard.Width = Math.Max(100, totalWidth - leftMargin - rightPadding);
         }
 
         private async Task RefreshGridAsync()
@@ -80,8 +126,12 @@ namespace CRMS_Peguit.winforms.Views.Users
 
             try
             {
-                var users = await _controller.GetAllAsync(chkIncludeInactive.Checked);
+                var allUsers = await _controller.GetAllAsync(chkIncludeInactive.Checked);
+                int total = allUsers.Count;
+                int active = allUsers.Count(u => string.Equals(u.Status, "active", StringComparison.OrdinalIgnoreCase));
+                lblSubtitle.Text = $"{total} total users · {active} active";
 
+                var users = allUsers;
                 string search = txtSearch.Text.Trim();
                 if (!string.IsNullOrWhiteSpace(search))
                 {
@@ -103,6 +153,7 @@ namespace CRMS_Peguit.winforms.Views.Users
                     }
                 }
 
+                grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
                 grid.DataSource = users.Select(u => new
                 {
                     u.UserId,
@@ -112,21 +163,42 @@ namespace CRMS_Peguit.winforms.Views.Users
                     Status = u.Status
                 }).ToList();
 
-                if (grid.Columns["UserId"] != null) grid.Columns["UserId"].Visible = false;
+                grid.ShowCellToolTips = true;
+
+                if (grid.Columns["UserId"] is DataGridViewColumn uIdCol) uIdCol.Visible = false;
+
+                if (grid.Columns["Name"] is DataGridViewColumn nameCol)
+                {
+                    nameCol.HeaderText = "NAME";
+                    nameCol.FillWeight = 140;
+                    nameCol.MinimumWidth = 140;
+                }
+                if (grid.Columns["Email"] is DataGridViewColumn emailCol)
+                {
+                    emailCol.HeaderText = "EMAIL";
+                    emailCol.FillWeight = 150;
+                    emailCol.MinimumWidth = 150;
+                }
+                if (grid.Columns["Role"] is DataGridViewColumn roleCol)
+                {
+                    roleCol.HeaderText = "ROLE";
+                    roleCol.FillWeight = 100;
+                    roleCol.MinimumWidth = 100;
+                }
+                if (grid.Columns["Status"] is DataGridViewColumn statusCol)
+                {
+                    statusCol.HeaderText = "STATUS";
+                    statusCol.FillWeight = 80;
+                    statusCol.MinimumWidth = 80;
+                }
                 
                 if (grid.Columns["Actions"] == null)
                 {
-                    var actionCol = new DataGridViewButtonColumn
-                    {
-                        Name = "Actions",
-                        HeaderText = "Actions",
-                        Text = "Options",
-                        UseColumnTextForButtonValue = true,
-                        FillWeight = 50,
-                        FlatStyle = FlatStyle.Flat
-                    };
-                    grid.Columns.Add(actionCol);
+                    grid.Columns.Add(new CRMS_Peguit.winforms.Controls.ActionsColumn());
                 }
+
+                grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                _lblEmptyState.Visible = (grid.Rows.Count == 0);
             }
             catch (Exception ex)
             {

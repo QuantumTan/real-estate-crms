@@ -17,16 +17,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public PropertyController()
         {
-            var connectionString =
-                Environment.GetEnvironmentVariable("CRMS_CONNECTION")
-                ?? throw new InvalidOperationException(
-                    "CRMS_CONNECTION environment variable is not set.");
-
-            var options = new DbContextOptionsBuilder<RealEstateDbContext>()
-                .UseSqlServer(connectionString)
-                .Options;
-
-            _db = new RealEstateDbContext(options, TenantId);
+            _db = LocalDb.CreateContext(TenantId);
         }
 
         public List<Property> GetAll()
@@ -48,6 +39,20 @@ namespace CRMS_Peguit.winforms.Controllers
                 .OrderByDescending(x => x.CreatedAt)
                 .ThenBy(x => x.Address)
                 .ToList();
+        }
+
+        public Property? GetById(int id)
+        {
+            var item = _db.Properties
+                .AsNoTracking()
+                .SingleOrDefault(x => x.PropertyId == id);
+
+            if (item is null) return null;
+
+            if (!RbacService.CanAgentViewRecord(item.ListedByAgentId, item.CreatedByUserId))
+                return null;
+
+            return item;
         }
 
         public Property Add(Property property)

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.infrastructure.data;
-using CRMS_Peguit.infrastructure.Seeding;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.Services;
 using CRMS_Peguit.api;
@@ -77,71 +76,6 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// ==========================================================
-// DATABASE SEEDING
-// ==========================================================
-//
-// There is no HTTP request during application startup,
-// therefore HttpTenantResolver cannot determine TenantId.
-//
-// Seed Tenant A (1), Tenant B (2), and Tenant C (3)
-using (var scope = app.Services.CreateScope())
-{
-    var masterDb = scope.ServiceProvider.GetRequiredService<MasterCrmsDbContext>();
-
-    var comp1 = await masterDb.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1);
-    if (comp1 == null)
-    {
-        comp1 = new Company
-        {
-            CompanyCode = "COMP001",
-            CompanyName = "My First Real Estate CRM Company",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        masterDb.Companies.Add(comp1);
-        await masterDb.SaveChangesAsync();
-    }
-
-    var compDb1 = await masterDb.CompanyDatabases.FirstOrDefaultAsync(cd => cd.CompanyId == comp1.CompanyId);
-    if (compDb1 == null)
-    {
-        compDb1 = new CompanyDatabase
-        {
-            CompanyId = comp1.CompanyId,
-            ServerName = "db66713.public.databaseasp.net",
-            DatabaseName = "db66713",
-            CredentialKey = "TenantA",
-            IsActive = true
-        };
-        masterDb.CompanyDatabases.Add(compDb1);
-        await masterDb.SaveChangesAsync();
-    }
-    else if (string.IsNullOrWhiteSpace(compDb1.CredentialKey) || compDb1.CredentialKey != "TenantA")
-    {
-        compDb1.CredentialKey = "TenantA";
-        await masterDb.SaveChangesAsync();
-    }
-
-    var options =
-        new DbContextOptionsBuilder<RealEstateDbContext>()
-            .UseSqlServer(masterConnection)
-            .Options;
-
-    foreach (var tenantId in new[] { 1, 2, 3 })
-    {
-        await using var db =
-            new RealEstateDbContext(
-                options,
-                tenantId: tenantId
-            );
-
-        await DbSeeder.SeedTestUsersAsync(
-            db,
-            tenantId: tenantId
-        );
-    }
-}
 
 // ==========================================================
 // DEVELOPMENT OPENAPI
@@ -231,11 +165,15 @@ app.MapGet(
         await using var tenantDb = await tenantFactory.CreateAsync(companyId);
         var customerCount = await tenantDb.Customers.CountAsync();
         var propertyCount = await tenantDb.Properties.CountAsync();
+        var leadCount = await tenantDb.Leads.CountAsync();
+        var dealCount = await tenantDb.Deals.CountAsync();
         return Results.Ok(new
         {
             companyId,
             customerCount,
-            propertyCount
+            propertyCount,
+            leadCount,
+            dealCount
         });
     }
 );
@@ -304,6 +242,111 @@ app.MapGet(
             .OrderBy(x => x.PropertyId)
             .ToListAsync();
         return Results.Ok(properties);
+    }
+);
+
+app.MapPost(
+    "/tenant/{companyId:int}/leads",
+    async (
+        int companyId,
+        Lead lead,
+        ITenantDbContextFactory tenantFactory) =>
+    {
+        await using var tenantDb = await tenantFactory.CreateAsync(companyId);
+        lead.TenantId = companyId;
+        lead.CreatedAt = DateTime.UtcNow;
+        tenantDb.Leads.Add(lead);
+        await tenantDb.SaveChangesAsync();
+        return Results.Created(
+            $"/tenant/{companyId}/leads/{lead.LeadId}",
+            lead
+        );
+    }
+);
+
+app.MapGet(
+    "/tenant/{companyId:int}/leads",
+    async (
+        int companyId,
+        ITenantDbContextFactory tenantFactory) =>
+    {
+        await using var tenantDb = await tenantFactory.CreateAsync(companyId);
+        var leads = await tenantDb.Leads
+            .AsNoTracking()
+            .OrderBy(x => x.LeadId)
+            .ToListAsync();
+        return Results.Ok(leads);
+    }
+);
+
+app.MapPost(
+    "/tenant/{companyId:int}/deals",
+    async (
+        int companyId,
+        Deal deal,
+        ITenantDbContextFactory tenantFactory) =>
+    {
+        await using var tenantDb = await tenantFactory.CreateAsync(companyId);
+        deal.TenantId = companyId;
+        deal.CreatedAt = DateTime.UtcNow;
+        tenantDb.Deals.Add(deal);
+        await tenantDb.SaveChangesAsync();
+        return Results.Created(
+            $"/tenant/{companyId}/deals/{deal.DealId}",
+            deal
+        );
+    }
+);
+
+app.MapGet(
+    "/tenant/{companyId:int}/deals",
+    async (
+        int companyId,
+        ITenantDbContextFactory tenantFactory) =>
+    {
+        await using var tenantDb = await tenantFactory.CreateAsync(companyId);
+        var deals = await tenantDb.Deals
+            .AsNoTracking()
+            .OrderBy(x => x.DealId)
+            .ToListAsync();
+        return Results.Ok(deals);
+    }
+);
+
+app.MapPost(
+    "/tenant/{companyId:int}/activities",
+    async (
+        int companyId,
+        Activity activity,
+        ITenantDbContextFactory tenantFactory) =>
+    {
+        await using var tenantDb = await tenantFactory.CreateAsync(companyId);
+        activity.TenantId = companyId;
+        if (activity.ActivityDate == default)
+        {
+            activity.ActivityDate = DateTime.UtcNow;
+        }
+        tenantDb.Activities.Add(activity);
+        await tenantDb.SaveChangesAsync();
+        return Results.Created(
+            $"/tenant/{companyId}/activities/{activity.ActivityId}",
+            activity
+        );
+    }
+);
+
+app.MapGet(
+    "/tenant/{companyId:int}/activities",
+    async (
+        int companyId,
+        ITenantDbContextFactory tenantFactory) =>
+    {
+        await using var tenantDb = await tenantFactory.CreateAsync(companyId);
+        var activities = await tenantDb.Activities
+            .AsNoTracking()
+            .OrderBy(x => x.ActivityId)
+            .ToListAsync();
+        return Results.Ok(activities);
     }
 );
 

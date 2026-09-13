@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Threading.Tasks;
@@ -55,11 +55,11 @@ namespace CRMS_Peguit.winforms.Views.Users
 
         private async Task ChangePasswordAsync()
         {
-            var newPassword = Microsoft.VisualBasic.Interaction.InputBox("Enter new password for the user:", "Change Password", "");
-            if (string.IsNullOrWhiteSpace(newPassword)) return;
+            using var dlg = new CRMS_Peguit.winforms.Views.Shared.ChangePasswordDialog(_user.FullName);
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
 
-            var confirm = MessageBox.Show($"Are you sure you want to change the password for {_user.FullName}?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (confirm != DialogResult.Yes) return;
+            string newPassword = dlg.NewPassword;
+            if (string.IsNullOrWhiteSpace(newPassword)) return;
 
             try
             {

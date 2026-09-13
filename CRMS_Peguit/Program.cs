@@ -1,3 +1,4 @@
+using CRMS_Peguit.infrastructure.Seeding;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms
@@ -9,6 +10,7 @@ namespace CRMS_Peguit.winforms
         [STAThread]
         static void Main(string[] args)
         {
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             ApplicationConfiguration.Initialize();
 
             var localConnection = DbConfiguration.GetLocalConnectionString();
@@ -35,17 +37,30 @@ namespace CRMS_Peguit.winforms
                 return;
             }
 
+            if (args.Contains("--init-db"))
+            {
+                using var startupDb = LocalDb.CreateContext();
+                startupDb.Database.EnsureCreated();
+                DbSeeder.SeedTestUsersAsync(startupDb, 1).GetAwaiter().GetResult();
+                SchemaRepairService.EnsureCrmPolishColumns(startupDb);
+                Console.WriteLine("CRMS_Local database initialized and seeded successfully.");
+                return;
+            }
+
             // ==================================================
             // ONE-TIME SCHEMA INITIALIZATION
             // ==================================================
             try
             {
                 using var startupDb = LocalDb.CreateContext();
+                startupDb.Database.EnsureCreated();
+                DbSeeder.SeedTestUsersAsync(startupDb, 1).GetAwaiter().GetResult();
                 SchemaRepairService.EnsureCrmPolishColumns(startupDb);
             }
-            catch
+            catch (Exception ex)
             {
                 // Non-critical startup schema check
+                System.Diagnostics.Debug.WriteLine($"Startup DB init error: {ex.Message}");
             }
 
             // ==================================================

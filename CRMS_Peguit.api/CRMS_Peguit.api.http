@@ -74,3 +74,54 @@ Content-Type: application/json
 ### 8. Get All Properties from Tenant Database
 GET {{CRMS_Peguit.api_HostAddress}}/tenant/1/properties
 Accept: application/json
+
+### 9. Create Lead in Tenant Database
+POST {{CRMS_Peguit.api_HostAddress}}/tenant/1/leads
+Content-Type: application/json
+
+{
+  "firstName": "Maria",
+  "lastName": "Santos",
+  "phone": "+639181234567",
+  "email": "maria.santos@example.com",
+  "source": "Website Referral",
+  "stage": "new",
+  "priority": "High",
+  "expectedValue": 5500000.00
+}
+
+### 10. Get All Leads from Tenant Database
+GET {{CRMS_Peguit.api_HostAddress}}/tenant/1/leads
+Accept: application/json
+
+### 11. Create Deal in Tenant Database
+POST {{CRMS_Peguit.api_HostAddress}}/tenant/1/deals
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "propertyId": 1,
+  "agentId": 1,
+  "value": 4500000.00,
+  "commissionRate": 0.05,
+  "stage": "Negotiation"
+}
+
+### 12. Get All Deals from Tenant Database
+GET {{CRMS_Peguit.api_HostAddress}}/tenant/1/deals
+Accept: application/json
+
+### 13. Create Activity in Tenant Database
+POST {{CRMS_Peguit.api_HostAddress}}/tenant/1/activities
+Content-Type: application/json
+
+{
+  "type": "Client Site Inspection",
+  "notes": "Client requested physical walkthrough of residential property.",
+  "loggedByAgentId": 1
+}
+
+### 14. Get All Activities from Tenant Database
+GET {{CRMS_Peguit.api_HostAddress}}/tenant/1/activities
+Accept: application/json
+
