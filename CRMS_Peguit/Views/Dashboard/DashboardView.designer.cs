@@ -7,15 +7,17 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
         private System.Windows.Forms.Label lblTitle = null!;
         private System.Windows.Forms.Label lblSubtitle = null!;
 
-        private System.Windows.Forms.Panel pnlKpiContainer = null!;
+        private System.Windows.Forms.TableLayoutPanel pnlKpiContainer = null!;
         private CRMS_Peguit.winforms.Controls.KpiCard kpiCustomers = null!;
         private CRMS_Peguit.winforms.Controls.KpiCard kpiProperties = null!;
         private CRMS_Peguit.winforms.Controls.KpiCard kpiLeads = null!;
         private CRMS_Peguit.winforms.Controls.KpiCard kpiDeals = null!;
 
+        private System.Windows.Forms.TableLayoutPanel pnlContentSplit = null!;
         private System.Windows.Forms.Panel pnlLeftCard = null!;
         private System.Windows.Forms.Label lblLeftTitle = null!;
         private System.Windows.Forms.DataGridView gridRecent = null!;
+        private System.Windows.Forms.Label lblRecentEmpty = null!;
 
         private System.Windows.Forms.Panel pnlRightCard = null!;
         private System.Windows.Forms.Label lblRightTitle = null!;
@@ -41,14 +43,16 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
         {
             this.lblTitle = new System.Windows.Forms.Label();
             this.lblSubtitle = new System.Windows.Forms.Label();
-            this.pnlKpiContainer = new System.Windows.Forms.Panel();
+            this.pnlKpiContainer = new System.Windows.Forms.TableLayoutPanel();
             this.kpiCustomers = new CRMS_Peguit.winforms.Controls.KpiCard("TOTAL CUSTOMERS", "customers", System.Drawing.Color.FromArgb(15, 91, 158));
             this.kpiProperties = new CRMS_Peguit.winforms.Controls.KpiCard("ACTIVE PROPERTIES", "properties", System.Drawing.Color.FromArgb(16, 185, 129));
             this.kpiLeads = new CRMS_Peguit.winforms.Controls.KpiCard("QUALIFIED LEADS", "leads", System.Drawing.Color.FromArgb(14, 165, 233));
             this.kpiDeals = new CRMS_Peguit.winforms.Controls.KpiCard("TOTAL DEALS", "deals", System.Drawing.Color.FromArgb(139, 92, 246));
+            this.pnlContentSplit = new System.Windows.Forms.TableLayoutPanel();
             this.pnlLeftCard = new System.Windows.Forms.Panel();
             this.lblLeftTitle = new System.Windows.Forms.Label();
             this.gridRecent = new System.Windows.Forms.DataGridView();
+            this.lblRecentEmpty = new System.Windows.Forms.Label();
             this.pnlRightCard = new System.Windows.Forms.Panel();
             this.lblRightTitle = new System.Windows.Forms.Label();
             this.lblStat1Title = new System.Windows.Forms.Label();
@@ -89,60 +93,102 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             // 
             this.pnlKpiContainer.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.pnlKpiContainer.Controls.Add(this.kpiDeals);
-            this.pnlKpiContainer.Controls.Add(this.kpiLeads);
-            this.pnlKpiContainer.Controls.Add(this.kpiProperties);
-            this.pnlKpiContainer.Controls.Add(this.kpiCustomers);
+            this.pnlKpiContainer.ColumnCount = 4;
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.Controls.Add(this.kpiCustomers, 0, 0);
+            this.pnlKpiContainer.Controls.Add(this.kpiProperties, 1, 0);
+            this.pnlKpiContainer.Controls.Add(this.kpiLeads, 2, 0);
+            this.pnlKpiContainer.Controls.Add(this.kpiDeals, 3, 0);
             this.pnlKpiContainer.Location = new System.Drawing.Point(30, 88);
             this.pnlKpiContainer.Name = "pnlKpiContainer";
+            this.pnlKpiContainer.RowCount = 1;
+            this.pnlKpiContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.pnlKpiContainer.Size = new System.Drawing.Size(970, 100);
             this.pnlKpiContainer.TabIndex = 3;
             // 
             // kpiCustomers
             // 
             this.kpiCustomers.BackColor = System.Drawing.Color.White;
-            this.kpiCustomers.Location = new System.Drawing.Point(0, 0);
+            this.kpiCustomers.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpiCustomers.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
             this.kpiCustomers.Name = "kpiCustomers";
-            this.kpiCustomers.Size = new System.Drawing.Size(230, 95);
+            this.kpiCustomers.Size = new System.Drawing.Size(234, 100);
             this.kpiCustomers.TabIndex = 0;
             // 
             // kpiProperties
             // 
             this.kpiProperties.BackColor = System.Drawing.Color.White;
-            this.kpiProperties.Location = new System.Drawing.Point(245, 0);
+            this.kpiProperties.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpiProperties.Margin = new System.Windows.Forms.Padding(8, 0, 8, 0);
             this.kpiProperties.Name = "kpiProperties";
-            this.kpiProperties.Size = new System.Drawing.Size(230, 95);
+            this.kpiProperties.Size = new System.Drawing.Size(234, 100);
             this.kpiProperties.TabIndex = 1;
             // 
             // kpiLeads
             // 
             this.kpiLeads.BackColor = System.Drawing.Color.White;
-            this.kpiLeads.Location = new System.Drawing.Point(490, 0);
+            this.kpiLeads.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpiLeads.Margin = new System.Windows.Forms.Padding(8, 0, 8, 0);
             this.kpiLeads.Name = "kpiLeads";
-            this.kpiLeads.Size = new System.Drawing.Size(230, 95);
+            this.kpiLeads.Size = new System.Drawing.Size(234, 100);
             this.kpiLeads.TabIndex = 2;
             // 
             // kpiDeals
             // 
             this.kpiDeals.BackColor = System.Drawing.Color.White;
-            this.kpiDeals.Location = new System.Drawing.Point(735, 0);
+            this.kpiDeals.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpiDeals.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
             this.kpiDeals.Name = "kpiDeals";
-            this.kpiDeals.Size = new System.Drawing.Size(235, 95);
+            this.kpiDeals.Size = new System.Drawing.Size(234, 100);
             this.kpiDeals.TabIndex = 3;
+            // 
+            // pnlContentSplit
+            // 
+            this.pnlContentSplit.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlContentSplit.ColumnCount = 2;
+            this.pnlContentSplit.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 68F));
+            this.pnlContentSplit.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 32F));
+            this.pnlContentSplit.Controls.Add(this.pnlLeftCard, 0, 0);
+            this.pnlContentSplit.Controls.Add(this.pnlRightCard, 1, 0);
+            this.pnlContentSplit.Location = new System.Drawing.Point(30, 202);
+            this.pnlContentSplit.Name = "pnlContentSplit";
+            this.pnlContentSplit.RowCount = 1;
+            this.pnlContentSplit.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.pnlContentSplit.Size = new System.Drawing.Size(970, 470);
+            this.pnlContentSplit.TabIndex = 4;
             // 
             // pnlLeftCard
             // 
-            this.pnlLeftCard.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.pnlLeftCard.BackColor = System.Drawing.Color.White;
+            this.pnlLeftCard.Controls.Add(this.lblRecentEmpty);
             this.pnlLeftCard.Controls.Add(this.gridRecent);
             this.pnlLeftCard.Controls.Add(this.lblLeftTitle);
-            this.pnlLeftCard.Location = new System.Drawing.Point(30, 202);
+            this.pnlLeftCard.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlLeftCard.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
             this.pnlLeftCard.Name = "pnlLeftCard";
             this.pnlLeftCard.Padding = new System.Windows.Forms.Padding(16);
-            this.pnlLeftCard.Size = new System.Drawing.Size(650, 440);
-            this.pnlLeftCard.TabIndex = 4;
+            this.pnlLeftCard.Size = new System.Drawing.Size(651, 470);
+            this.pnlLeftCard.TabIndex = 0;
+            // 
+            // lblRecentEmpty
+            // 
+            this.lblRecentEmpty.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblRecentEmpty.Font = new System.Drawing.Font("Segoe UI", 10.5F);
+            this.lblRecentEmpty.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.lblRecentEmpty.Location = new System.Drawing.Point(16, 50);
+            this.lblRecentEmpty.Name = "lblRecentEmpty";
+            this.lblRecentEmpty.Size = new System.Drawing.Size(618, 404);
+            this.lblRecentEmpty.TabIndex = 2;
+            this.lblRecentEmpty.Text = "No recent pipeline leads found.";
+            this.lblRecentEmpty.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblRecentEmpty.Visible = false;
             // 
             // lblLeftTitle
             // 
@@ -177,13 +223,12 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.gridRecent.RowHeadersVisible = false;
             this.gridRecent.RowTemplate.Height = 44;
             this.gridRecent.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.gridRecent.Size = new System.Drawing.Size(618, 374);
+            this.gridRecent.ShowCellToolTips = true;
+            this.gridRecent.Size = new System.Drawing.Size(618, 404);
             this.gridRecent.TabIndex = 1;
             // 
             // pnlRightCard
             // 
-            this.pnlRightCard.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.pnlRightCard.BackColor = System.Drawing.Color.White;
             this.pnlRightCard.Controls.Add(this.lblStat3Value);
             this.pnlRightCard.Controls.Add(this.lblStat3Title);
@@ -192,11 +237,12 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.pnlRightCard.Controls.Add(this.lblStat1Value);
             this.pnlRightCard.Controls.Add(this.lblStat1Title);
             this.pnlRightCard.Controls.Add(this.lblRightTitle);
-            this.pnlRightCard.Location = new System.Drawing.Point(695, 202);
+            this.pnlRightCard.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlRightCard.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
             this.pnlRightCard.Name = "pnlRightCard";
             this.pnlRightCard.Padding = new System.Windows.Forms.Padding(20);
-            this.pnlRightCard.Size = new System.Drawing.Size(305, 440);
-            this.pnlRightCard.TabIndex = 5;
+            this.pnlRightCard.Size = new System.Drawing.Size(303, 470);
+            this.pnlRightCard.TabIndex = 1;
             // 
             // lblRightTitle
             // 
@@ -229,7 +275,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.lblStat1Value.Name = "lblStat1Value";
             this.lblStat1Value.Size = new System.Drawing.Size(42, 32);
             this.lblStat1Value.TabIndex = 2;
-            this.lblStat1Value.Text = "$0";
+            this.lblStat1Value.Text = "₱0";
             // 
             // lblStat2Title
             // 
@@ -280,14 +326,14 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(244, 247, 251);
-            this.Controls.Add(this.pnlRightCard);
-            this.Controls.Add(this.pnlLeftCard);
+            this.Controls.Add(this.pnlContentSplit);
             this.Controls.Add(this.pnlKpiContainer);
             this.Controls.Add(this.lblSubtitle);
             this.Controls.Add(this.lblTitle);
             this.Name = "DashboardView";
             this.Size = new System.Drawing.Size(1030, 700);
             this.pnlKpiContainer.ResumeLayout(false);
+            this.pnlContentSplit.ResumeLayout(false);
             this.pnlLeftCard.ResumeLayout(false);
             this.pnlLeftCard.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.gridRecent)).EndInit();

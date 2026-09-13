@@ -98,7 +98,6 @@ namespace CRMS_Peguit.winforms.Views.Properties
             // 
             // btnFilterAll
             // 
-            this.btnFilterAll.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterAll.BackColor = System.Drawing.Color.FromArgb(15, 91, 158);
             this.btnFilterAll.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterAll.FlatAppearance.BorderSize = 0;
@@ -114,7 +113,6 @@ namespace CRMS_Peguit.winforms.Views.Properties
             // 
             // btnFilterAvailable
             // 
-            this.btnFilterAvailable.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterAvailable.BackColor = System.Drawing.Color.White;
             this.btnFilterAvailable.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterAvailable.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -130,7 +128,6 @@ namespace CRMS_Peguit.winforms.Views.Properties
             // 
             // btnFilterPending
             // 
-            this.btnFilterPending.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterPending.BackColor = System.Drawing.Color.White;
             this.btnFilterPending.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterPending.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);
@@ -146,7 +143,6 @@ namespace CRMS_Peguit.winforms.Views.Properties
             // 
             // btnFilterSold
             // 
-            this.btnFilterSold.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnFilterSold.BackColor = System.Drawing.Color.White;
             this.btnFilterSold.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnFilterSold.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(226, 232, 240);

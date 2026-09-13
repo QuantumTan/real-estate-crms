@@ -18,17 +18,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public LeadController()
         {
-            var connectionString =
-                Environment.GetEnvironmentVariable("CRMS_CONNECTION")
-                ?? throw new InvalidOperationException(
-                    "CRMS_CONNECTION environment variable is not set.");
-
-            var options = new DbContextOptionsBuilder<RealEstateDbContext>()
-                .UseSqlServer(connectionString)
-                .Options;
-
-            _db = new RealEstateDbContext(options, TenantId);
-            SchemaRepairService.EnsureCrmPolishColumns(_db);
+            _db = LocalDb.CreateContext(TenantId);
         }
 
         public List<Lead> GetAll()

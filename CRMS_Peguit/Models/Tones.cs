@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 
 namespace CRMS_Peguit.Models
 {
-    internal class AzureTones
+    public static class AzureTones
     {
         public static readonly Color SecondaryAzure = Color.FromArgb(24, 90, 143);  // 10% gray - Wet Slate Stone
         public static readonly Color TertiaryHarbor = Color.FromArgb(36, 94, 142);  // 20% gray - Graphite

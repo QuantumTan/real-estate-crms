@@ -1,3 +1,4 @@
+using CRMS_Peguit.infrastructure.Seeding;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms
@@ -9,45 +10,67 @@ namespace CRMS_Peguit.winforms
         [STAThread]
         static void Main(string[] args)
         {
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             ApplicationConfiguration.Initialize();
+
+            var localConnection = DbConfiguration.GetLocalConnectionString();
+            var cloudConnection = DbConfiguration.GetCloudConnectionString();
+
+            // Propagate connection string to environment so all components share the resolved value
+            if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CRMS_CONNECTION")))
+            {
+                Environment.SetEnvironmentVariable("CRMS_CONNECTION", localConnection);
+            }
+            if (!string.IsNullOrWhiteSpace(cloudConnection) &&
+                string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CRMS_CLOUD_CONNECTION")))
+            {
+                Environment.SetEnvironmentVariable("CRMS_CLOUD_CONNECTION", cloudConnection);
+            }
 
             if (args.Contains("--sync-once"))
             {
-                var localConn = Environment.GetEnvironmentVariable("CRMS_CONNECTION") ??
-                    "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
-                var cloudConn = Environment.GetEnvironmentVariable("CRMS_CLOUD_CONNECTION") ??
-                    "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713;Password=2Ni%Sz_9?J8m;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
-                using var sync = new SyncService(localConn, cloudConn);
-                sync.SyncAsync().GetAwaiter().GetResult();
+                if (!string.IsNullOrWhiteSpace(cloudConnection))
+                {
+                    using var sync = new SyncService(localConnection, cloudConnection);
+                    sync.SyncAsync().GetAwaiter().GetResult();
+                }
+                return;
+            }
+
+            if (args.Contains("--init-db"))
+            {
+                using var startupDb = LocalDb.CreateContext();
+                startupDb.Database.EnsureCreated();
+                DbSeeder.SeedTestUsersAsync(startupDb, 1).GetAwaiter().GetResult();
+                SchemaRepairService.EnsureCrmPolishColumns(startupDb);
+                Console.WriteLine("CRMS_Local database initialized and seeded successfully.");
                 return;
             }
 
             // ==================================================
-            // LOCAL DATABASE
+            // ONE-TIME SCHEMA INITIALIZATION
             // ==================================================
-
-            var localConnection =
-                Environment.GetEnvironmentVariable("CRMS_CONNECTION") ??
-                "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
+            try
+            {
+                using var startupDb = LocalDb.CreateContext();
+                startupDb.Database.EnsureCreated();
+                DbSeeder.SeedTestUsersAsync(startupDb, 1).GetAwaiter().GetResult();
+                SchemaRepairService.EnsureCrmPolishColumns(startupDb);
+            }
+            catch (Exception ex)
+            {
+                // Non-critical startup schema check
+                System.Diagnostics.Debug.WriteLine($"Startup DB init error: {ex.Message}");
+            }
 
             // ==================================================
-            // CLOUD DATABASE (MonsterASP)
+            // START BACKGROUND SYNC SERVICE (IF CLOUD CONFIGURED)
             // ==================================================
-
-            var cloudConnection =
-                Environment.GetEnvironmentVariable("CRMS_CLOUD_CONNECTION") ??
-                "Server=db66713.public.databaseasp.net;Database=db66713;User Id=db66713;Password=2Ni%Sz_9?J8m;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
-
-            // ==================================================
-            // START SYNC SERVICE
-            // ==================================================
-
-            _syncService = new SyncService(
-                localConnection,
-                cloudConnection
-            );
-
-            _syncService.Start(30);
+            if (!string.IsNullOrWhiteSpace(cloudConnection))
+            {
+                _syncService = new SyncService(localConnection, cloudConnection);
+                _syncService.Start(30);
+            }
 
             // ==================================================
             // START LOGIN FORM

@@ -377,9 +377,11 @@ FodyWeavers.xsd
 # ============================================
 
 # App settings with connection strings
-**/appsettings.json
-**/appsettings.*.json
-**/*.settings.json
+# Local and secret app settings overrides (ignore passwords)
+**/appsettings.local.json
+**/appsettings.Local.json
+**/appsettings.*.local.json
+**/appsettings.*.Local.json
 
 # Source files with hardcoded DB connections
 **/Program.cs
@@ -408,6 +410,10 @@ FodyWeavers.xsd
 # Local SMTP credentials
 **/smtp.local.json
 **/smtp.*.local.json
+
+# Local Database credentials
+**/db.local.json
+**/db.*.local.json
 
 # User secrets
 **/secrets.json

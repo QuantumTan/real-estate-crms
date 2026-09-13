@@ -1,3 +1,4 @@
+using CRMS_Peguit.winforms.Models.Services;
 using CRMS_Peguit.winforms.Controllers;
 
 namespace CRMS_Peguit.winforms.Views.Shared
@@ -20,10 +21,26 @@ namespace CRMS_Peguit.winforms.Views.Shared
             _agents = agents ?? new List<AgentPickerItem>();
             InitializeComponent();
 
-            lblRecord.Text = $"Record: {recordTitle}";
+            ApplyTheme();
+
+            lblRecord.Text = $"📄  {recordTitle}";
+            lblAgentCount.Text = _agents.Count > 0 ? $"{_agents.Count} agent{(_agents.Count == 1 ? "" : "s")} available" : "No agents found";
+
             PopulateAgents(currentAgentId);
 
             btnSave.Click += BtnSaveClick;
+        }
+
+        private void ApplyTheme()
+        {
+            UiRadiusHelper.StyleButton(btnSave, 8);
+            UiRadiusHelper.StyleButton(btnCancel, 8);
+            UiRadiusHelper.ApplyRoundedCorners(pnlApproveCard, 6);
+            UiRadiusHelper.ApplyRoundedCorners(lblRecord, 6);
+
+            // Hover feedback on approve card to indicate interactivity
+            pnlApproveCard.Cursor = Cursors.Hand;
+            pnlApproveCard.Click += (_, _) => chkApprove.Checked = !chkApprove.Checked;
         }
 
         private void PopulateAgents(int? currentAgentId)
@@ -70,3 +87,4 @@ namespace CRMS_Peguit.winforms.Views.Shared
         }
     }
 }
+

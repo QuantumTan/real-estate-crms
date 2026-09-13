@@ -1,4 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Linq;
+using System.Windows.Forms;
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
@@ -6,8 +13,14 @@ namespace CRMS_Peguit.winforms.Views.Properties
 {
     public partial class PropertyDetailForm : Form
     {
-        private readonly Property? _property;
+        private Property? _property;
         private readonly PropertyController? _controller;
+
+        private Panel? _pnlHeader;
+        private Panel? _pnlFooter;
+        private Panel? _pnlContent;
+        private Button? _btnEdit;
+        private Button? _btnClose;
 
         public PropertyDetailForm()
         {
@@ -19,120 +32,398 @@ namespace CRMS_Peguit.winforms.Views.Properties
             _property = property;
             _controller = controller;
             InitializeComponent();
-            BuildFormControls();
+            SetupFormProperties();
+            BuildUi();
         }
 
-        private void BuildFormControls()
+        private void SetupFormProperties()
+        {
+            Text = _property is not null ? $"Property Details - #{_property.PropertyId}" : "Property Details";
+            Size = new Size(740, 640);
+            MinimumSize = new Size(620, 500);
+            StartPosition = FormStartPosition.CenterParent;
+            BackColor = Color.FromArgb(244, 247, 251);
+            DoubleBuffered = true;
+        }
+
+        private void BuildUi()
+        {
+            Controls.Clear();
+            if (_property == null || _controller == null) return;
+
+            // 1. Fixed Bottom Action Footer
+            BuildFooter();
+
+            // 2. Hero Header
+            BuildHeader();
+
+            // 3. Scrollable Content Canvas
+            BuildContent();
+
+            Resize += (_, _) => LayoutResponsiveComponents();
+            LayoutResponsiveComponents();
+        }
+
+        private void BuildHeader()
+        {
+            _pnlHeader = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 88,
+                BackColor = Color.White,
+                Padding = new Padding(24, 16, 24, 16)
+            };
+
+            _pnlHeader.Paint += (s, e) =>
+            {
+                using var pen = new Pen(UiDetailCardHelper.BorderColor, 1f);
+                e.Graphics.DrawLine(pen, 0, _pnlHeader.Height - 1, _pnlHeader.Width, _pnlHeader.Height - 1);
+            };
+
+            // Building icon bubble 🏢
+            var pnlIcon = new Panel
+            {
+                Size = new Size(52, 52),
+                Location = new Point(24, 18),
+                BackColor = Color.FromArgb(224, 242, 254) // #E0F2FE
+            };
+            pnlIcon.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                var rect = new Rectangle(0, 0, pnlIcon.Width - 1, pnlIcon.Height - 1);
+                using var path = UiRadiusHelper.CreateRoundedPath(rect, 10);
+                using var pen = new Pen(Color.FromArgb(186, 230, 253), 1f);
+                e.Graphics.DrawPath(pen, path);
+            };
+            UiRadiusHelper.ApplyRoundedCorners(pnlIcon, 10);
+
+            var lblIcon = new Label
+            {
+                Text = "🏢",
+                Font = new Font("Segoe UI Emoji", 18f),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            pnlIcon.Controls.Add(lblIcon);
+            _pnlHeader.Controls.Add(pnlIcon);
+
+            // Title & Subtitle block
+            var lblAddress = new Label
+            {
+                Text = _property!.Address,
+                Font = new Font("Segoe UI", 14f, FontStyle.Bold),
+                ForeColor = Theme.TextPrimary,
+                Location = new Point(88, 18),
+                AutoSize = true,
+                MaximumSize = new Size(380, 28)
+            };
+            _pnlHeader.Controls.Add(lblAddress);
+
+            var regDate = _property.CreatedAt != default ? _property.CreatedAt.ToString("MMM d, yyyy") : "N/A";
+            var lblMeta = new Label
+            {
+                Text = $"Property #{_property.PropertyId}   •   Listed on {regDate}",
+                Font = new Font("Segoe UI", 9f, FontStyle.Regular),
+                ForeColor = UiDetailCardHelper.LabelMutedColor,
+                Location = new Point(88, 48),
+                AutoSize = true
+            };
+            _pnlHeader.Controls.Add(lblMeta);
+
+            // Badges in Header
+            var (sBg, sFg, sStroke) = UiDetailCardHelper.GetStatusColors(_property.Status);
+            var statusBadge = UiDetailCardHelper.CreatePillBadge(_property.Status, sBg, sFg, sStroke);
+            statusBadge.Name = "headerStatusBadge";
+            _pnlHeader.Controls.Add(statusBadge);
+
+            var typeBadge = UiDetailCardHelper.CreatePillBadge(
+                string.IsNullOrWhiteSpace(_property.PropertyType) ? "Property" : _property.PropertyType,
+                Color.FromArgb(241, 245, 249),
+                Color.FromArgb(51, 65, 85),
+                Color.FromArgb(203, 213, 225));
+            typeBadge.Name = "headerTypeBadge";
+            _pnlHeader.Controls.Add(typeBadge);
+
+            Controls.Add(_pnlHeader);
+        }
+
+        private void BuildFooter()
+        {
+            _pnlFooter = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 62,
+                BackColor = Color.White,
+                Padding = new Padding(24, 12, 24, 12)
+            };
+
+            _pnlFooter.Paint += (s, e) =>
+            {
+                using var pen = new Pen(UiDetailCardHelper.BorderColor, 1f);
+                e.Graphics.DrawLine(pen, 0, 0, _pnlFooter.Width, 0);
+            };
+
+            // Close Button
+            _btnClose = new Button
+            {
+                Text = "Close",
+                Size = new Size(88, 36),
+                BackColor = Color.FromArgb(241, 245, 249),
+                ForeColor = Color.FromArgb(30, 41, 59),
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                DialogResult = DialogResult.OK
+            };
+            UiRadiusHelper.StyleButton(_btnClose, 8);
+            UiRadiusHelper.AttachHoverFeedback(_btnClose, Color.FromArgb(241, 245, 249), Color.FromArgb(226, 232, 240));
+            _pnlFooter.Controls.Add(_btnClose);
+
+            // Edit Button (if permitted)
+            bool canEdit = _property is not null && RbacService.CanEditRecord(_property.ListedByAgentId, _property.CreatedByUserId);
+            if (canEdit)
+            {
+                _btnEdit = new Button
+                {
+                    Text = "✏️ Edit Property",
+                    Size = new Size(130, 36),
+                    BackColor = Theme.Primary,
+                    ForeColor = Color.White,
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
+                };
+                UiRadiusHelper.StyleButton(_btnEdit, 8);
+                UiRadiusHelper.AttachHoverFeedback(_btnEdit, Theme.Primary, Theme.PrimaryDark);
+                _btnEdit.Click += BtnEditClick;
+                _pnlFooter.Controls.Add(_btnEdit);
+            }
+
+            AcceptButton = _btnClose;
+            CancelButton = _btnClose;
+            Controls.Add(_pnlFooter);
+        }
+
+        private void BuildContent()
+        {
+            _pnlContent = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                BackColor = Color.FromArgb(244, 247, 251),
+                Padding = new Padding(24, 18, 24, 18)
+            };
+
+            int currentY = 16;
+
+            // --- Card 1: Valuation Hero Banner ---
+            var cardPrice = CreateCardPanel(ref currentY);
+            var pnlPriceHero = new Panel
+            {
+                Height = 64,
+                Dock = DockStyle.Top,
+                BackColor = Color.FromArgb(240, 253, 244), // #F0FDF4
+                Padding = new Padding(18, 10, 18, 10)
+            };
+            pnlPriceHero.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                var rect = new Rectangle(0, 0, pnlPriceHero.Width - 1, pnlPriceHero.Height - 1);
+                using var path = UiRadiusHelper.CreateRoundedPath(rect, 8);
+                using var pen = new Pen(Color.FromArgb(187, 247, 208), 1f);
+                e.Graphics.DrawPath(pen, path);
+            };
+            UiRadiusHelper.ApplyRoundedCorners(pnlPriceHero, 8);
+
+            var lblPriceCap = new Label
+            {
+                Text = "LISTING PRICE",
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(22, 101, 52),
+                Location = new Point(14, 12),
+                AutoSize = true
+            };
+            pnlPriceHero.Controls.Add(lblPriceCap);
+
+            var lblPriceVal = new Label
+            {
+                Text = $"₱{_property!.Price:N2}",
+                Font = new Font("Segoe UI", 18f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(21, 128, 61),
+                Location = new Point(12, 28),
+                AutoSize = true
+            };
+            pnlPriceHero.Controls.Add(lblPriceVal);
+
+            var (statusBg, statusFg, statusBorder) = UiDetailCardHelper.GetStatusColors(_property.Status);
+            var badgeVal = UiDetailCardHelper.CreatePillBadge(_property.Status, statusBg, statusFg, statusBorder);
+            badgeVal.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            badgeVal.Location = new Point(pnlPriceHero.Width - badgeVal.Width - 16, 20);
+            pnlPriceHero.Controls.Add(badgeVal);
+
+            cardPrice.Controls.Add(pnlPriceHero);
+            FinalizeCardHeight(cardPrice, ref currentY);
+            _pnlContent.Controls.Add(cardPrice);
+
+            // --- Card 2: Property Specifications ---
+            var cardSpecs = CreateCardPanel(ref currentY);
+            cardSpecs.Controls.Add(UiDetailCardHelper.CreateCardHeader("🏢  Property Specifications"));
+            cardSpecs.Controls.Add(UiDetailCardHelper.CreateDivider());
+
+            cardSpecs.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                "Address", _property.Address,
+                "Property Type", string.IsNullOrWhiteSpace(_property.PropertyType) ? "Unspecified" : _property.PropertyType));
+            cardSpecs.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                "Listing Status", _property.Status,
+                "Listing Date", _property.CreatedAt != default ? _property.CreatedAt.ToString("MMMM d, yyyy") : "N/A"));
+            FinalizeCardHeight(cardSpecs, ref currentY);
+            _pnlContent.Controls.Add(cardSpecs);
+
+            // --- Card 3: Ownership & Listing Agent ---
+            var cardOwnership = CreateCardPanel(ref currentY);
+            cardOwnership.Controls.Add(UiDetailCardHelper.CreateCardHeader("👥  Ownership & Listing Agent"));
+            cardOwnership.Controls.Add(UiDetailCardHelper.CreateDivider());
+
+            var ownerName = _controller!.GetOwnerName(_property.OwnerCustomerId);
+            var agentName = _controller.GetListedAgentName(_property.ListedByAgentId);
+
+            cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                "Property Owner", ownerName ?? $"Customer #{_property.OwnerCustomerId}",
+                "Listing Agent", agentName ?? (_property.ListedByAgentId.HasValue ? $"User #{_property.ListedByAgentId.Value}" : "Unassigned")));
+            cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                "Assignment Status", _property.AssignmentStatus,
+                "Reviewed By", _property.AssignmentReviewedByUserId.HasValue ? $"User #{_property.AssignmentReviewedByUserId.Value}" : "Pending Review"));
+
+            if (!string.IsNullOrWhiteSpace(_property.AssignmentReviewNotes))
+            {
+                cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                    "Review Notes", _property.AssignmentReviewNotes));
+            }
+
+            FinalizeCardHeight(cardOwnership, ref currentY);
+            _pnlContent.Controls.Add(cardOwnership);
+
+            Controls.Add(_pnlContent);
+            _pnlContent.BringToFront();
+        }
+
+        private Panel CreateCardPanel(ref int currentY)
+        {
+            var card = new Panel
+            {
+                Location = new Point(24, currentY),
+                Width = Math.Max(500, ClientSize.Width - 48 - SystemInformation.VerticalScrollBarWidth),
+                BackColor = UiDetailCardHelper.CardBg,
+                Padding = new Padding(18, 14, 18, 14)
+            };
+
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                var rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                using var path = UiRadiusHelper.CreateRoundedPath(rect, 10);
+                using var pen = new Pen(UiDetailCardHelper.BorderColor, 1f);
+                e.Graphics.DrawPath(pen, path);
+            };
+
+            UiRadiusHelper.ApplyRoundedCorners(card, 10);
+            return card;
+        }
+
+        private void FinalizeCardHeight(Panel card, ref int currentY)
+        {
+            int totalHeight = card.Padding.Top;
+            foreach (Control c in card.Controls)
+            {
+                totalHeight += c.Height + c.Margin.Bottom;
+            }
+            totalHeight += card.Padding.Bottom + 4;
+            card.Height = totalHeight;
+
+            currentY += totalHeight + 14;
+        }
+
+        private void LayoutResponsiveComponents()
+        {
+            if (_pnlHeader != null)
+            {
+                var statusBadge = _pnlHeader.Controls["headerStatusBadge"];
+                var typeBadge = _pnlHeader.Controls["headerTypeBadge"];
+
+                int right = _pnlHeader.ClientSize.Width - 24;
+                if (statusBadge != null)
+                {
+                    statusBadge.Location = new Point(right - statusBadge.Width, 22);
+                    right -= (statusBadge.Width + 8);
+                }
+                if (typeBadge != null)
+                {
+                    typeBadge.Location = new Point(right - typeBadge.Width, 22);
+                }
+            }
+
+            if (_pnlFooter != null)
+            {
+                int right = _pnlFooter.ClientSize.Width - 24;
+                if (_btnClose != null)
+                {
+                    _btnClose.Location = new Point(right - _btnClose.Width, 13);
+                    right -= (_btnClose.Width + 10);
+                }
+                if (_btnEdit != null && _btnEdit.Visible)
+                {
+                    _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
+                }
+            }
+
+            if (_pnlContent != null)
+            {
+                int targetWidth = Math.Max(400, _pnlContent.ClientSize.Width - 48);
+                foreach (Control c in _pnlContent.Controls)
+                {
+                    if (c is Panel card)
+                    {
+                        card.Width = targetWidth;
+                    }
+                }
+            }
+        }
+
+        private void BtnEditClick(object? sender, EventArgs e)
         {
             if (_property == null || _controller == null) return;
 
-            Width = 620;
-            Height = 440;
-            StartPosition = FormStartPosition.CenterParent;
-            BackColor = Theme.Background;
-            ForeColor = Theme.TextPrimary;
-            Font = new Font("Segoe UI", 10);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            Text = $"Property #{_property.PropertyId}";
+            var owners = _controller.GetOwnerCustomers();
+            var agents = _controller.GetAgents();
 
-            int y = 20;
-            AddHeading(_property.Address, ref y);
-            AddStatusBadge(_property.Status, ref y);
+            EnsureExistingOwnerAndAgent(_property, owners, agents);
 
-            y += 10;
-            AddSectionTitle("Listing Information", ref y);
-            AddField("Type", string.IsNullOrWhiteSpace(_property.PropertyType) ? "-" : _property.PropertyType, ref y);
-            AddField("Price", _property.Price.ToString("C"), ref y);
-            AddField("Created", _property.CreatedAt.ToLocalTime().ToString("MMM d, yyyy"), ref y);
-
-            y += 10;
-            AddSectionTitle("Assignments", ref y);
-            AddField("Owner", _controller.GetOwnerName(_property.OwnerCustomerId) ?? $"Customer #{_property.OwnerCustomerId}", ref y);
-            AddField("Listed By", _controller.GetListedAgentName(_property.ListedByAgentId) ?? (_property.ListedByAgentId.HasValue ? $"User #{_property.ListedByAgentId.Value}" : "Unassigned"), ref y);
-            AddField("Assignment Review", _property.AssignmentStatus, ref y);
-
-            var btnClose = new Button
+            using var editForm = new PropertyInputForm(owners, agents, _property);
+            if (editForm.ShowDialog(this) == DialogResult.OK && editForm.Result is not null)
             {
-                Text = "Close",
-                Location = new Point(Width - 140, y + 20),
-                Size = new Size(90, 36),
-                BackColor = Theme.Primary,
-                ForeColor = Theme.Surface,
-                FlatStyle = FlatStyle.Flat,
-                DialogResult = DialogResult.OK
-            };
-            btnClose.FlatAppearance.BorderSize = 0;
-            Controls.Add(btnClose);
+                _controller.Update(editForm.Result);
+                _property = _controller.GetById(_property.PropertyId) ?? editForm.Result;
+                BuildUi();
+            }
         }
 
-        private void AddHeading(string text, ref int y)
+        private static void EnsureExistingOwnerAndAgent(
+            Property property,
+            List<CustomerPickerItem> owners,
+            List<AgentPickerItem> agents)
         {
-            Controls.Add(new Label
+            if (property.OwnerCustomerId > 0 && !owners.Any(o => o.CustomerId == property.OwnerCustomerId))
             {
-                Text = text,
-                Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                ForeColor = Theme.TextPrimary,
-                Location = new Point(20, y),
-                AutoSize = true,
-                MaximumSize = new Size(560, 0)
-            });
-            y += 60;
-        }
+                owners.Insert(0, new CustomerPickerItem(
+                    property.OwnerCustomerId,
+                    $"Customer #{property.OwnerCustomerId}",
+                    null));
+            }
 
-        private void AddStatusBadge(string? status, ref int y)
-        {
-            var color = string.Equals(status, "available", StringComparison.OrdinalIgnoreCase)
-                ? Color.MediumSeaGreen
-                : string.Equals(status, "sold", StringComparison.OrdinalIgnoreCase)
-                    ? Color.IndianRed
-                    : Color.Goldenrod;
-
-            Controls.Add(new Label
+            if (property.ListedByAgentId.HasValue && property.ListedByAgentId.Value > 0 &&
+                !agents.Any(a => a.UserId == property.ListedByAgentId.Value))
             {
-                Text = (status ?? "-").ToUpperInvariant(),
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                ForeColor = color,
-                Location = new Point(20, y),
-                AutoSize = true
-            });
-            y += 30;
-        }
-
-        private void AddSectionTitle(string text, ref int y)
-        {
-            Controls.Add(new Label
-            {
-                Text = text,
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                ForeColor = Theme.Primary,
-                Location = new Point(20, y),
-                AutoSize = true
-            });
-            y += 30;
-        }
-
-        private void AddField(string label, string value, ref int y)
-        {
-            Controls.Add(new Label
-            {
-                Text = $"{label}:",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                ForeColor = Theme.TextPrimary,
-                Location = new Point(30, y),
-                AutoSize = true
-            });
-            Controls.Add(new Label
-            {
-                Text = value,
-                Font = new Font("Segoe UI", 10),
-                ForeColor = Theme.TextPrimary,
-                Location = new Point(180, y),
-                AutoSize = true,
-                MaximumSize = new Size(380, 0)
-            });
-            y += 28;
+                agents.Insert(0, new AgentPickerItem(
+                    property.ListedByAgentId.Value,
+                    $"User #{property.ListedByAgentId.Value}",
+                    string.Empty));
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-using CRMS_Peguit.winforms.Models.Services;
+﻿using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Shared
 {
@@ -16,6 +16,8 @@ namespace CRMS_Peguit.winforms.Views.Shared
         {
             _recipientName = recipientName;
             InitializeComponent();
+            UiRadiusHelper.StyleButton(btnSend, 8);
+            UiRadiusHelper.StyleButton(btnCancel, 8);
             this.Text = $"Message {_recipientName}";
             btnSend.Click += BtnSendClick;
             txtRecipient.Text = recipientEmail ?? string.Empty;
@@ -54,3 +56,4 @@ namespace CRMS_Peguit.winforms.Views.Shared
         }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,30 +11,27 @@ namespace CRMS_Peguit.infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Add soft delete columns to existing Customers table
-            migrationBuilder.AddColumn<bool>(
-                name: "IsDeleted",
-                table: "Customers",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+            migrationBuilder.Sql(@"
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'IsDeleted')
+BEGIN
+    ALTER TABLE [Customers] ADD [IsDeleted] bit NOT NULL DEFAULT CAST(0 AS bit);
+END
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "DeletedAt",
-                table: "Customers",
-                type: "datetime2",
-                nullable: true);
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Customers') AND name = 'DeletedAt')
+BEGIN
+    ALTER TABLE [Customers] ADD [DeletedAt] datetime2 NULL;
+END
 
-            // Create index on IsDeleted for better query performance
-            migrationBuilder.CreateIndex(
-                name: "IX_Customers_IsDeleted",
-                table: "Customers",
-                column: "IsDeleted");
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('Customers') AND name = 'IX_Customers_IsDeleted')
+BEGIN
+    CREATE INDEX [IX_Customers_IsDeleted] ON [Customers] ([IsDeleted]);
+END
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Customers_TenantId",
-                table: "Customers",
-                column: "TenantId");
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('Customers') AND name = 'IX_Customers_TenantId')
+BEGIN
+    CREATE INDEX [IX_Customers_TenantId] ON [Customers] ([TenantId]);
+END
+");
         }
 
         /// <inheritdoc />

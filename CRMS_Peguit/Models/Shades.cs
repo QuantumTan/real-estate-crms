@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 
 namespace CRMS_Peguit.Models
 {
-    internal class AzureShades
+    public static class AzureShades
     {
         public static readonly Color PressedAzure = Color.FromArgb(12, 77, 130);  // 10% black - Deep Harbor
         public static readonly Color ActiveBlue = Color.FromArgb(10, 69, 116);  // 20% black - Night Water

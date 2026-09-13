@@ -1,4 +1,4 @@
-﻿namespace CRMS_Peguit.winforms.Views.Leads
+namespace CRMS_Peguit.winforms.Views.Leads
 {
     partial class LeadInputForm
     {
@@ -314,6 +314,7 @@
             // 
             // btnSave
             // 
+            btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             btnSave.BackColor = Color.FromArgb(37, 103, 156);
             btnSave.Cursor = Cursors.Hand;
             btnSave.FlatAppearance.BorderSize = 0;
@@ -329,10 +330,11 @@
             // 
             // btnCancel
             // 
+            btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             btnCancel.BackColor = Color.White;
             btnCancel.Cursor = Cursors.Hand;
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.FlatAppearance.BorderColor = Color.FromArgb(180, 198, 217);
             btnCancel.FlatStyle = FlatStyle.Flat;
             btnCancel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCancel.ForeColor = Color.FromArgb(8, 52, 87);
@@ -348,6 +350,7 @@
             AcceptButton = btnSave;
             AutoScaleDimensions = new SizeF(9F, 23F);
             AutoScaleMode = AutoScaleMode.Font;
+            AutoScroll = true;
             BackColor = Color.FromArgb(243, 247, 250);
             CancelButton = btnCancel;
             ClientSize = new Size(504, 621);
@@ -379,6 +382,7 @@
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
+            MinimumSize = new Size(504, 480);
             Name = "LeadInputForm";
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterParent;

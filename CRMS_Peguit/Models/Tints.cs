@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 
 namespace CRMS_Peguit.Models
 {
-    internal class AzureTints
+    public static class AzureTints
     {
         public static readonly Color SkylineBlue = Color.FromArgb(37, 103, 156);  // 10% white - Lake Water
         public static readonly Color BrightHarbor = Color.FromArgb(61, 120, 167);  // 20% white - Clear Sky

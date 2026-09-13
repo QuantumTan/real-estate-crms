@@ -17,17 +17,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public DealController()
         {
-            var connectionString =
-                Environment.GetEnvironmentVariable("CRMS_CONNECTION")
-                ?? throw new InvalidOperationException(
-                    "CRMS_CONNECTION environment variable is not set.");
-
-            var options = new DbContextOptionsBuilder<RealEstateDbContext>()
-                .UseSqlServer(connectionString)
-                .Options;
-
-            _db = new RealEstateDbContext(options, TenantId);
-            SchemaRepairService.EnsureCrmPolishColumns(_db);
+            _db = LocalDb.CreateContext(TenantId);
         }
 
         public List<Deal> GetAll()
@@ -64,6 +54,22 @@ namespace CRMS_Peguit.winforms.Controllers
             deal.TenantId = TenantId;
             deal.CreatedAt = DateTime.UtcNow;
 
+            // Apply defaults for commercial terms if not specified
+            if (string.IsNullOrWhiteSpace(deal.PaymentScheme))
+                deal.PaymentScheme = "Bank Financing";
+
+            if (deal.DownPaymentPercent.HasValue && !deal.DownPaymentAmount.HasValue)
+                deal.DownPaymentAmount = deal.Value * (deal.DownPaymentPercent.Value / 100m);
+
+            if (!deal.BalanceAmount.HasValue)
+                deal.BalanceAmount = deal.Value - (deal.DownPaymentAmount ?? 0);
+
+            if (string.IsNullOrWhiteSpace(deal.ContingenciesJson))
+                deal.ContingenciesJson = DealContingency.SerializeList(DealClauseLibrary.GetDefaultContingencies(deal.PaymentScheme));
+
+            if (string.IsNullOrWhiteSpace(deal.ApprovedClauseIds))
+                deal.ApprovedClauseIds = "TTL-01,TAX-01,FIN-01,TRN-01,DEF-01";
+
             _db.Deals.Add(deal);
             _db.SaveChanges();
             return deal;
@@ -82,7 +88,44 @@ namespace CRMS_Peguit.winforms.Controllers
             item.Stage = deal.Stage;
             item.ExpectedCloseDate = deal.ExpectedCloseDate;
 
+            // Structured Terms and Conditions updates
+            item.PaymentScheme = deal.PaymentScheme;
+            item.ReservationFee = deal.ReservationFee;
+            item.DownPaymentPercent = deal.DownPaymentPercent;
+            item.DownPaymentAmount = deal.DownPaymentAmount;
+            item.BalanceAmount = deal.BalanceAmount;
+            item.CgtPayer = deal.CgtPayer;
+            item.DstPayer = deal.DstPayer;
+            item.TransferTaxPayer = deal.TransferTaxPayer;
+            item.RegistrationFeePayer = deal.RegistrationFeePayer;
+            item.ContingenciesJson = deal.ContingenciesJson;
+            item.ApprovedClauseIds = deal.ApprovedClauseIds;
+            item.SpecialStipulations = deal.SpecialStipulations;
+            item.ContractSignedDate = deal.ContractSignedDate;
+
             _db.SaveChanges();
+        }
+
+        public void UpdateContingencyStatus(int dealId, int contingencyIndex, string newStatus, string? notes = null)
+        {
+            var item = _db.Deals.SingleOrDefault(x => x.DealId == dealId);
+            if (item is null) return;
+
+            var contingencies = DealContingency.DeserializeList(item.ContingenciesJson);
+            if (contingencyIndex >= 0 && contingencyIndex < contingencies.Count)
+            {
+                contingencies[contingencyIndex].Status = newStatus;
+                if (string.Equals(newStatus, "Satisfied", StringComparison.OrdinalIgnoreCase))
+                {
+                    contingencies[contingencyIndex].ResolvedAt = DateTime.UtcNow;
+                }
+                if (!string.IsNullOrWhiteSpace(notes))
+                {
+                    contingencies[contingencyIndex].Notes = notes;
+                }
+                item.ContingenciesJson = DealContingency.SerializeList(contingencies);
+                _db.SaveChanges();
+            }
         }
 
         public void Delete(Deal deal)
@@ -113,6 +156,35 @@ namespace CRMS_Peguit.winforms.Controllers
             return _db.Users
                 .AsNoTracking()
                 .ToDictionary(u => u.UserId, u => $"{u.FirstName} {u.LastName}".Trim());
+        }
+
+        public List<KeyValuePair<int, string>> GetCustomerPickerList()
+        {
+            return _db.Customers
+                .AsNoTracking()
+                .OrderBy(c => c.LastName)
+                .ThenBy(c => c.FirstName)
+                .Select(c => new KeyValuePair<int, string>(c.CustomerId, $"{c.FirstName} {c.LastName}".Trim()))
+                .ToList();
+        }
+
+        public List<KeyValuePair<int, string>> GetPropertyPickerList()
+        {
+            return _db.Properties
+                .AsNoTracking()
+                .OrderBy(p => p.Address)
+                .Select(p => new KeyValuePair<int, string>(p.PropertyId, $"{p.Address} (₱{p.Price:N0})"))
+                .ToList();
+        }
+
+        public List<KeyValuePair<int, string>> GetAgentPickerList()
+        {
+            return _db.Users
+                .AsNoTracking()
+                .Where(u => u.Status != "inactive")
+                .OrderBy(u => u.LastName)
+                .Select(u => new KeyValuePair<int, string>(u.UserId, $"{u.FirstName} {u.LastName}".Trim()))
+                .ToList();
         }
 
         public void Dispose()
