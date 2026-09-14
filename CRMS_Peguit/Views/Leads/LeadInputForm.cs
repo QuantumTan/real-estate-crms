@@ -1,4 +1,5 @@
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Leads
@@ -19,6 +20,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
             InitializeComponent();
             UiRadiusHelper.StyleButton(btnSave, 8);
             UiRadiusHelper.StyleButton(btnCancel, 8);
+            UiRadiusHelper.AttachHoverFeedback(btnCancel, Color.White, Color.FromArgb(241, 245, 249));
+            UiRadiusHelper.AttachHoverFeedback(btnSave, Theme.Primary, Theme.PrimaryDark);
             btnSave.Click += BtnSaveClick;
             LoadData();
         }
@@ -35,16 +38,13 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 txtMiddleName.Text = _existingLead.MiddleName ?? string.Empty;
                 txtLastName.Text = _existingLead.LastName;
                 txtSuffix.Text = _existingLead.Suffix ?? string.Empty;
-
                 txtEmail.Text = _existingLead.Email ?? string.Empty;
                 txtPhone.Text = _existingLead.Phone ?? string.Empty;
                 txtSource.Text = _existingLead.Source ?? string.Empty;
                 txtNotes.Text = _existingLead.Notes ?? string.Empty;
-
                 txtExpectedValue.Text = _existingLead.ExpectedValue.HasValue
                     ? _existingLead.ExpectedValue.Value.ToString("F0")
                     : string.Empty;
-
                 SelectComboValue(cmbStage, _existingLead.Stage, "new");
                 SelectComboValue(cmbPriority, _existingLead.Priority, "medium");
             }
@@ -60,37 +60,25 @@ namespace CRMS_Peguit.winforms.Views.Leads
             string firstName = txtFirstName.Text.Trim();
             string lastName = txtLastName.Text.Trim();
 
-            if (string.IsNullOrWhiteSpace(firstName))
+            if (!LeadController.ValidateLeadInput(
+                firstName,
+                lastName,
+                txtEmail.Text,
+                txtExpectedValue.Text,
+                out decimal? expectedValue,
+                out string? errorMessage,
+                out string? errorField))
             {
-                ShowValidationError("First name is required.", txtFirstName);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(lastName))
-            {
-                ShowValidationError("Last name is required.", txtLastName);
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(txtEmail.Text) &&
-                !ContactEmailService.IsValidEmail(txtEmail.Text))
-            {
-                ShowValidationError("Enter a valid email address.", txtEmail);
-                return;
-            }
-
-            decimal? expectedValue = null;
-            if (!string.IsNullOrWhiteSpace(txtExpectedValue.Text))
-            {
-                if (decimal.TryParse(txtExpectedValue.Text.Trim(), out decimal parsedVal) && parsedVal >= 0)
+                Control target = errorField switch
                 {
-                    expectedValue = parsedVal;
-                }
-                else
-                {
-                    ShowValidationError("Enter a valid expected value amount.", txtExpectedValue);
-                    return;
-                }
+                    "FirstName" => txtFirstName,
+                    "LastName" => txtLastName,
+                    "Email" => txtEmail,
+                    "ExpectedValue" => txtExpectedValue,
+                    _ => txtFirstName
+                };
+                ShowValidationError(errorMessage ?? "Validation error.", target);
+                return;
             }
 
             if (_existingLead is not null)

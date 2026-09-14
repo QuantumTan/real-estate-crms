@@ -1,0 +1,83 @@
+﻿using System;
+using System.Threading.Tasks;
+using CRMS_Peguit.winforms.Auth;
+using CRMS_Peguit.winforms.Models.Services;
+
+namespace CRMS_Peguit.winforms.Controllers
+{
+    public class LoginValidationResult
+    {
+        public bool IsValid { get; init; }
+        public string? ErrorMessage { get; init; }
+
+        public static LoginValidationResult Success() => new() { IsValid = true };
+        public static LoginValidationResult Failure(string error) => new() { IsValid = false, ErrorMessage = error };
+    }
+
+    /// <summary>
+    /// Controller managing authentication workflow, credential validation, and session lifecycle.
+    /// </summary>
+    public class AuthController
+    {
+        private readonly AuthService _authService;
+
+        public AuthController(string apiBaseUrl = "https://localhost:7259/")
+        {
+            _authService = new AuthService(apiBaseUrl);
+        }
+
+        public AuthController(AuthService authService)
+        {
+            _authService = authService;
+        }
+
+        public LoginValidationResult ValidateCredentials(string companyId, string email, string password)
+        {
+            if (string.IsNullOrWhiteSpace(companyId))
+            {
+                return LoginValidationResult.Failure("Company ID is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return LoginValidationResult.Failure("Email is required.");
+            }
+
+            if (!ContactEmailService.IsValidEmail(email.Trim()))
+            {
+                return LoginValidationResult.Failure("Enter a valid email address.");
+            }
+
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                return LoginValidationResult.Failure("Password is required.");
+            }
+
+            return LoginValidationResult.Success();
+        }
+
+        public async Task<AuthResult> LoginAsync(string companyId, string email, string password)
+        {
+            var validation = ValidateCredentials(companyId, email, password);
+            if (!validation.IsValid)
+            {
+                return new AuthResult
+                {
+                    Success = false,
+                    ErrorMessage = validation.ErrorMessage
+                };
+            }
+
+            return await _authService.LoginAsync(
+                companyId.Trim(),
+                email.Trim(),
+                password
+            );
+        }
+
+        public void SignOut()
+        {
+            CurrentSession.SignOut();
+        }
+    }
+}

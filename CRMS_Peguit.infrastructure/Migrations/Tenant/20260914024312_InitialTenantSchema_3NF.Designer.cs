@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CRMS_Peguit.infrastructure.Migrations.Tenant
 {
     [DbContext(typeof(RealEstateDbContext))]
-    [Migration("20260905101921_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260914024312_InitialTenantSchema_3NF")]
+    partial class InitialTenantSchema_3NF
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,27 +24,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("CRMS_Peguit.domain.Entities.Role", b =>
-                {
-                    b.Property<int>("RoleId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleId"));
-
-                    b.Property<string>("RoleName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
-                    b.HasKey("RoleId");
-
-                    b.ToTable("Roles");
-                });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Activity", b =>
                 {
@@ -68,9 +47,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasColumnType("int");
 
                     b.Property<int?>("RelatedLeadId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TenantId")
                         .HasColumnType("int");
 
                     b.Property<string>("Type")
@@ -112,9 +88,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.HasKey("BackupId");
 
                     b.HasIndex("PerformedByUserId");
@@ -138,9 +111,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.HasKey("CustomerId");
 
                     b.ToTable("BuyerProfiles");
@@ -157,48 +127,40 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignmentReviewNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("AssignmentReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AssignmentReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("MiddleName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int>("PersonId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Suffix")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -209,11 +171,11 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
 
                     b.HasIndex("AssignedAgentId");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("IsDeleted");
 
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("TenantId", "LastName", "FirstName");
+                    b.HasIndex("PersonId");
 
                     b.ToTable("Customers");
                 });
@@ -226,31 +188,64 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DealId"));
 
-                    b.Property<int>("AgentId")
+                    b.Property<int?>("AgentId")
                         .HasColumnType("int");
+
+                    b.Property<string>("CgtPayer")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("CommissionRate")
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<DateTime?>("ContractSignedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
 
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
+                    b.Property<decimal?>("DownPaymentPercent")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("DstPayer")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime?>("ExpectedCloseDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("PaymentScheme")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int>("PropertyId")
                         .HasColumnType("int");
+
+                    b.Property<string>("RegistrationFeePayer")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("ReservationFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SpecialStipulations")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<string>("Stage")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
+                    b.Property<string>("TransferTaxPayer")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("Value")
                         .HasColumnType("decimal(18,2)");
@@ -259,11 +254,91 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
 
                     b.HasIndex("AgentId");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("PropertyId");
 
                     b.ToTable("Deals");
+                });
+
+            modelBuilder.Entity("CRMS_Peguit.domain.entities.DealClause", b =>
+                {
+                    b.Property<int>("DealClauseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DealClauseId"));
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClauseId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ClauseText")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DealId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("DealClauseId");
+
+                    b.HasIndex("DealId");
+
+                    b.ToTable("DealClauses");
+                });
+
+            modelBuilder.Entity("CRMS_Peguit.domain.entities.DealContingency", b =>
+                {
+                    b.Property<int>("DealContingencyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DealContingencyId"));
+
+                    b.Property<string>("ContingencyName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DealId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsSatisfied")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("SatisfiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("DealContingencyId");
+
+                    b.HasIndex("DealId");
+
+                    b.ToTable("DealContingencies");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Lead", b =>
@@ -277,39 +352,49 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<int?>("AssignedAgentId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignmentReviewNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("AssignmentReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AssignmentReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int?>("ConvertedCustomerId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Email")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<decimal?>("ExpectedValue")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
-                    b.Property<string>("MiddleName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<int>("PersonId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Phone")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<string>("Priority")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Source")
                         .HasMaxLength(100)
@@ -320,13 +405,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("Suffix")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.HasKey("LeadId");
 
                     b.HasIndex("AssignedAgentId");
@@ -335,11 +413,11 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .IsUnique()
                         .HasFilter("[ConvertedCustomerId] IS NOT NULL");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("IsDeleted");
 
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("TenantId", "LastName", "FirstName");
+                    b.HasIndex("PersonId");
 
                     b.ToTable("Leads");
                 });
@@ -362,9 +440,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<DateTime?>("LogoutAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
@@ -373,6 +448,51 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.HasIndex("UserId");
 
                     b.ToTable("LoginSessions");
+                });
+
+            modelBuilder.Entity("CRMS_Peguit.domain.entities.Person", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PersonId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Suffix")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("PersonId");
+
+                    b.ToTable("Persons");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Property", b =>
@@ -388,10 +508,28 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("AssignmentReviewNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("AssignmentReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("AssignmentReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ListedByAgentId")
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ListedByAgentId")
                         .HasColumnType("int");
 
                     b.Property<int>("OwnerCustomerId")
@@ -409,10 +547,9 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.HasKey("PropertyId");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("ListedByAgentId");
 
@@ -442,9 +579,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.HasKey("ShowingDetailId");
 
                     b.HasIndex("ActivityId")
@@ -455,39 +589,25 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.ToTable("PropertyShowingDetails");
                 });
 
-            modelBuilder.Entity("CRMS_Peguit.domain.entities.Subscription", b =>
+            modelBuilder.Entity("CRMS_Peguit.domain.entities.Role", b =>
                 {
-                    b.Property<int>("SubscriptionId")
+                    b.Property<int>("RoleId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubscriptionId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoleId"));
 
-                    b.Property<decimal>("BillingAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PlanName")
+                    b.Property<string>("RoleName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<int>("TenantId")
                         .HasColumnType("int");
 
-                    b.HasKey("SubscriptionId");
+                    b.HasKey("RoleId");
 
-                    b.ToTable("Subscriptions");
+                    b.ToTable("Roles");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.SupportTicket", b =>
@@ -528,9 +648,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.HasKey("TicketId");
 
                     b.HasIndex("AssignedToUserId");
@@ -560,9 +677,6 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -590,20 +704,13 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("int");
 
                     b.Property<int>("RoleId")
                         .HasColumnType("int");
@@ -613,13 +720,9 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
                     b.HasKey("UserId");
 
-                    b.HasIndex("Email")
-                        .IsUnique();
+                    b.HasIndex("PersonId");
 
                     b.HasIndex("RoleId");
 
@@ -628,158 +731,283 @@ namespace CRMS_Peguit.infrastructure.Migrations.Tenant
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Activity", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "LoggedByAgent")
                         .WithMany()
                         .HasForeignKey("LoggedByAgentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Customer", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Customer", "RelatedCustomer")
                         .WithMany()
                         .HasForeignKey("RelatedCustomerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Lead", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Lead", "RelatedLead")
                         .WithMany()
                         .HasForeignKey("RelatedLeadId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("LoggedByAgent");
+
+                    b.Navigation("RelatedCustomer");
+
+                    b.Navigation("RelatedLead");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.BackupLog", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "PerformedByUser")
                         .WithMany()
                         .HasForeignKey("PerformedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("PerformedByUser");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.BuyerProfile", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.Customer", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Customer", "Customer")
                         .WithOne()
                         .HasForeignKey("CRMS_Peguit.domain.entities.BuyerProfile", "CustomerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Customer", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "AssignedAgent")
                         .WithMany()
                         .HasForeignKey("AssignedAgentId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CRMS_Peguit.domain.entities.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AssignedAgent");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Person");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Deal", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "Agent")
                         .WithMany()
                         .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Customer", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Property", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Property", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("CRMS_Peguit.domain.entities.DealClause", b =>
+                {
+                    b.HasOne("CRMS_Peguit.domain.entities.Deal", "Deal")
+                        .WithMany("DealClauses")
+                        .HasForeignKey("DealId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Deal");
+                });
+
+            modelBuilder.Entity("CRMS_Peguit.domain.entities.DealContingency", b =>
+                {
+                    b.HasOne("CRMS_Peguit.domain.entities.Deal", "Deal")
+                        .WithMany("Contingencies")
+                        .HasForeignKey("DealId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Deal");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Lead", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "AssignedAgent")
                         .WithMany()
                         .HasForeignKey("AssignedAgentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Customer", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Customer", "ConvertedCustomer")
                         .WithOne()
                         .HasForeignKey("CRMS_Peguit.domain.entities.Lead", "ConvertedCustomerId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CRMS_Peguit.domain.entities.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AssignedAgent");
+
+                    b.Navigation("ConvertedCustomer");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Person");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.LoginSession", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.Property", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "CreatedByUser")
                         .WithMany()
-                        .HasForeignKey("ListedByAgentId")
+                        .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Customer", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "ListedByAgent")
+                        .WithMany()
+                        .HasForeignKey("ListedByAgentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CRMS_Peguit.domain.entities.Customer", "OwnerCustomer")
                         .WithMany()
                         .HasForeignKey("OwnerCustomerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ListedByAgent");
+
+                    b.Navigation("OwnerCustomer");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.PropertyShowingDetail", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.Activity", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Activity", "Activity")
                         .WithOne()
                         .HasForeignKey("CRMS_Peguit.domain.entities.PropertyShowingDetail", "ActivityId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Property", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Property", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Activity");
+
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.SupportTicket", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "AssignedToUser")
                         .WithMany()
                         .HasForeignKey("AssignedToUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("CRMS_Peguit.domain.entities.Customer", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "RaisedByUser")
                         .WithMany()
                         .HasForeignKey("RaisedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AssignedToUser");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("RaisedByUser");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.SystemSetting", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.entities.User", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.User", "UpdatedByUser")
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("UpdatedByUser");
                 });
 
             modelBuilder.Entity("CRMS_Peguit.domain.entities.User", b =>
                 {
-                    b.HasOne("CRMS_Peguit.domain.Entities.Role", null)
+                    b.HasOne("CRMS_Peguit.domain.entities.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CRMS_Peguit.domain.entities.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Person");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("CRMS_Peguit.domain.entities.Deal", b =>
+                {
+                    b.Navigation("Contingencies");
+
+                    b.Navigation("DealClauses");
                 });
 #pragma warning restore 612, 618
         }

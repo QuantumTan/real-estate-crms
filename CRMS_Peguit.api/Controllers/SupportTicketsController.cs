@@ -33,10 +33,10 @@ namespace CRMS_Peguit.api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(SupportTicket ticket)
         {
-            var tenantResolver = HttpContext.RequestServices
-                .GetRequiredService<ITenantResolver>();
-
-            ticket.TenantId = tenantResolver.GetTenantId();
+            if (ticket.RaisedByUserId <= 0)
+            {
+                ticket.RaisedByUserId = 1;
+            }
             ticket.CreatedAt = DateTime.UtcNow;
             ticket.AssignedToUserId = null; // R23. Default state is Unassigned
 

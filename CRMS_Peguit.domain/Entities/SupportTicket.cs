@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -8,7 +6,6 @@ namespace CRMS_Peguit.domain.entities
     {
         public int TicketId { get; set; }
 
-        public int TenantId { get; set; }
         public int CustomerId { get; set; }
         public int RaisedByUserId { get; set; }
         public int? AssignedToUserId { get; set; }
@@ -17,5 +14,9 @@ namespace CRMS_Peguit.domain.entities
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? ResolvedAt { get; set; }
+
+        public virtual Customer Customer { get; set; } = null!;
+        public virtual User RaisedByUser { get; set; } = null!;
+        public virtual User? AssignedToUser { get; set; }
     }
 }

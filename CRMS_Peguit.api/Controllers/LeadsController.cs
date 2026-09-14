@@ -35,10 +35,22 @@ namespace CRMS_Peguit.api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Lead lead)
         {
-            var tenantResolver = HttpContext.RequestServices
-                .GetRequiredService<ITenantResolver>();
-
-            lead.TenantId = tenantResolver.GetTenantId();
+            if (lead.PersonId <= 0 && lead.Person == null)
+            {
+                lead.Person = new CRMS_Peguit.domain.entities.Person
+                {
+                    FirstName = lead.FirstName,
+                    MiddleName = lead.MiddleName,
+                    LastName = lead.LastName,
+                    Suffix = lead.Suffix,
+                    Email = lead.Email,
+                    Phone = lead.Phone
+                };
+            }
+            if (lead.CreatedByUserId <= 0)
+            {
+                lead.CreatedByUserId = 1;
+            }
             lead.CreatedAt = DateTime.UtcNow;
             lead.IsDeleted = false;
             lead.DeletedAt = null;
@@ -93,16 +105,11 @@ namespace CRMS_Peguit.api.Controllers
 
             var customer = new Customer
             {
-                TenantId = item.TenantId,
-                FirstName = item.FirstName,
-                MiddleName = item.MiddleName,
-                LastName = item.LastName,
-                Suffix = item.Suffix,
-                Email = item.Email,
-                Phone = item.Phone,
+                PersonId = item.PersonId,
                 Type = "buyer",
                 Status = "active",
                 AssignedAgentId = item.AssignedAgentId,
+                CreatedByUserId = item.CreatedByUserId,
                 AssignmentStatus = item.AssignmentStatus,
                 AssignmentReviewedByUserId = item.AssignmentReviewedByUserId,
                 AssignmentReviewedAt = item.AssignmentReviewedAt,

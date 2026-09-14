@@ -257,19 +257,19 @@ namespace CRMS_Peguit.winforms.Views.Properties
             badgeVal.Location = new Point(pnlPriceHero.Width - badgeVal.Width - 16, 20);
             pnlPriceHero.Controls.Add(badgeVal);
 
-            cardPrice.Controls.Add(pnlPriceHero);
+            UiDetailCardHelper.AddControl(cardPrice, pnlPriceHero);
             FinalizeCardHeight(cardPrice, ref currentY);
             _pnlContent.Controls.Add(cardPrice);
 
             // --- Card 2: Property Specifications ---
             var cardSpecs = CreateCardPanel(ref currentY);
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateCardHeader("🏢  Property Specifications"));
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateCardHeader("🏢  Property Specifications"));
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateDivider());
 
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateKeyValueRow(
                 "Address", _property.Address,
                 "Property Type", string.IsNullOrWhiteSpace(_property.PropertyType) ? "Unspecified" : _property.PropertyType));
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateKeyValueRow(
                 "Listing Status", _property.Status,
                 "Listing Date", _property.CreatedAt != default ? _property.CreatedAt.ToString("MMMM d, yyyy") : "N/A"));
             FinalizeCardHeight(cardSpecs, ref currentY);
@@ -277,22 +277,22 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
             // --- Card 3: Ownership & Listing Agent ---
             var cardOwnership = CreateCardPanel(ref currentY);
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateCardHeader("👥  Ownership & Listing Agent"));
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateCardHeader("👥  Ownership & Listing Agent"));
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateDivider());
 
             var ownerName = _controller!.GetOwnerName(_property.OwnerCustomerId);
             var agentName = _controller.GetListedAgentName(_property.ListedByAgentId);
 
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateKeyValueRow(
                 "Property Owner", ownerName ?? $"Customer #{_property.OwnerCustomerId}",
                 "Listing Agent", agentName ?? (_property.ListedByAgentId.HasValue ? $"User #{_property.ListedByAgentId.Value}" : "Unassigned")));
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateKeyValueRow(
                 "Assignment Status", _property.AssignmentStatus,
                 "Reviewed By", _property.AssignmentReviewedByUserId.HasValue ? $"User #{_property.AssignmentReviewedByUserId.Value}" : "Pending Review"));
 
             if (!string.IsNullOrWhiteSpace(_property.AssignmentReviewNotes))
             {
-                cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateKeyValueRow(
                     "Review Notes", _property.AssignmentReviewNotes));
             }
 

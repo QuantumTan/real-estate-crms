@@ -27,6 +27,14 @@ namespace CRMS_Peguit.winforms
                 Environment.SetEnvironmentVariable("CRMS_CLOUD_CONNECTION", cloudConnection);
             }
 
+            if (args.Contains("--verify-assets"))
+            {
+                var logo = AppBrand.Logo;
+                var icon = AppBrand.AppIcon;
+                Console.WriteLine($"[VERIFY] Logo loaded: {logo != null}, Size: {logo?.Width}x{logo?.Height}, Icon loaded: {icon != null}");
+                return;
+            }
+
             if (args.Contains("--sync-once"))
             {
                 if (!string.IsNullOrWhiteSpace(cloudConnection))

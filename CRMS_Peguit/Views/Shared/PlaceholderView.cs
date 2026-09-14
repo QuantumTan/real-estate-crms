@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using CRMS_Peguit.winforms.Models.Services;
@@ -66,7 +66,7 @@ namespace CRMS_Peguit.winforms.Views.Shared
             var lblIcon = new Label
             {
                 Text = icon,
-                Font = new Font("Segoe UI", 26f),
+                Font = new Font("Segoe UI Emoji", 26f),
                 ForeColor = Color.FromArgb(15, 91, 158),
                 BackColor = Color.FromArgb(238, 242, 255),
                 Size = new Size(68, 68),
@@ -139,7 +139,7 @@ namespace CRMS_Peguit.winforms.Views.Shared
             UiRadiusHelper.StyleButton(_btnPrimaryAction, 8);
             _btnPrimaryAction.Click += (_, _) =>
             {
-                if (FindForm() is Form1 form)
+                if (FindForm() is MainForm form)
                 {
                     form.NavigateTo("leads");
                 }
@@ -244,7 +244,7 @@ namespace CRMS_Peguit.winforms.Views.Shared
             var lblIcon = new Label
             {
                 Text = icon,
-                Font = new Font("Segoe UI", 13f),
+                Font = new Font("Segoe UI Emoji", 13f),
                 Location = new Point(12, 10),
                 Size = new Size(28, 28),
                 TextAlign = ContentAlignment.MiddleLeft

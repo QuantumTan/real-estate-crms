@@ -5,6 +5,7 @@ namespace CRMS_Peguit.winforms
         private System.ComponentModel.IContainer components = null;
 
         private System.Windows.Forms.Panel pnlHero = null!;
+        private System.Windows.Forms.PictureBox picBrandLogo = null!;
         private System.Windows.Forms.Label lblBrandLogo = null!;
         private System.Windows.Forms.Label lblBrandSub = null!;
         private System.Windows.Forms.Label lblHeroTitle = null!;
@@ -42,6 +43,7 @@ namespace CRMS_Peguit.winforms
         private void InitializeComponent()
         {
             this.pnlHero = new System.Windows.Forms.Panel();
+            this.picBrandLogo = new System.Windows.Forms.PictureBox();
             this.lblBrandLogo = new System.Windows.Forms.Label();
             this.lblBrandSub = new System.Windows.Forms.Label();
             this.lblHeroTitle = new System.Windows.Forms.Label();
@@ -61,6 +63,7 @@ namespace CRMS_Peguit.winforms
             this.lblError = new System.Windows.Forms.Label();
             this.btnLogin = new System.Windows.Forms.Button();
             this.lblLogo = new System.Windows.Forms.Label();
+            ((System.ComponentModel.ISupportInitialize)(this.picBrandLogo)).BeginInit();
             this.pnlHero.SuspendLayout();
             this.pnlForm.SuspendLayout();
             this.SuspendLayout();
@@ -68,6 +71,7 @@ namespace CRMS_Peguit.winforms
             // pnlHero
             // 
             this.pnlHero.BackColor = System.Drawing.Color.FromArgb(6, 29, 51);
+            this.pnlHero.Controls.Add(this.picBrandLogo);
             this.pnlHero.Controls.Add(this.lblBrandLogo);
             this.pnlHero.Controls.Add(this.lblBrandSub);
             this.pnlHero.Controls.Add(this.lblHeroTitle);
@@ -79,26 +83,36 @@ namespace CRMS_Peguit.winforms
             this.pnlHero.Size = new System.Drawing.Size(390, 600);
             this.pnlHero.TabIndex = 0;
             // 
+            // picBrandLogo
+            // 
+            this.picBrandLogo.BackColor = System.Drawing.Color.Transparent;
+            this.picBrandLogo.Location = new System.Drawing.Point(40, 36);
+            this.picBrandLogo.Name = "picBrandLogo";
+            this.picBrandLogo.Size = new System.Drawing.Size(42, 42);
+            this.picBrandLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.picBrandLogo.TabIndex = 0;
+            this.picBrandLogo.TabStop = false;
+            // 
             // lblBrandLogo
             // 
             this.lblBrandLogo.AutoSize = true;
-            this.lblBrandLogo.Font = new System.Drawing.Font("Segoe UI", 15F, System.Drawing.FontStyle.Bold);
+            this.lblBrandLogo.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
             this.lblBrandLogo.ForeColor = System.Drawing.Color.White;
-            this.lblBrandLogo.Location = new System.Drawing.Point(40, 40);
+            this.lblBrandLogo.Location = new System.Drawing.Point(88, 34);
             this.lblBrandLogo.Name = "lblBrandLogo";
-            this.lblBrandLogo.Size = new System.Drawing.Size(95, 28);
-            this.lblBrandLogo.TabIndex = 0;
-            this.lblBrandLogo.Text = "⛛ NEXA";
+            this.lblBrandLogo.Size = new System.Drawing.Size(76, 30);
+            this.lblBrandLogo.TabIndex = 1;
+            this.lblBrandLogo.Text = "NEXA";
             // 
             // lblBrandSub
             // 
             this.lblBrandSub.AutoSize = true;
             this.lblBrandSub.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblBrandSub.ForeColor = System.Drawing.Color.FromArgb(140, 163, 186);
-            this.lblBrandSub.Location = new System.Drawing.Point(43, 70);
+            this.lblBrandSub.Location = new System.Drawing.Point(90, 63);
             this.lblBrandSub.Name = "lblBrandSub";
             this.lblBrandSub.Size = new System.Drawing.Size(76, 13);
-            this.lblBrandSub.TabIndex = 1;
+            this.lblBrandSub.TabIndex = 2;
             this.lblBrandSub.Text = "CRM SYSTEM";
             // 
             // lblHeroTitle
@@ -319,6 +333,7 @@ namespace CRMS_Peguit.winforms
             this.Name = "LoginForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "NEXA CRM SYSTEM — Sign In";
+            ((System.ComponentModel.ISupportInitialize)(this.picBrandLogo)).EndInit();
             this.pnlHero.ResumeLayout(false);
             this.pnlHero.PerformLayout();
             this.pnlForm.ResumeLayout(false);

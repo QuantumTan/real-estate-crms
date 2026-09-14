@@ -13,12 +13,13 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 {
     public partial class CampaignsView : UserControl
     {
+        private readonly CampaignController _campaignController;
         private readonly LeadController _leadController;
-        private List<string> _activeSources = new();
         private string _selectedSource = "All";
 
         public CampaignsView()
         {
+            _campaignController = new CampaignController();
             _leadController = new LeadController();
             InitializeComponent();
             ApplyModernStyling();
@@ -44,60 +45,26 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 
         private void LoadData()
         {
-            var leads = _leadController.GetAll();
+            var summary = _campaignController.GetCampaignSummary(_selectedSource);
 
-            var sources = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "Facebook Ad",
-                "Referral",
-                "Walk-in",
-                "Website",
-                "Property Portal"
-            };
+            lblStatChannels.Text = $"{summary.ActiveChannelCount} Active Lead Channels";
+            lblStatTotalLeads.Text = $"{summary.TotalLeads} Total Leads Attributed";
+            lblStatConversion.Text = summary.TopChannelText;
 
-            foreach (var l in leads)
-            {
-                if (!string.IsNullOrWhiteSpace(l.Source))
-                {
-                    sources.Add(l.Source.Trim());
-                }
-            }
-
-            foreach (var s in _activeSources)
-            {
-                sources.Add(s);
-            }
-
-            _activeSources = sources.OrderBy(s => s).ToList();
-
-            int totalLeads = leads.Count;
-            lblStatChannels.Text = $"{_activeSources.Count} Active Lead Channels";
-            lblStatTotalLeads.Text = $"{totalLeads} Total Leads Attributed";
-
-            var topSource = leads
-                .Where(l => !string.IsNullOrWhiteSpace(l.Source))
-                .GroupBy(l => l.Source!.Trim(), StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(g => g.Count())
-                .FirstOrDefault();
-
-            lblStatConversion.Text = topSource != null
-                ? $"Top Channel: {topSource.Key} ({topSource.Count()} leads)"
-                : "Top Channel: None";
-
-            BuildFilterPills(leads);
-            DisplayLeads(leads);
+            BuildFilterPills(summary);
+            DisplayLeads(summary.FilteredLeads);
         }
 
-        private void BuildFilterPills(List<Lead> leads)
+        private void BuildFilterPills(CRMS_Peguit.winforms.Models.ViewModels.CampaignSummaryViewModel summary)
         {
             pnlSourcePills.Controls.Clear();
 
-            var btnAll = CreatePillButton($"All ({leads.Count})", "All");
+            var btnAll = CreatePillButton($"All ({summary.TotalLeads})", "All");
             pnlSourcePills.Controls.Add(btnAll);
 
-            foreach (var source in _activeSources)
+            foreach (var source in summary.Channels)
             {
-                int count = leads.Count(l => string.Equals(l.Source?.Trim(), source, StringComparison.OrdinalIgnoreCase));
+                int count = summary.ChannelCounts.TryGetValue(source, out int c) ? c : 0;
                 var btn = CreatePillButton($"{source} ({count})", source);
                 pnlSourcePills.Controls.Add(btn);
             }
@@ -134,11 +101,9 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             return btn;
         }
 
-        private void DisplayLeads(List<Lead> allLeads)
+        private void DisplayLeads(List<Lead> filteredLeads)
         {
-            var filtered = string.Equals(_selectedSource, "All", StringComparison.OrdinalIgnoreCase)
-                ? allLeads
-                : allLeads.Where(l => string.Equals(l.Source?.Trim(), _selectedSource, StringComparison.OrdinalIgnoreCase)).ToList();
+            var filtered = filteredLeads;
 
             gridLeads.Columns.Clear();
 
@@ -261,10 +226,7 @@ namespace CRMS_Peguit.winforms.Views.Marketing
                 string newSource = txtName.Text.Trim();
                 if (!string.IsNullOrWhiteSpace(newSource))
                 {
-                    if (!_activeSources.Contains(newSource, StringComparer.OrdinalIgnoreCase))
-                    {
-                        _activeSources.Add(newSource);
-                    }
+                    _campaignController.AddCustomChannel(newSource);
                     _selectedSource = newSource;
                     LoadData();
 

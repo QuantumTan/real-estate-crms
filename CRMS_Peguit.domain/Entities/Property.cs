@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -8,9 +6,8 @@ namespace CRMS_Peguit.domain.entities
     {
         public int PropertyId { get; set; }
 
-        public int TenantId { get; set; }
         public int OwnerCustomerId { get; set; }
-        public int? CreatedByUserId { get; set; }
+        public int CreatedByUserId { get; set; }
         public int? ListedByAgentId { get; set; }
         public string Address { get; set; } = string.Empty;
         public string? PropertyType { get; set; }
@@ -21,5 +18,9 @@ namespace CRMS_Peguit.domain.entities
         public DateTime? AssignmentReviewedAt { get; set; }
         public string? AssignmentReviewNotes { get; set; }
         public DateTime CreatedAt { get; set; }
+
+        public virtual Customer OwnerCustomer { get; set; } = null!;
+        public virtual User CreatedByUser { get; set; } = null!;
+        public virtual User? ListedByAgent { get; set; }
     }
 }

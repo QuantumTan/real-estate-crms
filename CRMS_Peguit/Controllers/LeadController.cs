@@ -33,12 +33,12 @@ namespace CRMS_Peguit.winforms.Controllers
                 query = query.Where(l =>
                     (l.AssignedAgentId.HasValue && l.AssignedAgentId.Value > 0)
                         ? l.AssignedAgentId.Value == currentUserId
-                        : (l.CreatedByUserId.HasValue && l.CreatedByUserId.Value == currentUserId));
+                        : l.CreatedByUserId == currentUserId);
             }
 
             return query
-                .OrderBy(x => x.LastName)
-                .ThenBy(x => x.FirstName)
+                .OrderBy(x => x.Person.LastName)
+                .ThenBy(x => x.Person.FirstName)
                 .ToList();
         }
 
@@ -58,9 +58,20 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Lead Add(Lead lead)
         {
-            lead.TenantId = TenantId;
+            if (lead.PersonId <= 0 && lead.Person == null)
+            {
+                lead.Person = new Person
+                {
+                    FirstName = lead.FirstName,
+                    MiddleName = lead.MiddleName,
+                    LastName = lead.LastName,
+                    Suffix = lead.Suffix,
+                    Email = lead.Email,
+                    Phone = lead.Phone
+                };
+            }
             lead.CreatedAt = DateTime.UtcNow;
-            lead.CreatedByUserId = CurrentSession.UserId;
+            lead.CreatedByUserId = CurrentSession.UserId > 0 ? CurrentSession.UserId : 1;
             lead.IsDeleted = false;
             lead.DeletedAt = null;
 
@@ -86,7 +97,9 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public void Update(Lead lead)
         {
-            var item = _db.Leads.SingleOrDefault(x => x.LeadId == lead.LeadId);
+            var item = _db.Leads
+                .Include(l => l.Person)
+                .SingleOrDefault(x => x.LeadId == lead.LeadId);
             if (item is null) return;
 
             item.FirstName = lead.FirstName;
@@ -158,7 +171,8 @@ namespace CRMS_Peguit.winforms.Controllers
 
             var customer = new Customer
             {
-                TenantId = item.TenantId,
+                PersonId = item.PersonId,
+                CreatedByUserId = item.CreatedByUserId > 0 ? item.CreatedByUserId : (CurrentSession.UserId > 0 ? CurrentSession.UserId : 1),
                 FirstName = item.FirstName,
                 MiddleName = item.MiddleName,
                 LastName = item.LastName,
@@ -229,6 +243,11 @@ namespace CRMS_Peguit.winforms.Controllers
             var oldAgentId = item.AssignedAgentId;
             var newAgentId = agentId <= 0 ? null : agentId;
 
+            if (newAgentId.HasValue && !_db.Users.Any(u => u.UserId == newAgentId.Value))
+            {
+                newAgentId = null;
+            }
+
             item.AssignedAgentId = newAgentId;
             item.AssignmentStatus = approve ? "approved" : "pending_review";
             item.AssignmentReviewedByUserId = CurrentSession.UserId;
@@ -264,8 +283,8 @@ namespace CRMS_Peguit.winforms.Controllers
             return _db.Users
                 .AsNoTracking()
                 .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
-                .OrderBy(u => u.LastName)
-                .ThenBy(u => u.FirstName)
+                .OrderBy(u => u.Person.LastName)
+                .ThenBy(u => u.Person.FirstName)
                 .AsEnumerable()
                 .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
                 .ToList();
@@ -300,19 +319,50 @@ namespace CRMS_Peguit.winforms.Controllers
 
         private void LogActivity(string type, int? leadId, int? customerId, string notes)
         {
-            if (CurrentSession.UserId <= 0) return;
-
-            _db.Activities.Add(new Activity
+            try
             {
-                TenantId = TenantId,
-                Type = type,
-                RelatedLeadId = leadId,
-                RelatedCustomerId = customerId,
-                LoggedByAgentId = CurrentSession.UserId,
-                Notes = notes,
-                ActivityDate = DateTime.UtcNow
-            });
-            _db.SaveChanges();
+                if (CurrentSession.UserId <= 0) return;
+
+                int agentId = CurrentSession.UserId;
+                if (!_db.Users.Any(u => u.UserId == agentId))
+                {
+                    var userByEmail = CurrentSession.CurrentUser != null && !string.IsNullOrEmpty(CurrentSession.CurrentUser.Email)
+                        ? _db.Users.FirstOrDefault(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
+                        : null;
+
+                    if (userByEmail != null)
+                    {
+                        agentId = userByEmail.UserId;
+                    }
+                    else
+                    {
+                        var fallback = _db.Users.Select(u => u.UserId).FirstOrDefault();
+                        if (fallback > 0)
+                        {
+                            agentId = fallback;
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+                }
+
+                _db.Activities.Add(new Activity
+                {
+                    Type = type,
+                    RelatedLeadId = leadId,
+                    RelatedCustomerId = customerId,
+                    LoggedByAgentId = agentId,
+                    Notes = notes,
+                    ActivityDate = DateTime.UtcNow
+                });
+                _db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LogActivity error ({type}): {ex.Message}");
+            }
         }
 
         private static void ApplyAssignmentDefaults(Lead lead)
@@ -320,6 +370,57 @@ namespace CRMS_Peguit.winforms.Controllers
             // R23. Default state is Unassigned — never auto-assigned to creator.
             lead.AssignedAgentId = null;
             lead.AssignmentStatus = "pending_review";
+        }
+
+        public static bool ValidateLeadInput(
+            string firstName,
+            string lastName,
+            string? email,
+            string? expectedValueText,
+            out decimal? parsedExpectedValue,
+            out string? errorMessage,
+            out string? errorField)
+        {
+            parsedExpectedValue = null;
+            errorField = null;
+
+            if (string.IsNullOrWhiteSpace(firstName))
+            {
+                errorMessage = "First name is required.";
+                errorField = "FirstName";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(lastName))
+            {
+                errorMessage = "Last name is required.";
+                errorField = "LastName";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(email) && !ContactEmailService.IsValidEmail(email.Trim()))
+            {
+                errorMessage = "Enter a valid email address.";
+                errorField = "Email";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(expectedValueText))
+            {
+                if (decimal.TryParse(expectedValueText.Trim(), out decimal parsedVal) && parsedVal >= 0)
+                {
+                    parsedExpectedValue = parsedVal;
+                }
+                else
+                {
+                    errorMessage = "Enter a valid expected value amount.";
+                    errorField = "ExpectedValue";
+                    return false;
+                }
+            }
+
+            errorMessage = null;
+            return true;
         }
 
         public void Dispose() => _db.Dispose();

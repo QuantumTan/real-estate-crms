@@ -14,7 +14,12 @@ namespace CRMS_Peguit.winforms.Views.Leads
         private readonly LeadController _controller;
         private string _filterStage = "All";
         private Button? _btnExport;
-        private Label _lblEmptyState = null!;
+        private Panel _pnlEmptyState = null!;
+        private int _hoverRowIndex = -1;
+        private string _sortColumn = "Name";
+        private SortOrder _sortDirection = SortOrder.Ascending;
+        private bool _isSkeletonLoading = false;
+        private System.Windows.Forms.Timer? _skeletonTimer;
 
         public LeadsView()
         {
@@ -25,7 +30,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
             ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(animate: false);
 
             this.Load += (_, _) => LayoutToolbar();
             this.Resize += (_, _) => LayoutToolbar();
@@ -33,17 +38,81 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
         private void InitEmptyState()
         {
-            _lblEmptyState = new Label
+            _pnlEmptyState = new Panel
             {
-                Text = "🔍 No leads match your search or filter criteria.\nTry adjusting your search terms or filter.",
-                Font = new Font("Segoe UI", 11f),
-                ForeColor = Theme.TextSecondary,
-                TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
+                BackColor = Color.White,
                 Visible = false
             };
-            pnlCard.Controls.Add(_lblEmptyState);
-            _lblEmptyState.BringToFront();
+
+            var innerPanel = new Panel
+            {
+                Size = new Size(420, 240),
+                BackColor = Color.Transparent
+            };
+
+            var lblIcon = new Label
+            {
+                Text = "🔍",
+                Font = new Font("Segoe UI Emoji", 34f),
+                ForeColor = Color.FromArgb(148, 163, 184),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(70, 70),
+                Location = new Point((420 - 70) / 2, 8)
+            };
+
+            var lblTitle = new Label
+            {
+                Text = "No leads found",
+                Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(400, 28),
+                Location = new Point(10, 85)
+            };
+
+            var lblDesc = new Label
+            {
+                Text = "We couldn't find any leads matching your criteria.\nTry searching with different terms or selecting another stage.",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(400, 42),
+                Location = new Point(10, 116)
+            };
+
+            var btnReset = new Button
+            {
+                Text = "Clear Filters & Search",
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 91, 158),
+                BackColor = Color.FromArgb(239, 246, 255),
+                Cursor = Cursors.Hand,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(180, 36),
+                Location = new Point((420 - 180) / 2, 172)
+            };
+            btnReset.FlatAppearance.BorderColor = Color.FromArgb(191, 219, 254);
+            UiRadiusHelper.StyleButton(btnReset, 8);
+            btnReset.Click += (_, _) =>
+            {
+                txtSearch.Clear();
+                SetFilter("All");
+            };
+
+            innerPanel.Controls.Add(lblIcon);
+            innerPanel.Controls.Add(lblTitle);
+            innerPanel.Controls.Add(lblDesc);
+            innerPanel.Controls.Add(btnReset);
+
+            _pnlEmptyState.Controls.Add(innerPanel);
+            _pnlEmptyState.Resize += (_, _) =>
+            {
+                innerPanel.Location = new Point((_pnlEmptyState.Width - innerPanel.Width) / 2, Math.Max(20, (_pnlEmptyState.Height - innerPanel.Height) / 2));
+            };
+
+            pnlCard.Controls.Add(_pnlEmptyState);
+            _pnlEmptyState.BringToFront();
         }
 
         private void ApplyStyling()
@@ -61,7 +130,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
         {
             btnAdd.Visible = RbacService.CanCreateSalesRecord;
             btnAdd.Click += BtnAddClick;
-            txtSearch.TextChanged += (_, _) => RefreshGrid();
+            txtSearch.TextChanged += (_, _) => RefreshGrid(animate: false);
 
             if (RbacService.CanExportData)
             {
@@ -88,15 +157,38 @@ namespace CRMS_Peguit.winforms.Views.Leads
             btnFilterQualified.Click += (_, _) => SetFilter("Qualified");
             btnFilterConverted.Click += (_, _) => SetFilter("Converted");
 
-            // Modern Grid Styling & Search Padding
-            UiGridHelper.ApplyModernGridStyle(grid, 52);
-            UiRadiusHelper.SetPadding(txtSearch, 10, 10);
+            // Modern Grid Styling (56px row height for optimal readability and touch targets)
+            UiGridHelper.ApplyModernGridStyle(grid, 56);
+            UiRadiusHelper.SetPadding(txtSearch, 12, 12);
 
             grid.CellPainting += Grid_CellPainting;
             grid.CellContentClick += GridCellContentClick;
+            grid.ColumnHeaderMouseClick += Grid_ColumnHeaderMouseClick;
+
+            grid.CellMouseEnter += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && e.RowIndex != _hoverRowIndex)
+                {
+                    int old = _hoverRowIndex;
+                    _hoverRowIndex = e.RowIndex;
+                    if (old >= 0 && old < grid.RowCount) grid.InvalidateRow(old);
+                    if (_hoverRowIndex < grid.RowCount) grid.InvalidateRow(_hoverRowIndex);
+                }
+            };
+
+            grid.CellMouseLeave += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && e.RowIndex == _hoverRowIndex)
+                {
+                    int old = _hoverRowIndex;
+                    _hoverRowIndex = -1;
+                    if (old >= 0 && old < grid.RowCount) grid.InvalidateRow(old);
+                }
+            };
+
             grid.CellDoubleClick += (_, e) =>
             {
-                if (e.RowIndex < 0) return;
+                if (e.RowIndex < 0 || _isSkeletonLoading) return;
                 var lead = GetLeadAtRow(e.RowIndex);
                 if (lead is not null) ViewLead(lead);
             };
@@ -104,25 +196,36 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
         private void SetFilter(string stage)
         {
+            if (string.Equals(_filterStage, stage, StringComparison.OrdinalIgnoreCase)) return;
             _filterStage = stage;
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(animate: true);
         }
 
         private void UpdateFilterPillStyles()
         {
+            var allList = _controller.GetAll().ToList();
+            int total = allList.Count;
+            int countNew = allList.Count(l => string.Equals(l.Stage, "new", StringComparison.OrdinalIgnoreCase));
+            int countContacted = allList.Count(l => string.Equals(l.Stage, "contacted", StringComparison.OrdinalIgnoreCase));
+            int countQualified = allList.Count(l => string.Equals(l.Stage, "qualified", StringComparison.OrdinalIgnoreCase));
+            int countConverted = allList.Count(l => string.Equals(l.Stage, "converted", StringComparison.OrdinalIgnoreCase));
+
+            lblSubtitle.Text = $"{total} total · {countQualified} qualified";
+
             var pills = new[]
             {
-                (btnFilterAll, "All"),
-                (btnFilterNew, "New"),
-                (btnFilterContacted, "Contacted"),
-                (btnFilterQualified, "Qualified"),
-                (btnFilterConverted, "Converted")
+                (btnFilterAll, "All", total),
+                (btnFilterNew, "New", countNew),
+                (btnFilterContacted, "Contacted", countContacted),
+                (btnFilterQualified, "Qualified", countQualified),
+                (btnFilterConverted, "Converted", countConverted)
             };
 
-            foreach (var (btn, name) in pills)
+            foreach (var (btn, name, count) in pills)
             {
                 bool isSelected = string.Equals(_filterStage, name, StringComparison.OrdinalIgnoreCase);
+                btn.Text = $"{name}  {count}";
                 if (isSelected)
                 {
                     btn.BackColor = Color.FromArgb(15, 91, 158);
@@ -135,19 +238,65 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     btn.ForeColor = Color.FromArgb(71, 85, 105);
                     btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
                 }
+                btn.Width = TextRenderer.MeasureText(btn.Text, btn.Font).Width + 24;
+                UiRadiusHelper.ApplyPillShape(btn);
+            }
+
+            LayoutToolbar();
+        }
+
+        private void Grid_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || _isSkeletonLoading) return;
+            string colName = grid.Columns[e.ColumnIndex].Name;
+            if (colName == "Actions" || colName == "LeadId") return;
+
+            if (string.Equals(_sortColumn, colName, StringComparison.OrdinalIgnoreCase))
+            {
+                _sortDirection = (_sortDirection == SortOrder.Ascending) ? SortOrder.Descending : SortOrder.Ascending;
+            }
+            else
+            {
+                _sortColumn = colName;
+                _sortDirection = SortOrder.Ascending;
+            }
+
+            RefreshGrid(animate: false);
+        }
+
+        private void RefreshGrid(bool animate = false)
+        {
+            if (animate)
+            {
+                _isSkeletonLoading = true;
+                _skeletonTimer?.Stop();
+                _skeletonTimer?.Dispose();
+
+                PopulateGridData();
+                grid.Invalidate();
+
+                _skeletonTimer = new System.Windows.Forms.Timer { Interval = 130 };
+                _skeletonTimer.Tick += (_, _) =>
+                {
+                    _skeletonTimer.Stop();
+                    _isSkeletonLoading = false;
+                    grid.Invalidate();
+                };
+                _skeletonTimer.Start();
+            }
+            else
+            {
+                _isSkeletonLoading = false;
+                PopulateGridData();
             }
         }
 
-        private void RefreshGrid()
+        private void PopulateGridData()
         {
             grid.Columns.Clear();
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
 
             var allList = _controller.GetAll().ToList();
-            int total = allList.Count;
-            int qualified = allList.Count(l => string.Equals(l.Stage, "qualified", StringComparison.OrdinalIgnoreCase));
-            lblSubtitle.Text = $"{total} total · {qualified} qualified";
-
             IEnumerable<Lead> query = allList;
 
             if (!string.Equals(_filterStage, "All", StringComparison.OrdinalIgnoreCase))
@@ -167,6 +316,19 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     ContainsText(lead.Email, search) ||
                     ContainsText(lead.Phone, search));
             }
+
+            // Sorting
+            query = _sortColumn switch
+            {
+                "Name" => _sortDirection == SortOrder.Ascending ? query.OrderBy(l => l.FullName) : query.OrderByDescending(l => l.FullName),
+                "Email" => _sortDirection == SortOrder.Ascending ? query.OrderBy(l => l.Email ?? "") : query.OrderByDescending(l => l.Email ?? ""),
+                "Phone" => _sortDirection == SortOrder.Ascending ? query.OrderBy(l => l.Phone ?? "") : query.OrderByDescending(l => l.Phone ?? ""),
+                "Source" => _sortDirection == SortOrder.Ascending ? query.OrderBy(l => l.Source ?? "") : query.OrderByDescending(l => l.Source ?? ""),
+                "ExpectedValue" => _sortDirection == SortOrder.Ascending ? query.OrderBy(l => l.ExpectedValue ?? 0m) : query.OrderByDescending(l => l.ExpectedValue ?? 0m),
+                "Stage" => _sortDirection == SortOrder.Ascending ? query.OrderBy(l => l.Stage ?? "") : query.OrderByDescending(l => l.Stage ?? ""),
+                "Assignment" => _sortDirection == SortOrder.Ascending ? query.OrderBy(l => l.AssignmentStatus ?? "") : query.OrderByDescending(l => l.AssignmentStatus ?? ""),
+                _ => query
+            };
 
             grid.DataSource = query
                 .Select(lead => new
@@ -192,135 +354,303 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 nameCol.HeaderText = "NAME";
                 nameCol.FillWeight = 160;
                 nameCol.MinimumWidth = 140;
+                nameCol.SortMode = DataGridViewColumnSortMode.Programmatic;
             }
             if (grid.Columns["Email"] is DataGridViewColumn emailCol)
             {
                 emailCol.HeaderText = "EMAIL";
                 emailCol.FillWeight = 140;
                 emailCol.MinimumWidth = 120;
+                emailCol.SortMode = DataGridViewColumnSortMode.Programmatic;
             }
             if (grid.Columns["Phone"] is DataGridViewColumn phoneCol)
             {
                 phoneCol.HeaderText = "PHONE";
                 phoneCol.FillWeight = 100;
                 phoneCol.MinimumWidth = 90;
+                phoneCol.SortMode = DataGridViewColumnSortMode.Programmatic;
             }
             if (grid.Columns["Source"] is DataGridViewColumn srcCol)
             {
                 srcCol.HeaderText = "SOURCE";
                 srcCol.FillWeight = 90;
                 srcCol.MinimumWidth = 80;
+                srcCol.SortMode = DataGridViewColumnSortMode.Programmatic;
             }
             if (grid.Columns["ExpectedValue"] is DataGridViewColumn valCol)
             {
                 valCol.HeaderText = "EXPECTED VALUE";
                 valCol.FillWeight = 110;
-                valCol.MinimumWidth = 100;
+                valCol.MinimumWidth = 105;
+                valCol.SortMode = DataGridViewColumnSortMode.Programmatic;
+                valCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                valCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
             if (grid.Columns["Stage"] is DataGridViewColumn stageCol)
             {
                 stageCol.HeaderText = "STAGE";
                 stageCol.FillWeight = 95;
-                stageCol.MinimumWidth = 80;
+                stageCol.MinimumWidth = 85;
+                stageCol.SortMode = DataGridViewColumnSortMode.Programmatic;
+                stageCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
             if (grid.Columns["Assignment"] is DataGridViewColumn assignCol)
             {
                 assignCol.HeaderText = "ASSIGNMENT";
-                assignCol.FillWeight = 100;
-                assignCol.MinimumWidth = 90;
+                assignCol.FillWeight = 110;
+                assignCol.MinimumWidth = 95;
+                assignCol.SortMode = DataGridViewColumnSortMode.Programmatic;
+                assignCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _lblEmptyState.Visible = (grid.Rows.Count == 0);
+            _pnlEmptyState.Visible = (grid.Rows.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.Graphics is null) return;
+            if (e.Graphics is null) return;
 
-            // Custom render Stage pill badge
-            if (grid.Columns[e.ColumnIndex].Name == "Stage" && e.Value != null)
+            // Column Header Sort Indicator
+            if (e.RowIndex == -1 && e.ColumnIndex >= 0)
             {
-                e.PaintBackground(e.CellBounds, true);
+                e.Paint(e.CellBounds, DataGridViewPaintParts.All);
+                string colName = grid.Columns[e.ColumnIndex].Name;
+                if (string.Equals(colName, _sortColumn, StringComparison.OrdinalIgnoreCase))
+                {
+                    string arrow = _sortDirection == SortOrder.Ascending ? " ▲" : " ▼";
+                    using var sortFont = new Font("Segoe UI", 7f, FontStyle.Bold);
+                    using var sortBrush = new SolidBrush(Color.FromArgb(15, 91, 158));
+                    
+                    var textSize = TextRenderer.MeasureText(e.Graphics, grid.Columns[e.ColumnIndex].HeaderText, grid.ColumnHeadersDefaultCellStyle.Font);
+                    int arrowX = (grid.Columns[e.ColumnIndex].HeaderCell.Style.Alignment == DataGridViewContentAlignment.MiddleRight)
+                        ? e.CellBounds.Right - 16
+                        : e.CellBounds.Left + textSize.Width + 16;
+                    int arrowY = e.CellBounds.Y + (e.CellBounds.Height - 12) / 2;
+
+                    TextRenderer.DrawText(e.Graphics, arrow, sortFont, new Point(arrowX, arrowY), Color.FromArgb(15, 91, 158));
+                }
+                e.Handled = true;
+                return;
+            }
+
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            // Determine row background with seamless hover and selection
+            Color rowBg = grid.Rows[e.RowIndex].Selected
+                ? UiGridHelper.SelectionBg
+                : (e.RowIndex == _hoverRowIndex
+                    ? UiGridHelper.RowHover
+                    : (e.RowIndex % 2 == 1 ? UiGridHelper.RowAlternate : UiGridHelper.RowNormal));
+
+            // Skeleton Loading State
+            if (_isSkeletonLoading)
+            {
+                using (var bgBrush = new SolidBrush(rowBg))
+                {
+                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+                }
+
+                // Shimmering placeholder bar
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                int barHeight = 14;
+                int barY = e.CellBounds.Y + (e.CellBounds.Height - barHeight) / 2;
+                int barWidth = Math.Max(30, e.CellBounds.Width - 36);
+                int barX = e.CellBounds.X + 16;
+
+                using (var shimmerBrush = new SolidBrush(Color.FromArgb(226, 232, 240)))
+                using (var path = GetRoundedRectangle(new Rectangle(barX, barY, barWidth, barHeight), 4))
+                {
+                    e.Graphics.FillPath(shimmerBrush, path);
+                }
+
+                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
+                e.Handled = true;
+                return;
+            }
+
+            string columnName = grid.Columns[e.ColumnIndex].Name;
+
+            // ── STAGE BADGES (Filled pill badges with intuitive colors) ──
+            if (columnName == "Stage" && e.Value != null)
+            {
+                using (var bgBrush = new SolidBrush(rowBg))
+                {
+                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+                }
+
                 string stage = e.Value.ToString() ?? "";
                 Color bgColor;
                 Color textColor;
+                Color borderColor;
 
                 if (stage.Equals("NEW", StringComparison.OrdinalIgnoreCase))
                 {
-                    bgColor = Color.FromArgb(224, 242, 254);
+                    bgColor = Color.FromArgb(224, 242, 254);      // Soft Blue
                     textColor = Color.FromArgb(3, 105, 161);
+                    borderColor = Color.FromArgb(186, 230, 253);
                 }
                 else if (stage.Equals("CONTACTED", StringComparison.OrdinalIgnoreCase))
                 {
-                    bgColor = Color.FromArgb(243, 232, 255);
-                    textColor = Color.FromArgb(107, 33, 168);
+                    bgColor = Color.FromArgb(254, 243, 199);      // Amber
+                    textColor = Color.FromArgb(180, 83, 9);
+                    borderColor = Color.FromArgb(253, 230, 138);
                 }
                 else if (stage.Equals("QUALIFIED", StringComparison.OrdinalIgnoreCase))
                 {
-                    bgColor = Color.FromArgb(220, 252, 231);
-                    textColor = Color.FromArgb(22, 101, 52);
+                    bgColor = Color.FromArgb(243, 232, 255);      // Purple
+                    textColor = Color.FromArgb(107, 33, 168);
+                    borderColor = Color.FromArgb(233, 213, 255);
                 }
                 else if (stage.Equals("CONVERTED", StringComparison.OrdinalIgnoreCase))
                 {
-                    bgColor = Color.FromArgb(187, 247, 208);
-                    textColor = Color.FromArgb(20, 83, 45);
+                    bgColor = Color.FromArgb(220, 252, 231);      // Emerald Green
+                    textColor = Color.FromArgb(21, 128, 61);
+                    borderColor = Color.FromArgb(187, 247, 208);
+                }
+                else if (stage.Equals("LOST", StringComparison.OrdinalIgnoreCase))
+                {
+                    bgColor = Color.FromArgb(254, 226, 226);      // Rose / Red
+                    textColor = Color.FromArgb(185, 28, 28);
+                    borderColor = Color.FromArgb(254, 202, 202);
                 }
                 else
                 {
-                    bgColor = Color.FromArgb(254, 226, 226);
-                    textColor = Color.FromArgb(153, 27, 27);
+                    bgColor = Color.FromArgb(224, 231, 255);      // Indigo / Default
+                    textColor = Color.FromArgb(55, 48, 163);
+                    borderColor = Color.FromArgb(199, 210, 254);
                 }
 
                 using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
                 {
                     var size = TextRenderer.MeasureText(stage, font);
-                    int pillWidth = size.Width + 16;
-                    int pillHeight = 22;
+                    int pillWidth = size.Width + 18;
+                    int pillHeight = 24;
                     int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
                     int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
                     var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
 
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     using (var brush = new SolidBrush(bgColor))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
+                    using (var pen = new Pen(borderColor, 1f))
+                    using (var path = GetRoundedRectangle(pillRect, 12))
                     {
-                        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                         e.Graphics.FillPath(brush, path);
+                        e.Graphics.DrawPath(pen, path);
                     }
 
                     TextRenderer.DrawText(e.Graphics, stage, font, pillRect, textColor,
                         TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                 }
 
+                // Row divider
+                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
                 e.Handled = true;
             }
-            // Custom render Name with circular initials badge
-            else if (grid.Columns[e.ColumnIndex].Name == "Name" && e.Value != null)
+            // ── ASSIGNMENT STATUS BADGES (Pill chips: Pending = Yellow/Amber, Approved = Green) ──
+            else if (columnName == "Assignment" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
+                using (var bgBrush = new SolidBrush(rowBg))
+                {
+                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+                }
+
+                string rawAssign = e.Value.ToString() ?? "";
+                string displayLabel;
+                Color bgColor;
+                Color textColor;
+                Color borderColor;
+
+                if (rawAssign.Contains("PENDING", StringComparison.OrdinalIgnoreCase))
+                {
+                    displayLabel = "PENDING REVIEW";
+                    bgColor = Color.FromArgb(254, 249, 195);      // Soft Amber/Yellow
+                    textColor = Color.FromArgb(133, 77, 14);
+                    borderColor = Color.FromArgb(254, 240, 138);
+                }
+                else if (rawAssign.Contains("APPROVED", StringComparison.OrdinalIgnoreCase))
+                {
+                    displayLabel = "APPROVED";
+                    bgColor = Color.FromArgb(220, 252, 231);      // Soft Green
+                    textColor = Color.FromArgb(22, 101, 52);
+                    borderColor = Color.FromArgb(187, 247, 208);
+                }
+                else
+                {
+                    displayLabel = string.IsNullOrWhiteSpace(rawAssign) ? "UNASSIGNED" : rawAssign;
+                    bgColor = Color.FromArgb(241, 245, 249);      // Muted Slate
+                    textColor = Color.FromArgb(71, 85, 105);
+                    borderColor = Color.FromArgb(226, 232, 240);
+                }
+
+                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
+                {
+                    var size = TextRenderer.MeasureText(displayLabel, font);
+                    int chipWidth = size.Width + 14;
+                    int chipHeight = 22;
+                    int chipX = e.CellBounds.X + (e.CellBounds.Width - chipWidth) / 2;
+                    int chipY = e.CellBounds.Y + (e.CellBounds.Height - chipHeight) / 2;
+                    var chipRect = new Rectangle(chipX, chipY, chipWidth, chipHeight);
+
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    using (var brush = new SolidBrush(bgColor))
+                    using (var pen = new Pen(borderColor, 1f))
+                    using (var path = GetRoundedRectangle(chipRect, 11))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                        e.Graphics.DrawPath(pen, path);
+                    }
+
+                    TextRenderer.DrawText(e.Graphics, displayLabel, font, chipRect, textColor,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                }
+
+                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
+                e.Handled = true;
+            }
+            // ── NAME COLUMN (Initial avatar + text) ──
+            else if (columnName == "Name" && e.Value != null)
+            {
+                using (var bgBrush = new SolidBrush(rowBg))
+                {
+                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+                }
+
                 string name = e.Value.ToString() ?? "";
                 string initials = GetInitials(name);
 
-                int avatarSize = 28;
-                int avatarX = e.CellBounds.X + 8;
+                int avatarSize = 30;
+                int avatarX = e.CellBounds.X + 10;
                 int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
                 var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
 
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using (var brush = new SolidBrush(Color.FromArgb(71, 118, 153)))
+                using (var brush = new SolidBrush(Color.FromArgb(27, 80, 136))) // Brand Navy
                 {
                     e.Graphics.FillEllipse(brush, avatarRect);
                 }
 
-                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
+                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
                 {
                     TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, Color.White,
                         TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                 }
 
                 var textRect = new Rectangle(avatarX + avatarSize + 10, e.CellBounds.Y,
-                    e.CellBounds.Width - avatarSize - 18, e.CellBounds.Height);
+                    e.CellBounds.Width - avatarSize - 20, e.CellBounds.Height);
 
                 using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
                 {
@@ -328,18 +658,80 @@ namespace CRMS_Peguit.winforms.Views.Leads
                         TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
                 }
 
+                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
                 e.Handled = true;
             }
-            // Custom render Email as clickable blue
-            else if (grid.Columns[e.ColumnIndex].Name == "Email" && e.Value != null)
+            // ── EMAIL COLUMN ──
+            else if (columnName == "Email" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
+                using (var bgBrush = new SolidBrush(rowBg))
+                {
+                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+                }
+
                 string email = e.Value.ToString() ?? "";
                 using (var font = new Font("Segoe UI", 9.5f))
                 {
-                    TextRenderer.DrawText(e.Graphics, email, font, e.CellBounds, Theme.Primary,
+                    var textRect = new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y, e.CellBounds.Width - 16, e.CellBounds.Height);
+                    TextRenderer.DrawText(e.Graphics, email, font, textRect, Color.FromArgb(15, 91, 158),
                         TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
                 }
+
+                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
+                e.Handled = true;
+            }
+            // ── EXPECTED VALUE COLUMN (Right-aligned currency) ──
+            else if (columnName == "ExpectedValue" && e.Value != null)
+            {
+                using (var bgBrush = new SolidBrush(rowBg))
+                {
+                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+                }
+
+                string valStr = e.Value.ToString() ?? "-";
+                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+                {
+                    var textRect = new Rectangle(e.CellBounds.X + 8, e.CellBounds.Y, e.CellBounds.Width - 22, e.CellBounds.Height);
+                    TextRenderer.DrawText(e.Graphics, valStr, font, textRect, Theme.TextPrimary,
+                        TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                }
+
+                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
+                e.Handled = true;
+            }
+            // ── STANDARD COLUMNS (Phone, Source) ──
+            else if (columnName != "Actions")
+            {
+                using (var bgBrush = new SolidBrush(rowBg))
+                {
+                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+                }
+
+                string text = e.Value?.ToString() ?? "";
+                using (var font = new Font("Segoe UI", 9.5f))
+                {
+                    var textRect = new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y, e.CellBounds.Width - 16, e.CellBounds.Height);
+                    TextRenderer.DrawText(e.Graphics, text, font, textRect, Theme.TextPrimary,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
+
+                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
                 e.Handled = true;
             }
         }
@@ -607,78 +999,83 @@ namespace CRMS_Peguit.winforms.Views.Leads
         {
             if (this.IsDisposed) return;
 
-            int rightPadding = 30;
-            int leftMargin = 30;
+            int rightPadding = 32;
+            int leftMargin = 32;
             int totalWidth = ClientSize.Width;
-            int y = 88;
+
+            // Reposition title and subtitle inline next to each other
+            lblTitle.Location = new Point(leftMargin, 20);
+            lblSubtitle.Location = new Point(lblTitle.Right + 14, lblTitle.Top + 12);
+            lblSubtitle.BringToFront();
 
             // Position header action buttons
             int rightEdge = totalWidth - rightPadding;
             if (btnAdd.Visible)
             {
                 btnAdd.Left = rightEdge - btnAdd.Width;
-                btnAdd.Top = 24;
+                btnAdd.Top = 20;
                 rightEdge = btnAdd.Left - 10;
             }
             if (_btnExport != null && _btnExport.Visible)
             {
                 _btnExport.Left = rightEdge - _btnExport.Width;
-                _btnExport.Top = 24;
+                _btnExport.Top = 20;
             }
+
+            int y = 78;
 
             // Layout filter pills
             var pills = new[] { btnFilterConverted, btnFilterQualified, btnFilterContacted, btnFilterNew, btnFilterAll };
             int filterRight = totalWidth - rightPadding;
             int totalFilterWidth = 0;
-            foreach (var p in pills) totalFilterWidth += p.Width + 6;
+            foreach (var p in pills) totalFilterWidth += p.Width + 8;
 
             int availableForSearch = totalWidth - leftMargin - rightPadding - totalFilterWidth - 20;
 
-            if (availableForSearch >= 180)
+            if (availableForSearch >= 200)
             {
                 // Single row: search on left, filters aligned to right
                 foreach (var p in pills)
                 {
                     p.Top = y;
+                    p.Height = 32;
                     p.Left = filterRight - p.Width;
-                    filterRight = p.Left - 6;
+                    filterRight = p.Left - 8;
                 }
 
                 txtSearch.Top = y;
                 txtSearch.Left = leftMargin;
-                txtSearch.Width = Math.Min(340, availableForSearch);
+                txtSearch.Height = 32;
+                txtSearch.Width = Math.Min(360, availableForSearch);
 
                 pnlCard.Top = 126;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 24);
             }
             else
             {
                 // Two rows: search on row 1, filter pills wrapped to row 2
                 txtSearch.Top = y;
                 txtSearch.Left = leftMargin;
+                txtSearch.Height = 32;
                 txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
 
                 int filterX = leftMargin;
-                int pillY = y + 36;
+                int pillY = y + 40;
                 var forwardPills = new[] { btnFilterAll, btnFilterNew, btnFilterContacted, btnFilterQualified, btnFilterConverted };
                 foreach (var p in forwardPills)
                 {
                     p.Top = pillY;
+                    p.Height = 32;
                     p.Left = filterX;
-                    filterX += p.Width + 6;
+                    filterX += p.Width + 8;
                 }
 
-                pnlCard.Top = pillY + 38;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+                pnlCard.Top = pillY + 42;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 24);
             }
 
             pnlCard.Left = leftMargin;
             pnlCard.Width = Math.Max(100, totalWidth - leftMargin - rightPadding);
-        }
-
-        private void txtSearch_TextChanged(object sender, EventArgs e)
-        {
-
         }
     }
 }

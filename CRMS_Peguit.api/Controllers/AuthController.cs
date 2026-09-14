@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
 using CRMS_Peguit.infrastructure.Security;
 using Microsoft.AspNetCore.Mvc;
@@ -72,19 +72,26 @@ namespace CRMS_Peguit.api.Controllers
                 await _db.Users
                     .FirstOrDefaultAsync(
                         u =>
-                            u.Email == request.Email.Trim()
+                            u.Person.Email == request.Email.Trim()
                             &&
-                            u.Status == "Active"
+                            (u.Status == "Active" || u.Status == "active")
                     );
 
             // ----------------------------------------------
             // VERIFY PASSWORD
             // ----------------------------------------------
 
-            if (user is null ||
-                !PasswordHasher.Verify(
-                    request.Password,
-                    user.PasswordHash))
+            bool isPasswordValid = false;
+            try
+            {
+                isPasswordValid = user != null && PasswordHasher.Verify(request.Password, user.PasswordHash);
+            }
+            catch
+            {
+                isPasswordValid = false;
+            }
+
+            if (user is null || !isPasswordValid)
             {
                 // Deliberately vague.
                 // Do not reveal whether the email exists.
@@ -93,6 +100,20 @@ namespace CRMS_Peguit.api.Controllers
                     message =
                         "Invalid email or password."
                 });
+            }
+
+            // Transparently upgrade legacy plain text hashes to BCrypt on successful login
+            if (!user.PasswordHash.Trim().StartsWith("$2"))
+            {
+                try
+                {
+                    user.PasswordHash = PasswordHasher.Hash(request.Password);
+                    await _db.SaveChangesAsync();
+                }
+                catch
+                {
+                    // Non-critical hash upgrade
+                }
             }
 
             // ----------------------------------------------
@@ -125,7 +146,8 @@ namespace CRMS_Peguit.api.Controllers
             var token =
                 GenerateJwt(
                     user,
-                    role.RoleName
+                    role.RoleName,
+                    role.TenantId
                 );
 
             // ----------------------------------------------
@@ -136,7 +158,7 @@ namespace CRMS_Peguit.api.Controllers
                 new LoginResponse(
                     Token: token,
                     UserId: user.UserId,
-                    TenantId: user.TenantId,
+                    TenantId: role.TenantId,
                     FullName: user.FullName,
                     Email: user.Email,
                     RoleName: role.RoleName
@@ -150,7 +172,8 @@ namespace CRMS_Peguit.api.Controllers
 
         private string GenerateJwt(
             User user,
-            string roleName)
+            string roleName,
+            int tenantId)
         {
             var secret =
                 _config["Jwt:Secret"]
@@ -188,7 +211,7 @@ namespace CRMS_Peguit.api.Controllers
 
                     new Claim(
                         "tenantId",
-                        user.TenantId.ToString()
+                        tenantId.ToString()
                     )
                 };
 

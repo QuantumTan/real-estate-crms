@@ -15,26 +15,47 @@ using System.Linq;
 
 namespace CRMS_Peguit.winforms
 {
-    public partial class Form1 : Form
+    public partial class MainForm : Form
     {
         private Button? _activeNavButton;
         private readonly List<Button> _navButtons = new();
         private readonly Dictionary<Button, (string Icon, string Title)> _navButtonInfo = new();
         private bool _sidebarCollapsed = false;
+        private System.Windows.Forms.Timer? _sidebarAnimationTimer;
+        private int _targetSidebarWidth = 240;
 
         // Global search debounce + floating dropdown
         private System.Windows.Forms.Timer? _searchDebounce;
         private ToolStripDropDown? _searchDropDown;
 
-        public Form1()
+        public MainForm()
         {
             InitializeComponent();
+            ApplyBranding();
             ApplyTheme();
             InitNavButtons();
             BindEvents();
             ApplyRolePermissions();
             SetActiveNavButton(btnDashboard);
             BtnDashboardClick(btnDashboard, EventArgs.Empty);
+        }
+
+        private void ApplyBranding()
+        {
+            AppBrand.ApplyAppIcon(this);
+            if (AppBrand.Logo != null)
+            {
+                picLogo.Image = AppBrand.Logo;
+            }
+
+            pnlLogoHeader.Cursor = Cursors.Hand;
+            picLogo.Cursor = Cursors.Hand;
+            lblLogo.Cursor = Cursors.Hand;
+            EventHandler navDashboard = (s, e) => { SetActiveNavButton(btnDashboard); BtnDashboardClick(s, e); };
+            picLogo.Click += navDashboard;
+            lblLogo.Click += navDashboard;
+            pnlLogoHeader.Click += navDashboard;
+            mainToolTip.SetToolTip(pnlLogoHeader, "NEXA CRM SYSTEM — Go to Dashboard");
         }
 
         private void InitNavButtons()
@@ -60,6 +81,9 @@ namespace CRMS_Peguit.winforms
                 UiRadiusHelper.StyleButton(btn, 6);
                 var info = _navButtonInfo[btn];
                 mainToolTip.SetToolTip(btn, info.Title);
+                btn.Text = $"   {info.Icon,-2}   {info.Title}";
+                btn.Padding = new Padding(16, 0, 0, 0);
+                btn.TextAlign = ContentAlignment.MiddleLeft;
 
                 btn.Paint += (s, e) =>
                 {
@@ -109,7 +133,7 @@ namespace CRMS_Peguit.winforms
             btnToggleSidebar.Click += (_, _) => ToggleSidebar();
             mainToolTip.SetToolTip(btnToggleSidebar, "Toggle Sidebar (Ctrl+B)");
             mainToolTip.SetToolTip(lblBellIcon, "System Status & Notifications");
-            mainToolTip.SetToolTip(txtGlobalSearch, "Global search (Ctrl+F)");
+            mainToolTip.SetToolTip(txtGlobalSearch, "Global search (Ctrl+K or Ctrl+F)");
             mainToolTip.SetToolTip(lblStatusDot, "Online — Active Session");
             mainToolTip.SetToolTip(lblRoleBadge, "Current Role Scope");
 
@@ -177,10 +201,11 @@ namespace CRMS_Peguit.winforms
         private void ToggleSidebar()
         {
             _sidebarCollapsed = !_sidebarCollapsed;
+            _targetSidebarWidth = _sidebarCollapsed ? 64 : 240;
+
             if (_sidebarCollapsed)
             {
-                sidebarPanel.Width = 64;
-                lblLogo.Text = "  ⛛";
+                lblLogo.Visible = false;
                 pnlUserContainer.Visible = false;
                 lblSalesSection.Visible = false;
                 lblSupportSection.Visible = false;
@@ -199,11 +224,43 @@ namespace CRMS_Peguit.winforms
                 btnLogout.Padding = new Padding(0);
                 btnLogout.TextAlign = ContentAlignment.MiddleCenter;
                 mainToolTip.SetToolTip(btnLogout, "Sign out");
+                mainToolTip.SetToolTip(picLogo, "NEXA CRM SYSTEM");
+            }
+
+            _sidebarAnimationTimer?.Stop();
+            _sidebarAnimationTimer?.Dispose();
+            _sidebarAnimationTimer = new System.Windows.Forms.Timer { Interval = 10 };
+            _sidebarAnimationTimer.Tick += (_, _) =>
+            {
+                int diff = _targetSidebarWidth - sidebarPanel.Width;
+                int step = Math.Sign(diff) * Math.Max(16, Math.Abs(diff) / 2);
+                if (Math.Abs(diff) <= Math.Abs(step))
+                {
+                    sidebarPanel.Width = _targetSidebarWidth;
+                    _sidebarAnimationTimer.Stop();
+                    _sidebarAnimationTimer.Dispose();
+                    _sidebarAnimationTimer = null;
+                    FinalizeSidebarState();
+                }
+                else
+                {
+                    sidebarPanel.Width += step;
+                }
+            };
+            _sidebarAnimationTimer.Start();
+        }
+
+        private void FinalizeSidebarState()
+        {
+            if (_sidebarCollapsed)
+            {
+                picLogo.Location = new Point((64 - picLogo.Width) / 2, 9);
             }
             else
             {
-                sidebarPanel.Width = 240;
-                lblLogo.Text = "⛛ NEXA CRM SYSTEM";
+                picLogo.Location = new Point(14, 9);
+                lblLogo.Visible = true;
+                mainToolTip.SetToolTip(picLogo, null);
                 pnlUserContainer.Visible = true;
                 lblSalesSection.Visible = true;
                 lblSupportSection.Visible = true;
@@ -213,14 +270,15 @@ namespace CRMS_Peguit.winforms
                 {
                     if (_navButtonInfo.TryGetValue(btn, out var info))
                     {
-                        btn.Text = $"  {info.Icon}  {info.Title}";
+                        btn.Text = $"   {info.Icon,-2}   {info.Title}";
                         btn.Padding = new Padding(16, 0, 0, 0);
                         btn.TextAlign = ContentAlignment.MiddleLeft;
                     }
                 }
-                btnLogout.Text = "  ↪  Sign out";
+                btnLogout.Text = "   ↪   Sign out";
                 btnLogout.Padding = new Padding(16, 0, 0, 0);
                 btnLogout.TextAlign = ContentAlignment.MiddleLeft;
+                mainToolTip.SetToolTip(btnLogout, null);
             }
         }
 
@@ -255,7 +313,7 @@ namespace CRMS_Peguit.winforms
                 menu.Items.Add(approvalsItem);
             }
 
-            var quickAction = new ToolStripMenuItem("🔍 Jump to Search (Ctrl+F)");
+            var quickAction = new ToolStripMenuItem("🔍 Jump to Search (Ctrl+K or Ctrl+F)");
             quickAction.Click += (_, _) => txtGlobalSearch.Focus();
             menu.Items.Add(quickAction);
 
@@ -269,7 +327,7 @@ namespace CRMS_Peguit.winforms
                 ToggleSidebar();
                 return true;
             }
-            if (keyData == (Keys.Control | Keys.F))
+            if (keyData == (Keys.Control | Keys.K) || keyData == (Keys.Control | Keys.F))
             {
                 txtGlobalSearch.Focus();
                 txtGlobalSearch.SelectAll();
@@ -434,6 +492,12 @@ namespace CRMS_Peguit.winforms
             {
                 using var pen = new Pen(Color.FromArgb(226, 232, 240), 1f);
                 e.Graphics.DrawLine(pen, 0, topHeaderPanel.Height - 1, topHeaderPanel.Width, topHeaderPanel.Height - 1);
+
+                // Soft multi-layered elevation shadow separating header and content
+                using var shadowBrush1 = new SolidBrush(Color.FromArgb(12, 0, 0, 0));
+                e.Graphics.FillRectangle(shadowBrush1, 0, topHeaderPanel.Height - 3, topHeaderPanel.Width, 1);
+                using var shadowBrush2 = new SolidBrush(Color.FromArgb(6, 0, 0, 0));
+                e.Graphics.FillRectangle(shadowBrush2, 0, topHeaderPanel.Height - 2, topHeaderPanel.Width, 1);
             };
         }
 
@@ -461,17 +525,26 @@ namespace CRMS_Peguit.winforms
                 : "U";
             if (initials.Length > 2) initials = initials.Substring(0, 2);
 
-            string role = user.GetDashboardType();
+            string roleDisplay = user.Role switch
+            {
+                CRMS_Peguit.winforms.Models.Roles.UserRole.SuperAdmin => "Super Admin",
+                CRMS_Peguit.winforms.Models.Roles.UserRole.Admin => "Admin",
+                CRMS_Peguit.winforms.Models.Roles.UserRole.Manager => "Manager",
+                CRMS_Peguit.winforms.Models.Roles.UserRole.SalesStaff => "Sales Staff",
+                _ => user.Role.ToString()
+            };
+
             lblUserAvatar.Text = initials;
             lblUserName.Text = user.FullName;
-            lblUserRole.Text = role;
+            lblUserRole.Text = roleDisplay;
 
             lblHeaderAvatar.Text = initials;
-            lblHeaderUserName.Text = $"{user.FullName}\r\n{role}";
-            lblRoleBadge.Text = $"• {role}";
+            lblHeaderUserName.Text = $"{user.FullName}\r\n{roleDisplay}";
+            lblRoleBadge.Text = $"• {roleDisplay}";
             var badgeSize = TextRenderer.MeasureText(lblRoleBadge.Text, lblRoleBadge.Font);
-            lblRoleBadge.Width = Math.Max(76, badgeSize.Width + 18);
+            lblRoleBadge.Width = Math.Max(72, badgeSize.Width + 16);
             UiRadiusHelper.ApplyPillShape(lblRoleBadge);
+            txtGlobalSearch.Location = new Point(lblRoleBadge.Right + 12, 16);
 
             btnApprovals.Visible = CurrentSession.CanAccess("Approvals") && RbacService.CanApproveAssignments;
             btnManageManagers.Visible = CurrentSession.CanAccess("Managers");
@@ -489,7 +562,7 @@ namespace CRMS_Peguit.winforms
             btnReports.Visible = CurrentSession.CanAccess("Reports");
             btnSupportTickets.Visible = CurrentSession.CanAccess("SupportTickets");
 
-            Text = $"NEXA CRM SYSTEM — {user.FullName} ({user.GetDashboardType()})";
+            Text = $"NEXA CRM SYSTEM — {user.FullName} ({roleDisplay})";
         }
 
         // =====================================================

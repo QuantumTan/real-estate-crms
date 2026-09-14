@@ -35,10 +35,22 @@ namespace CRMS_Peguit.api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Customer customer)
         {
-            var tenantResolver = HttpContext.RequestServices
-                .GetRequiredService<ITenantResolver>();
-
-            customer.TenantId = tenantResolver.GetTenantId();
+            if (customer.PersonId <= 0 && customer.Person == null)
+            {
+                customer.Person = new CRMS_Peguit.domain.entities.Person
+                {
+                    FirstName = customer.FirstName,
+                    MiddleName = customer.MiddleName,
+                    LastName = customer.LastName,
+                    Suffix = customer.Suffix,
+                    Email = customer.Email,
+                    Phone = customer.Phone
+                };
+            }
+            if (customer.CreatedByUserId <= 0)
+            {
+                customer.CreatedByUserId = 1;
+            }
             customer.CreatedAt = DateTime.UtcNow;
             customer.IsDeleted = false;
             customer.DeletedAt = null;
