@@ -39,8 +39,23 @@ namespace CRMS_Peguit.api.Controllers
             }
             ticket.CreatedAt = DateTime.UtcNow;
             ticket.AssignedToUserId = null; // R23. Default state is Unassigned
+            if (string.IsNullOrWhiteSpace(ticket.Category)) ticket.Category = "Other";
+            if (string.IsNullOrWhiteSpace(ticket.Priority)) ticket.Priority = "Medium";
+            if (string.IsNullOrWhiteSpace(ticket.Status)) ticket.Status = "Open";
 
+            ticket.DueDate = (ticket.Priority.ToLower()) switch
+            {
+                "high" or "urgent" => ticket.CreatedAt.AddHours(24),
+                "medium" => ticket.CreatedAt.AddDays(3),
+                "low" => ticket.CreatedAt.AddDays(7),
+                _ => ticket.CreatedAt.AddDays(3)
+            };
+
+            ticket.TicketNumber = "TCK-TEMP";
             _db.SupportTickets.Add(ticket);
+            await _db.SaveChangesAsync();
+
+            ticket.TicketNumber = $"TCK-{ticket.TicketId:D5}";
             await _db.SaveChangesAsync();
 
             return Created($"/api/supporttickets/{ticket.TicketId}", ticket);
@@ -55,9 +70,12 @@ namespace CRMS_Peguit.api.Controllers
             item.CustomerId = updated.CustomerId;
             item.RaisedByUserId = updated.RaisedByUserId;
             item.AssignedToUserId = updated.AssignedToUserId;
+            item.Category = updated.Category;
             item.Description = updated.Description;
             item.Priority = updated.Priority;
             item.Status = updated.Status;
+            item.DueDate = updated.DueDate;
+            item.FirstRespondedAt = updated.FirstRespondedAt;
             item.ResolvedAt = updated.ResolvedAt;
 
             await _db.SaveChangesAsync();

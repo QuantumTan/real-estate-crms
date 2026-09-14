@@ -71,22 +71,10 @@ namespace CRMS_Peguit.winforms.Controls
             LostFocus += (_, _) => Invalidate();
             SizeChanged += (_, _) =>
             {
-                _lblTitle.MaximumSize = new Size(Math.Max(50, Width - 64), 36);
+                _lblTitle.MaximumSize = new Size(Math.Max(50, Width - 32), 36);
             };
 
             Paint += KpiCard_Paint;
-        }
-
-        private static string GetDefaultIcon(string key)
-        {
-            return (key?.ToLowerInvariant()) switch
-            {
-                "customers" or "total" => "👥",
-                "properties" or "active" => "🏢",
-                "leads" => "◎",
-                "deals" or "thismonth" => "💼",
-                _ => "📊"
-            };
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -121,30 +109,6 @@ namespace CRMS_Peguit.winforms.Controls
                 e.Graphics.DrawPath(borderPen, borderPath);
             }
 
-            // Top-right modern icon bubble
-            int bubbleSize = 36;
-            int bubbleX = Width - bubbleSize - 14;
-            int bubbleY = 14;
-            if (bubbleX > 80)
-            {
-                var bubbleRect = new Rectangle(bubbleX, bubbleY, bubbleSize, bubbleSize);
-
-                using (var bubbleBg = new SolidBrush(Color.FromArgb(26, _accentColor.R, _accentColor.G, _accentColor.B)))
-                {
-                    e.Graphics.FillEllipse(bubbleBg, bubbleRect);
-                }
-
-                string icon = GetDefaultIcon(FilterKey);
-                using var iconFont = new Font("Segoe UI Emoji", 12f);
-                using var iconBrush = new SolidBrush(_accentColor);
-                var sf = new StringFormat
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
-                e.Graphics.DrawString(icon, iconFont, iconBrush, bubbleRect, sf);
-            }
-
             // Left accent bar
             int barWidth = IsSelected ? 6 : 4;
             using var brush = new SolidBrush(_accentColor);
@@ -156,6 +120,7 @@ namespace CRMS_Peguit.winforms.Controls
                 using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(1, 1, Width - 2, Height - 2), 12);
                 e.Graphics.DrawPath(pen, path);
             }
+
 
             if (Focused)
             {

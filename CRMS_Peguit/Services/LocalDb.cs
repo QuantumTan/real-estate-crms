@@ -26,6 +26,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                     if (!_dealSchemaChecked)
                     {
                         EnsureDealSchema(context);
+                        EnsureSupportTicketSchema(context);
                         _dealSchemaChecked = true;
                     }
                 }
@@ -106,6 +107,69 @@ namespace CRMS_Peguit.winforms.Models.Services
             catch
             {
                 // Silent fallback if server offline or already created
+            }
+        }
+
+        private static void EnsureSupportTicketSchema(RealEstateDbContext context)
+        {
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF OBJECT_ID('SupportTickets', 'U') IS NOT NULL
+                    BEGIN
+                        IF COL_LENGTH('SupportTickets', 'TicketNumber') IS NULL
+                        BEGIN
+                            ALTER TABLE SupportTickets ADD TicketNumber NVARCHAR(30) NULL;
+                            EXEC('UPDATE SupportTickets SET TicketNumber = ''TCK-'' + RIGHT(''00000'' + CAST(TicketId AS VARCHAR(10)), 5) WHERE TicketNumber IS NULL');
+                            ALTER TABLE SupportTickets ALTER COLUMN TicketNumber NVARCHAR(30) NOT NULL;
+                        END
+
+                        IF COL_LENGTH('SupportTickets', 'Category') IS NULL
+                        BEGIN
+                            ALTER TABLE SupportTickets ADD Category NVARCHAR(50) NOT NULL CONSTRAINT DF_SupportTickets_Category DEFAULT 'Other';
+                        END
+
+                        IF COL_LENGTH('SupportTickets', 'DueDate') IS NULL
+                        BEGIN
+                            ALTER TABLE SupportTickets ADD DueDate DATETIME2 NULL;
+                        END
+
+                        IF COL_LENGTH('SupportTickets', 'FirstRespondedAt') IS NULL
+                        BEGIN
+                            ALTER TABLE SupportTickets ADD FirstRespondedAt DATETIME2 NULL;
+                        END
+
+                        IF COL_LENGTH('SupportTickets', 'IsDeleted') IS NULL
+                        BEGIN
+                            ALTER TABLE SupportTickets ADD IsDeleted BIT NOT NULL CONSTRAINT DF_SupportTickets_IsDeleted DEFAULT 0;
+                        END
+
+                        IF COL_LENGTH('SupportTickets', 'DeletedAt') IS NULL
+                        BEGIN
+                            ALTER TABLE SupportTickets ADD DeletedAt DATETIME2 NULL;
+                        END
+                    END
+
+                    IF OBJECT_ID('TicketComments', 'U') IS NULL
+                    BEGIN
+                        CREATE TABLE [dbo].[TicketComments] (
+                            [TicketCommentId] INT IDENTITY(1,1) NOT NULL,
+                            [TicketId] INT NOT NULL,
+                            [AuthorUserId] INT NOT NULL,
+                            [CommentText] NVARCHAR(2000) NOT NULL,
+                            [CommentType] NVARCHAR(50) NOT NULL DEFAULT 'Comment',
+                            [IsInternal] BIT NOT NULL DEFAULT 1,
+                            [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                            CONSTRAINT [PK_TicketComments] PRIMARY KEY CLUSTERED ([TicketCommentId] ASC),
+                            CONSTRAINT [FK_TicketComments_SupportTickets_TicketId] FOREIGN KEY ([TicketId]) REFERENCES [dbo].[SupportTickets] ([TicketId]) ON DELETE CASCADE,
+                            CONSTRAINT [FK_TicketComments_Users_AuthorUserId] FOREIGN KEY ([AuthorUserId]) REFERENCES [dbo].[Users] ([UserId])
+                        );
+                    END
+                ");
+            }
+            catch
+            {
+                // Silent fallback if server offline or already updated
             }
         }
     }

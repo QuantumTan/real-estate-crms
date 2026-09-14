@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.winforms.Controllers;
+using CRMS_Peguit.winforms.Controllers;
 
 namespace CRMS_Peguit.winforms.Services
 {
@@ -106,6 +106,28 @@ namespace CRMS_Peguit.winforms.Services
                         Title: GetName(custNames, d.CustomerId),
                         Subtitle: string.Format("Deal · {0} · Ph{1:N0}", Cap(d.Stage), d.Value),
                         RecordId: d.DealId
+                    ));
+                }
+            }
+            catch { }
+
+            // Support Tickets
+            try
+            {
+                var ctl = new SupportTicketController();
+                foreach (var t in ctl.GetAll()
+                    .Where(t => Hits(t.TicketNumber, query) ||
+                                Hits(t.Category, query) ||
+                                Hits(t.Description, query) ||
+                                Hits(t.Customer?.FullName, query))
+                    .Take(maxPerModule))
+                {
+                    results.Add(new GlobalSearchResult(
+                        Module: "supporttickets",
+                        Icon: "🎫",
+                        Title: $"{t.TicketNumber} — {t.Category}",
+                        Subtitle: $"{t.Customer?.FullName ?? "Client"} · {Cap(t.Status)} ({t.Priority})",
+                        RecordId: t.TicketId
                     ));
                 }
             }

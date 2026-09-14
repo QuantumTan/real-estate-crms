@@ -617,6 +617,12 @@ namespace CRMS_Peguit.winforms
                     SetActiveNavButton(btnApprovals);
                     BtnApprovalsClick(btnApprovals, EventArgs.Empty);
                     break;
+                case "supporttickets":
+                case "tickets":
+                    if (!CurrentSession.CanAccess("SupportTickets")) return;
+                    SetActiveNavButton(btnSupportTickets);
+                    BtnSupportTicketsClick(btnSupportTickets, EventArgs.Empty);
+                    break;
             }
         }
 
@@ -702,9 +708,7 @@ namespace CRMS_Peguit.winforms
         private void BtnSupportTicketsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("SupportTickets")) return;
-            ShowView(new PlaceholderView(
-                "Support Tickets",
-                "Support ticket oversight placeholder for admin, manager, and agent workflows."));
+            ShowView(new CRMS_Peguit.winforms.Views.SupportTickets.SupportTicketsView());
         }
 
         // =====================================================

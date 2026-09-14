@@ -25,6 +25,7 @@ namespace CRMS_Peguit.infrastructure.data
         public DbSet<Activity> Activities => Set<Activity>();
         public DbSet<PropertyShowingDetail> PropertyShowingDetails => Set<PropertyShowingDetail>();
         public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+        public DbSet<TicketComment> TicketComments => Set<TicketComment>();
         public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
         public DbSet<BackupLog> BackupLogs => Set<BackupLog>();
 
@@ -333,9 +334,14 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<SupportTicket>(entity =>
             {
                 entity.HasKey(x => x.TicketId);
+                entity.Property(x => x.TicketNumber).HasMaxLength(30).IsRequired();
+                entity.Property(x => x.Category).HasMaxLength(50).IsRequired();
                 entity.Property(x => x.Description).HasMaxLength(2000);
                 entity.Property(x => x.Priority).HasMaxLength(20);
                 entity.Property(x => x.Status).HasMaxLength(50);
+
+                entity.HasIndex(x => x.TicketNumber);
+                entity.HasIndex(x => x.IsDeleted);
 
                 entity.HasOne(x => x.Customer)
                     .WithMany()
@@ -350,6 +356,28 @@ namespace CRMS_Peguit.infrastructure.data
                 entity.HasOne(x => x.AssignedToUser)
                     .WithMany()
                     .HasForeignKey(x => x.AssignedToUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(x => x.Comments)
+                    .WithOne(c => c.Ticket)
+                    .HasForeignKey(c => c.TicketId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<TicketComment>(entity =>
+            {
+                entity.HasKey(x => x.TicketCommentId);
+                entity.Property(x => x.CommentText).HasMaxLength(2000).IsRequired();
+                entity.Property(x => x.CommentType).HasMaxLength(50).IsRequired();
+
+                entity.HasOne(x => x.Ticket)
+                    .WithMany(t => t.Comments)
+                    .HasForeignKey(x => x.TicketId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(x => x.AuthorUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.AuthorUserId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -386,10 +414,11 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<BuyerProfile>().HasQueryFilter(x => x.Customer.CreatedByUser.Role.TenantId == _tenantId);
             builder.Entity<Property>().HasQueryFilter(x => x.CreatedByUser.Role.TenantId == _tenantId);
             builder.Entity<Lead>().HasQueryFilter(x => x.CreatedByUser.Role.TenantId == _tenantId && !x.IsDeleted);
-            builder.Entity<Deal>().HasQueryFilter(x => x.CreatedByUser.Role.TenantId == _tenantId);
+            builder.Entity<Deal>().HasQueryFilter(x => x.CreatedByUser!.Role.TenantId == _tenantId);
             builder.Entity<Activity>().HasQueryFilter(x => x.LoggedByAgent.Role.TenantId == _tenantId);
             builder.Entity<PropertyShowingDetail>().HasQueryFilter(x => x.Activity.LoggedByAgent.Role.TenantId == _tenantId);
-            builder.Entity<SupportTicket>().HasQueryFilter(x => x.RaisedByUser.Role.TenantId == _tenantId);
+            builder.Entity<SupportTicket>().HasQueryFilter(x => x.RaisedByUser.Role.TenantId == _tenantId && !x.IsDeleted);
+            builder.Entity<TicketComment>().HasQueryFilter(x => x.Ticket.RaisedByUser.Role.TenantId == _tenantId && !x.Ticket.IsDeleted);
             builder.Entity<SystemSetting>().HasQueryFilter(x => x.UpdatedByUser.Role.TenantId == _tenantId);
             builder.Entity<BackupLog>().HasQueryFilter(x => x.PerformedByUser.Role.TenantId == _tenantId);
         }
