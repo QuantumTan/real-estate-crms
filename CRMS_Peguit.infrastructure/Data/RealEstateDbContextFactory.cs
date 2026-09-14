@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace CRMS_Peguit.infrastructure.data
@@ -12,8 +12,7 @@ namespace CRMS_Peguit.infrastructure.data
 
             var connectionString =
                 Environment.GetEnvironmentVariable("CRMS_CONNECTION")
-                ?? throw new InvalidOperationException(
-                    "CRMS_CONNECTION environment variable is not set.");
+                ?? "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
 
             optionsBuilder.UseSqlServer(connectionString);
 

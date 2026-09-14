@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -34,7 +34,7 @@ namespace CRMS_Peguit.winforms.Views.Users
                 txtConfirmPassword.Visible = false;
                 this.ClientSize = new Size(400, 450);
 
-                txtFirstName.Text = _user.FirstName;
+                txtFirstName.Text = _user!.FirstName;
                 txtMiddleName.Text = _user.MiddleName;
                 txtLastName.Text = _user.LastName;
                 txtSuffix.Text = _user.Suffix;

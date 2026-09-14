@@ -88,7 +88,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             var iconLabel = new Label
             {
                 Text = icon,
-                Font = new Font("Segoe UI", 14f),
+                Font = new Font("Segoe UI Emoji", 14f),
                 ForeColor = iconColor,
                 BackColor = iconBg,
                 Size = new Size(42, 42),
@@ -126,7 +126,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 return;
             }
 
-            if (FindForm() is Form1 form)
+            if (FindForm() is MainForm form)
             {
                 form.NavigateTo(module);
             }

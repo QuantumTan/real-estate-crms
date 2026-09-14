@@ -298,7 +298,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 if (!_db.Users.Any(u => u.UserId == agentId))
                 {
                     var userByEmail = CurrentSession.CurrentUser != null && !string.IsNullOrEmpty(CurrentSession.CurrentUser.Email)
-                        ? _db.Users.FirstOrDefault(u => u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
+                        ? _db.Users.FirstOrDefault(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
                         : null;
 
                     if (userByEmail != null)
@@ -341,6 +341,30 @@ namespace CRMS_Peguit.winforms.Controllers
             // R23. Default state is Unassigned — never auto-assigned to creator.
             customer.AssignedAgentId = null;
             customer.AssignmentStatus = "pending_review";
+        }
+
+        public static bool ValidateCustomerInput(string firstName, string lastName, string? email, out string? errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(firstName))
+            {
+                errorMessage = "First name is required.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(lastName))
+            {
+                errorMessage = "Last name is required.";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(email) && !ContactEmailService.IsValidEmail(email.Trim()))
+            {
+                errorMessage = "Enter a valid email address.";
+                return false;
+            }
+
+            errorMessage = null;
+            return true;
         }
 
         public void Dispose() => _db.Dispose();

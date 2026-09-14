@@ -185,7 +185,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
             return _db.Customers
                 .AsNoTracking()
-                .Where(c => sellerTypes.Contains(c.Type.ToLower()))
+                .Where(c => sellerTypes.Contains(c.Type.ToLower()) && c.Status.ToLower() == "active")
                 .OrderBy(c => c.Person.LastName)
                 .ThenBy(c => c.Person.FirstName)
                 .Select(c => new
@@ -263,7 +263,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 if (!_db.Users.Any(u => u.UserId == agentId))
                 {
                     var userByEmail = CurrentSession.CurrentUser != null && !string.IsNullOrEmpty(CurrentSession.CurrentUser.Email)
-                        ? _db.Users.FirstOrDefault(u => u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
+                        ? _db.Users.FirstOrDefault(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
                         : null;
 
                     if (userByEmail != null)

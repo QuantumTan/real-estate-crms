@@ -93,7 +93,7 @@ namespace CRMS_Peguit.winforms.Auth
                 using var db = LocalDb.CreateContext(tenantId);
                 var user = db.Users
                     .AsNoTracking()
-                    .Where(u => u.Person.Email.ToLower() == email.Trim().ToLower())
+                    .Where(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == email.Trim().ToLower())
                     .SingleOrDefault();
 
                 if (user != null)
@@ -218,7 +218,7 @@ namespace CRMS_Peguit.winforms.Auth
                 }
 
                 // 3. Check if user exists by Email
-                var userByEmail = db.Users.FirstOrDefault(u => u.Person.Email.ToLower() == email.Trim().ToLower());
+                var userByEmail = db.Users.FirstOrDefault(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == email.Trim().ToLower());
                 if (userByEmail != null)
                 {
                     if (!string.IsNullOrWhiteSpace(passwordHash))

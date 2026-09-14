@@ -1,4 +1,5 @@
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Customers
@@ -54,22 +55,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
             string firstName = txtFirstName.Text.Trim();
             string lastName = txtLastName.Text.Trim();
 
-            if (string.IsNullOrWhiteSpace(firstName))
+            if (!CustomerController.ValidateCustomerInput(firstName, lastName, txtEmail.Text, out string? error))
             {
-                ShowValidationError("First name is required.", txtFirstName);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(lastName))
-            {
-                ShowValidationError("Last name is required.", txtLastName);
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(txtEmail.Text) &&
-                !ContactEmailService.IsValidEmail(txtEmail.Text))
-            {
-                ShowValidationError("Enter a valid email address.", txtEmail);
+                Control target = error?.Contains("email", StringComparison.OrdinalIgnoreCase) == true
+                    ? txtEmail
+                    : (error?.Contains("Last", StringComparison.OrdinalIgnoreCase) == true ? txtLastName : txtFirstName);
+                ShowValidationError(error ?? "Validation error.", target);
                 return;
             }
 

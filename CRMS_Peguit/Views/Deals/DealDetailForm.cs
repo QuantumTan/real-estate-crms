@@ -24,7 +24,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
         private Panel? _pnlFooter;
         private Panel? _pnlContent;
         private Button? _btnEdit;
-        private Button? _btnExportTermSheet;
+        private Button? _btnViewContract;
         private Button? _btnClose;
 
         public DealDetailForm() : this(new Deal(), new DealController())
@@ -203,25 +203,26 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 _pnlFooter.Controls.Add(_btnEdit);
             }
 
-            // Export Term Sheet Button
-            _btnExportTermSheet = new Button
+            // View Contract & Terms Button
+            _btnViewContract = new Button
             {
-                Text = "📄 Export Term Sheet",
-                Size = new Size(165, 36),
+                Text = "📜 View Contract & Terms",
+                Size = new Size(185, 36),
                 BackColor = Color.White,
                 ForeColor = Theme.Primary,
-                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
-            UiRadiusHelper.StyleButton(_btnExportTermSheet, 8);
-            _btnExportTermSheet.Paint += (s, e) =>
+            UiRadiusHelper.StyleButton(_btnViewContract, 8);
+            _btnViewContract.Paint += (s, e) =>
             {
                 using var p = new Pen(UiDetailCardHelper.BorderColor, 1f);
-                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, _btnExportTermSheet.Width - 1, _btnExportTermSheet.Height - 1), 8);
+                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, _btnViewContract.Width - 1, _btnViewContract.Height - 1), 8);
                 e.Graphics.DrawPath(p, path);
             };
-            UiRadiusHelper.AttachHoverFeedback(_btnExportTermSheet, Color.White, Color.FromArgb(241, 245, 249));
-            _btnExportTermSheet.Click += BtnExportTermSheetClick;
-            _pnlFooter.Controls.Add(_btnExportTermSheet);
+            UiRadiusHelper.AttachHoverFeedback(_btnViewContract, Color.White, Color.FromArgb(241, 245, 249));
+            _btnViewContract.Click += BtnViewContractClick;
+            _pnlFooter.Controls.Add(_btnViewContract);
 
             AcceptButton = _btnClose;
             CancelButton = _btnClose;
@@ -713,9 +714,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 {
                     _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
                 }
-                if (_btnExportTermSheet != null)
+                if (_btnViewContract != null)
                 {
-                    _btnExportTermSheet.Location = new Point(24, 13);
+                    _btnViewContract.Location = new Point(24, 13);
                 }
             }
 
@@ -745,36 +746,12 @@ namespace CRMS_Peguit.winforms.Views.Deals
             }
         }
 
-        private void BtnExportTermSheetClick(object? sender, EventArgs e)
+        private void BtnViewContractClick(object? sender, EventArgs e)
         {
             if (_deal == null) return;
 
-            var customers = _controller.GetCustomerNames();
-            var properties = _controller.GetPropertyAddresses();
-            var agents = _controller.GetAgentNames();
-
-            string buyer = customers.TryGetValue(_deal.CustomerId, out string? b) ? b : $"Customer #{_deal.CustomerId}";
-            string prop = properties.TryGetValue(_deal.PropertyId, out string? p) ? p : $"Property #{_deal.PropertyId}";
-            string agent = _deal.AgentId.HasValue && agents.TryGetValue(_deal.AgentId.Value, out string? a) ? a : "Unassigned";
-
-            string documentText = DealClauseLibrary.FormatTermSheetText(_deal, buyer, prop, agent);
-
-            using var sfd = new SaveFileDialog
-            {
-                Filter = "Text Document (*.txt)|*.txt",
-                FileName = $"TermSheet_Deal_{_deal.DealId}_{DateTime.Now:yyyyMMdd}.txt",
-                Title = "Save Real Estate Term Sheet"
-            };
-
-            if (sfd.ShowDialog(this) == DialogResult.OK)
-            {
-                File.WriteAllText(sfd.FileName, documentText);
-                MessageBox.Show(
-                    $"Real Estate Term Sheet exported successfully to:\n{sfd.FileName}",
-                    "Term Sheet Exported",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
+            using var viewer = new ContractTermsViewerDialog(_deal, _controller);
+            viewer.ShowDialog(this);
         }
     }
 }

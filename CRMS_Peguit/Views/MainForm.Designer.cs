@@ -1,10 +1,12 @@
 namespace CRMS_Peguit.winforms
 {
-    partial class Form1
+    partial class MainForm
     {
         private System.ComponentModel.IContainer components = null;
 
         private System.Windows.Forms.Panel sidebarPanel = null!;
+        private System.Windows.Forms.Panel pnlLogoHeader = null!;
+        private System.Windows.Forms.PictureBox picLogo = null!;
         private System.Windows.Forms.Label lblLogo = null!;
         private System.Windows.Forms.Panel pnlUserContainer = null!;
         private System.Windows.Forms.Panel pnlUserProfile = null!;
@@ -58,6 +60,8 @@ namespace CRMS_Peguit.winforms
         private void InitializeComponent()
         {
             this.sidebarPanel = new System.Windows.Forms.Panel();
+            this.pnlLogoHeader = new System.Windows.Forms.Panel();
+            this.picLogo = new System.Windows.Forms.PictureBox();
             this.lblLogo = new System.Windows.Forms.Label();
             this.pnlUserContainer = new System.Windows.Forms.Panel();
             this.pnlUserProfile = new System.Windows.Forms.Panel();
@@ -95,6 +99,8 @@ namespace CRMS_Peguit.winforms
             this.mainPanel = new System.Windows.Forms.Panel();
             this.mainToolTip = new System.Windows.Forms.ToolTip();
             this.sidebarPanel.SuspendLayout();
+            this.pnlLogoHeader.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
             this.pnlUserContainer.SuspendLayout();
             this.pnlUserProfile.SuspendLayout();
             this.pnlNav.SuspendLayout();
@@ -108,7 +114,7 @@ namespace CRMS_Peguit.winforms
             this.sidebarPanel.Controls.Add(this.pnlNav);
             this.sidebarPanel.Controls.Add(this.btnLogout);
             this.sidebarPanel.Controls.Add(this.pnlUserContainer);
-            this.sidebarPanel.Controls.Add(this.lblLogo);
+            this.sidebarPanel.Controls.Add(this.pnlLogoHeader);
             this.sidebarPanel.Dock = System.Windows.Forms.DockStyle.Left;
             this.sidebarPanel.Location = new System.Drawing.Point(0, 0);
             this.sidebarPanel.Name = "sidebarPanel";
@@ -116,17 +122,37 @@ namespace CRMS_Peguit.winforms
             this.sidebarPanel.Size = new System.Drawing.Size(240, 720);
             this.sidebarPanel.TabIndex = 0;
             // 
+            // pnlLogoHeader
+            // 
+            this.pnlLogoHeader.BackColor = System.Drawing.Color.Transparent;
+            this.pnlLogoHeader.Controls.Add(this.picLogo);
+            this.pnlLogoHeader.Controls.Add(this.lblLogo);
+            this.pnlLogoHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlLogoHeader.Location = new System.Drawing.Point(0, 8);
+            this.pnlLogoHeader.Name = "pnlLogoHeader";
+            this.pnlLogoHeader.Size = new System.Drawing.Size(240, 48);
+            this.pnlLogoHeader.TabIndex = 0;
+            // 
+            // picLogo
+            // 
+            this.picLogo.BackColor = System.Drawing.Color.Transparent;
+            this.picLogo.Location = new System.Drawing.Point(14, 9);
+            this.picLogo.Name = "picLogo";
+            this.picLogo.Size = new System.Drawing.Size(30, 30);
+            this.picLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.picLogo.TabIndex = 0;
+            this.picLogo.TabStop = false;
+            // 
             // lblLogo
             // 
-            this.lblLogo.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblLogo.Font = new System.Drawing.Font("Segoe UI", 13F, System.Drawing.FontStyle.Bold);
+            this.lblLogo.AutoSize = true;
+            this.lblLogo.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblLogo.ForeColor = System.Drawing.Color.White;
-            this.lblLogo.Location = new System.Drawing.Point(0, 8);
+            this.lblLogo.Location = new System.Drawing.Point(50, 14);
             this.lblLogo.Name = "lblLogo";
-            this.lblLogo.Padding = new System.Windows.Forms.Padding(16, 0, 0, 0);
-            this.lblLogo.Size = new System.Drawing.Size(240, 48);
-            this.lblLogo.TabIndex = 0;
-            this.lblLogo.Text = "⛛ NEXA CRM SYSTEM";
+            this.lblLogo.Size = new System.Drawing.Size(164, 21);
+            this.lblLogo.TabIndex = 1;
+            this.lblLogo.Text = "NEXA CRM SYSTEM";
             this.lblLogo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // pnlUserContainer
@@ -568,7 +594,7 @@ namespace CRMS_Peguit.winforms
             this.txtGlobalSearch.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
             this.txtGlobalSearch.Location = new System.Drawing.Point(148, 16);
             this.txtGlobalSearch.Name = "txtGlobalSearch";
-            this.txtGlobalSearch.PlaceholderText = "🔍 Search leads, properties, deals...";
+            this.txtGlobalSearch.PlaceholderText = "🔍 Search records, contacts... (Ctrl+K)";
             this.txtGlobalSearch.Size = new System.Drawing.Size(320, 24);
             this.txtGlobalSearch.TabIndex = 2;
             // 
@@ -576,7 +602,7 @@ namespace CRMS_Peguit.winforms
             // 
             this.lblBellIcon.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblBellIcon.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.lblBellIcon.Font = new System.Drawing.Font("Segoe UI", 12F);
+            this.lblBellIcon.Font = new System.Drawing.Font("Segoe UI Emoji", 12F);
             this.lblBellIcon.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
             this.lblBellIcon.Location = new System.Drawing.Point(800, 16);
             this.lblBellIcon.Name = "lblBellIcon";
@@ -628,9 +654,12 @@ namespace CRMS_Peguit.winforms
             this.Controls.Add(this.contentWrapperPanel);
             this.Controls.Add(this.sidebarPanel);
             this.MinimumSize = new System.Drawing.Size(850, 540);
-            this.Name = "Form1";
+            this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "NEXA CRM SYSTEM";
+            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).EndInit();
+            this.pnlLogoHeader.ResumeLayout(false);
+            this.pnlLogoHeader.PerformLayout();
             this.sidebarPanel.ResumeLayout(false);
             this.pnlUserContainer.ResumeLayout(false);
             this.pnlUserProfile.ResumeLayout(false);

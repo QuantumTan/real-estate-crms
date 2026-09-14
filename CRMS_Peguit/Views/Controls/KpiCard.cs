@@ -135,7 +135,7 @@ namespace CRMS_Peguit.winforms.Controls
                 }
 
                 string icon = GetDefaultIcon(FilterKey);
-                using var iconFont = new Font("Segoe UI", 12f);
+                using var iconFont = new Font("Segoe UI Emoji", 12f);
                 using var iconBrush = new SolidBrush(_accentColor);
                 var sf = new StringFormat
                 {

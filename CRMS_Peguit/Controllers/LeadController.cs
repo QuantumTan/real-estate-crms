@@ -327,7 +327,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 if (!_db.Users.Any(u => u.UserId == agentId))
                 {
                     var userByEmail = CurrentSession.CurrentUser != null && !string.IsNullOrEmpty(CurrentSession.CurrentUser.Email)
-                        ? _db.Users.FirstOrDefault(u => u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
+                        ? _db.Users.FirstOrDefault(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
                         : null;
 
                     if (userByEmail != null)
@@ -370,6 +370,57 @@ namespace CRMS_Peguit.winforms.Controllers
             // R23. Default state is Unassigned — never auto-assigned to creator.
             lead.AssignedAgentId = null;
             lead.AssignmentStatus = "pending_review";
+        }
+
+        public static bool ValidateLeadInput(
+            string firstName,
+            string lastName,
+            string? email,
+            string? expectedValueText,
+            out decimal? parsedExpectedValue,
+            out string? errorMessage,
+            out string? errorField)
+        {
+            parsedExpectedValue = null;
+            errorField = null;
+
+            if (string.IsNullOrWhiteSpace(firstName))
+            {
+                errorMessage = "First name is required.";
+                errorField = "FirstName";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(lastName))
+            {
+                errorMessage = "Last name is required.";
+                errorField = "LastName";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(email) && !ContactEmailService.IsValidEmail(email.Trim()))
+            {
+                errorMessage = "Enter a valid email address.";
+                errorField = "Email";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(expectedValueText))
+            {
+                if (decimal.TryParse(expectedValueText.Trim(), out decimal parsedVal) && parsedVal >= 0)
+                {
+                    parsedExpectedValue = parsedVal;
+                }
+                else
+                {
+                    errorMessage = "Enter a valid expected value amount.";
+                    errorField = "ExpectedValue";
+                    return false;
+                }
+            }
+
+            errorMessage = null;
+            return true;
         }
 
         public void Dispose() => _db.Dispose();

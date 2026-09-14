@@ -484,6 +484,13 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             if (_pnlFooter != null)
             {
+                // Left-aligned contextual action
+                if (_btnMessage != null)
+                {
+                    _btnMessage.Location = new Point(24, 13);
+                }
+
+                // Right-aligned dialog actions
                 int right = _pnlFooter.ClientSize.Width - 24;
                 if (_btnClose != null)
                 {
@@ -493,11 +500,6 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 if (_btnEdit != null && _btnEdit.Visible)
                 {
                     _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
-                    right -= (_btnEdit.Width + 10);
-                }
-                if (_btnMessage != null && _btnMessage.Visible)
-                {
-                    _btnMessage.Location = new Point(right - _btnMessage.Width, 13);
                 }
             }
 

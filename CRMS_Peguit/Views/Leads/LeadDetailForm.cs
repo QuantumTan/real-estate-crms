@@ -28,6 +28,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
         private Panel? _pnlFooter;
         private Panel? _pnlContent;
         private Button? _btnEdit;
+        private Button? _btnConvert;
         private Button? _btnMessage;
         private Button? _btnClose;
 
@@ -178,7 +179,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 _btnEdit = new Button
                 {
                     Text = "✏️ Edit Lead",
-                    Size = new Size(118, 36),
+                    Size = new Size(130, 36),
                     BackColor = Theme.Primary,
                     ForeColor = Color.White,
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
@@ -187,6 +188,33 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 UiRadiusHelper.AttachHoverFeedback(_btnEdit, Theme.Primary, Theme.PrimaryDark);
                 _btnEdit.Click += BtnEditClick;
                 _pnlFooter.Controls.Add(_btnEdit);
+            }
+
+            // Convert to Customer Button (if lead is not already converted)
+            bool canConvert = _lead is not null &&
+                              !string.Equals(_lead.Stage, "converted", StringComparison.OrdinalIgnoreCase) &&
+                              (RbacService.IsSuperAdmin || RbacService.IsManager || RbacService.CanCreateSalesRecord);
+            if (canConvert)
+            {
+                _btnConvert = new Button
+                {
+                    Text = "🔄 Convert to Customer",
+                    Size = new Size(165, 36),
+                    BackColor = Color.White,
+                    ForeColor = Color.FromArgb(16, 185, 129),
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    Cursor = Cursors.Hand
+                };
+                UiRadiusHelper.StyleButton(_btnConvert, 8);
+                _btnConvert.Paint += (s, e) =>
+                {
+                    using var p = new Pen(Color.FromArgb(167, 243, 208), 1f);
+                    using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, _btnConvert.Width - 1, _btnConvert.Height - 1), 8);
+                    e.Graphics.DrawPath(p, path);
+                };
+                UiRadiusHelper.AttachHoverFeedback(_btnConvert, Color.White, Color.FromArgb(236, 253, 245));
+                _btnConvert.Click += BtnConvertClick;
+                _pnlFooter.Controls.Add(_btnConvert);
             }
 
             // Send Email Button
@@ -620,6 +648,19 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             if (_pnlFooter != null)
             {
+                // Left-aligned contextual actions
+                int left = 24;
+                if (_btnMessage != null)
+                {
+                    _btnMessage.Location = new Point(left, 13);
+                    left += _btnMessage.Width + 10;
+                }
+                if (_btnConvert != null && _btnConvert.Visible)
+                {
+                    _btnConvert.Location = new Point(left, 13);
+                }
+
+                // Right-aligned dialog actions
                 int right = _pnlFooter.ClientSize.Width - 24;
                 if (_btnClose != null)
                 {
@@ -629,11 +670,6 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 if (_btnEdit != null && _btnEdit.Visible)
                 {
                     _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
-                    right -= (_btnEdit.Width + 10);
-                }
-                if (_btnMessage != null && _btnMessage.Visible)
-                {
-                    _btnMessage.Location = new Point(right - _btnMessage.Width, 13);
                 }
             }
 
@@ -669,6 +705,23 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             using var emailForm = new EmailMessageForm(_lead.FullName, _lead.Email);
             emailForm.ShowDialog(this);
+        }
+
+        private void BtnConvertClick(object? sender, EventArgs e)
+        {
+            if (_lead == null || _controller == null) return;
+
+            var result = MessageBox.Show(
+                $"Convert '{_lead.FullName}' into a customer?\n\n" +
+                "A new customer record will be created and this lead will be marked as converted.",
+                "Convert Lead", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes) return;
+
+            _controller.ConvertToCustomer(_lead);
+            _lead = _controller.GetById(_lead.LeadId) ?? _lead;
+            BuildUi();
+            MessageBox.Show($"Lead '{_lead.FullName}' converted to customer successfully.", "Lead Converted", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

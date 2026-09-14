@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CRMS_Peguit.infrastructure.Migrations.Master
 {
     [DbContext(typeof(MasterCrmsDbContext))]
-    [Migration("20260913085755_AddSuperAdminAndSubscription")]
-    partial class AddSuperAdminAndSubscription
+    [Migration("20260914024258_InitialMasterSchema")]
+    partial class InitialMasterSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

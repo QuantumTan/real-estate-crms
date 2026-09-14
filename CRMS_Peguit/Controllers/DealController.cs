@@ -203,11 +203,15 @@ namespace CRMS_Peguit.winforms.Controllers
                 );
         }
 
-        public List<KeyValuePair<int, string>> GetCustomerPickerList()
+        public List<KeyValuePair<int, string>> GetCustomerPickerList(int? includeCustomerId = null)
         {
+            var buyerTypes = new[] { "buyer", "both" };
+
             return _db.Customers
                 .Include(c => c.Person)
                 .AsNoTracking()
+                .Where(c => (buyerTypes.Contains(c.Type.ToLower()) && c.Status.ToLower() != "inactive") ||
+                            (includeCustomerId.HasValue && c.CustomerId == includeCustomerId.Value))
                 .OrderBy(c => c.Person.LastName)
                 .ThenBy(c => c.Person.FirstName)
                 .ToList()
@@ -236,9 +240,66 @@ namespace CRMS_Peguit.winforms.Controllers
                 .ToList();
         }
 
+        public static DealFinancingResult CalculateFinancing(decimal dealValue, decimal downPaymentPercent, string? paymentScheme)
+        {
+            if (string.Equals(paymentScheme, "Spot Cash", StringComparison.OrdinalIgnoreCase))
+            {
+                return new DealFinancingResult
+                {
+                    DownPaymentAmount = dealValue,
+                    BalanceAmount = 0,
+                    DownPaymentDisplay = $"Full Payment: ₱{dealValue:N2}",
+                    BalanceDisplay = "Balance: ₱0.00 (Cash Settlement)"
+                };
+            }
+
+            decimal downAmt = dealValue * (downPaymentPercent / 100m);
+            decimal balAmt = Math.Max(0, dealValue - downAmt);
+            return new DealFinancingResult
+            {
+                DownPaymentAmount = downAmt,
+                BalanceAmount = balAmt,
+                DownPaymentDisplay = $"Downpayment ({downPaymentPercent:N0}%): ₱{downAmt:N2}",
+                BalanceDisplay = $"Balance to Finance: ₱{balAmt:N2}"
+            };
+        }
+
+        public static bool ValidateDealInput(object? customerValue, object? propertyValue, string dealValueText, out decimal dealValue, out string? errorMessage)
+        {
+            dealValue = 0;
+            if (customerValue == null)
+            {
+                errorMessage = "Please select a Buyer / Customer.";
+                return false;
+            }
+
+            if (propertyValue == null)
+            {
+                errorMessage = "Please select a Subject Property.";
+                return false;
+            }
+
+            if (!decimal.TryParse(dealValueText.Replace(",", "").Trim(), out dealValue) || dealValue <= 0)
+            {
+                errorMessage = "Please enter a valid positive Deal Value.";
+                return false;
+            }
+
+            errorMessage = null;
+            return true;
+        }
+
         public void Dispose()
         {
             _db.Dispose();
         }
+    }
+
+    public class DealFinancingResult
+    {
+        public decimal DownPaymentAmount { get; set; }
+        public decimal BalanceAmount { get; set; }
+        public string DownPaymentDisplay { get; set; } = string.Empty;
+        public string BalanceDisplay { get; set; } = string.Empty;
     }
 }

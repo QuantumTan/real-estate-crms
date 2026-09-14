@@ -379,25 +379,15 @@ namespace CRMS_Peguit.winforms.Views.Deals
             if (!decimal.TryParse(_txtValue.Text.Replace(",", "").Trim(), out decimal val))
                 val = 0;
 
-            decimal downPercent = _numDownPercent.Value;
-            if (string.Equals(_cboPaymentScheme.SelectedItem?.ToString(), "Spot Cash", StringComparison.OrdinalIgnoreCase))
-            {
-                _lblDownAmount.Text = $"Full Payment: ₱{val:N2}";
-                _lblBalanceAmount.Text = "Balance: ₱0.00 (Cash Settlement)";
-            }
-            else
-            {
-                decimal downAmt = val * (downPercent / 100m);
-                decimal balAmt = Math.Max(0, val - downAmt);
-                _lblDownAmount.Text = $"Downpayment ({downPercent:N0}%): ₱{downAmt:N2}";
-                _lblBalanceAmount.Text = $"Balance to Finance: ₱{balAmt:N2}";
-            }
+            var financing = DealController.CalculateFinancing(val, _numDownPercent.Value, _cboPaymentScheme.SelectedItem?.ToString());
+            _lblDownAmount.Text = financing.DownPaymentDisplay;
+            _lblBalanceAmount.Text = financing.BalanceDisplay;
         }
 
         private void LoadData()
         {
             // Populate Buyer Picker
-            var customers = _controller.GetCustomerPickerList();
+            var customers = _controller.GetCustomerPickerList(_existingDeal?.CustomerId);
             _cboCustomer.DisplayMember = "Value";
             _cboCustomer.ValueMember = "Key";
             _cboCustomer.DataSource = customers;
@@ -473,28 +463,18 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
         private void BtnSaveClick(object? sender, EventArgs e)
         {
-            if (_cboCustomer.SelectedValue == null)
+            if (!DealController.ValidateDealInput(_cboCustomer.SelectedValue, _cboProperty.SelectedValue, _txtValue.Text, out decimal dealVal, out string? error))
             {
-                MessageBox.Show("Please select a Buyer / Customer.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (_cboProperty.SelectedValue == null)
-            {
-                MessageBox.Show("Please select a Subject Property.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!decimal.TryParse(_txtValue.Text.Replace(",", "").Trim(), out decimal dealVal) || dealVal <= 0)
-            {
-                MessageBox.Show("Please enter a valid positive Deal Value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(error ?? "Validation error.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             decimal.TryParse(_txtReservationFee.Text.Replace(",", "").Trim(), out decimal resFee);
             decimal downPercent = _numDownPercent.Value;
-            decimal downAmt = dealVal * (downPercent / 100m);
-            decimal balAmt = Math.Max(0, dealVal - downAmt);
+            string paymentScheme = _cboPaymentScheme.SelectedItem?.ToString() ?? "Bank Financing";
+            var financing = DealController.CalculateFinancing(dealVal, downPercent, paymentScheme);
+            decimal downAmt = financing.DownPaymentAmount;
+            decimal balAmt = financing.BalanceAmount;
 
             // Collect active clause IDs
             var selectedClauseIds = new List<string>();
@@ -512,14 +492,13 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 }
             }
 
-            string paymentScheme = _cboPaymentScheme.SelectedItem?.ToString() ?? "Bank Financing";
             string stage = _cboStage.SelectedItem?.ToString() ?? "Reservation";
 
             Result = new Deal
             {
                 DealId = _existingDeal?.DealId ?? 0,
-                CustomerId = (int)_cboCustomer.SelectedValue,
-                PropertyId = (int)_cboProperty.SelectedValue,
+                CustomerId = Convert.ToInt32(_cboCustomer.SelectedValue),
+                PropertyId = Convert.ToInt32(_cboProperty.SelectedValue),
                 AgentId = _cboAgent.SelectedValue as int?,
                 Value = dealVal,
                 CommissionRate = _numCommission.Value / 100m,

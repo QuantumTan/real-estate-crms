@@ -115,6 +115,20 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             grid.CellPainting += Grid_CellPainting;
             grid.CellContentClick += GridCellContentClick;
+            grid.CellDoubleClick += (_, e) =>
+            {
+                if (e.RowIndex < 0) return;
+                if (int.TryParse(grid.Rows[e.RowIndex].Cells["DealId"]?.Value?.ToString(), out int dealId))
+                {
+                    var deal = _controller.GetById(dealId);
+                    if (deal != null)
+                    {
+                        using var form = new DealDetailForm(deal, _controller);
+                        form.ShowDialog(this.FindForm());
+                        RefreshGrid();
+                    }
+                }
+            };
         }
 
         private void SetFilter(string stage)
@@ -307,6 +321,18 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 }
             };
             menu.Items.Add(viewItem);
+
+            var contractItem = new ToolStripMenuItem("📜 View Contract & Terms");
+            contractItem.Click += (_, _) =>
+            {
+                var deal = _controller.GetById(dealId);
+                if (deal != null)
+                {
+                    using var viewer = new ContractTermsViewerDialog(deal, _controller);
+                    viewer.ShowDialog(this.FindForm());
+                }
+            };
+            menu.Items.Add(contractItem);
 
             if (RbacService.CanCreateSalesRecord)
             {

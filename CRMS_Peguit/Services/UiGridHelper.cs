@@ -65,6 +65,7 @@ namespace CRMS_Peguit.winforms.Models.Services
             int hoverRow = -1;
             int hoverCol = -1;
 
+            // Cell cursor and tooltip for Actions
             grid.CellMouseEnter += (s, e) =>
             {
                 hoverCol = e.ColumnIndex;
@@ -77,6 +78,11 @@ namespace CRMS_Peguit.winforms.Models.Services
                     if (hoverRow < grid.RowCount && !grid.Rows[hoverRow].Selected)
                         grid.InvalidateRow(hoverRow);
                 }
+
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && (grid.Columns[e.ColumnIndex].Name == "Actions" || grid.Columns[e.ColumnIndex] is Controls.ActionsColumn))
+                {
+                    grid.Cursor = Cursors.Hand;
+                }
             };
 
             grid.CellMouseLeave += (s, e) =>
@@ -88,6 +94,19 @@ namespace CRMS_Peguit.winforms.Models.Services
                     hoverCol = -1;
                     if (old < grid.RowCount && !grid.Rows[old].Selected)
                         grid.InvalidateRow(old);
+                }
+
+                if (e.ColumnIndex >= 0 && (grid.Columns[e.ColumnIndex].Name == "Actions" || grid.Columns[e.ColumnIndex] is Controls.ActionsColumn))
+                {
+                    grid.Cursor = Cursors.Default;
+                }
+            };
+
+            grid.CellFormatting += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && (grid.Columns[e.ColumnIndex].Name == "Actions" || grid.Columns[e.ColumnIndex] is Controls.ActionsColumn))
+                {
+                    grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ToolTipText = "Lead options (View, Edit, Convert, Assign)";
                 }
             };
 
@@ -118,15 +137,31 @@ namespace CRMS_Peguit.winforms.Models.Services
                 var col = grid.Columns[e.ColumnIndex];
                 if (col.Name == "Actions" || col is Controls.ActionsColumn)
                 {
-                    PaintActionCell(e, e.RowIndex == hoverRow && e.ColumnIndex == hoverCol);
+                    Color cellBg = grid.Rows[e.RowIndex].Selected
+                        ? SelectionBg
+                        : (e.RowIndex == hoverRow ? RowHover : (e.RowIndex % 2 == 1 ? RowAlternate : RowNormal));
+                    PaintActionCell(e, e.RowIndex == hoverRow && e.ColumnIndex == hoverCol, cellBg);
                 }
             };
         }
 
-        public static void PaintActionCell(DataGridViewCellPaintingEventArgs e, bool isHovered)
+        public static Color GetRowBackgroundColor(DataGridView grid, int rowIndex, int hoveredRowIndex)
+        {
+            if (grid == null || rowIndex < 0 || rowIndex >= grid.RowCount) return RowNormal;
+            if (grid.Rows[rowIndex].Selected) return SelectionBg;
+            if (rowIndex == hoveredRowIndex) return RowHover;
+            return (rowIndex % 2 == 1) ? RowAlternate : RowNormal;
+        }
+
+        public static void PaintActionCell(DataGridViewCellPaintingEventArgs e, bool isHovered, Color? background = null)
         {
             if (e.Graphics == null) return;
-            e.PaintBackground(e.CellBounds, true);
+            
+            Color rowBg = background ?? RowNormal;
+            using (var rowBrush = new SolidBrush(rowBg))
+            {
+                e.Graphics.FillRectangle(rowBrush, e.CellBounds);
+            }
 
             int btnSize = 28;
             int x = e.CellBounds.X + (e.CellBounds.Width - btnSize) / 2;
@@ -135,21 +170,23 @@ namespace CRMS_Peguit.winforms.Models.Services
 
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // Soft circular pill background
-            Color bg = isHovered ? Color.FromArgb(226, 232, 240) : Color.FromArgb(241, 245, 249);
+            // Soft circular pill background with hover state
+            Color bg = isHovered ? Color.FromArgb(219, 234, 254) : Color.FromArgb(241, 245, 249); // #DBEAFE hover tint
+            Color borderColor = isHovered ? Color.FromArgb(147, 197, 253) : Color.FromArgb(226, 232, 240);
             using (var brush = new SolidBrush(bg))
             {
                 e.Graphics.FillEllipse(brush, rect);
             }
 
-            using (var borderPen = new Pen(Color.FromArgb(226, 232, 240), 1f))
+            using (var borderPen = new Pen(borderColor, 1f))
             {
                 e.Graphics.DrawEllipse(borderPen, rect);
             }
 
             // Draw clean centered 3 vertical dots
+            Color dotsColor = isHovered ? Color.FromArgb(29, 78, 216) : Color.FromArgb(71, 85, 105);
             using (var font = new Font("Segoe UI", 12f, FontStyle.Bold))
-            using (var textBrush = new SolidBrush(Color.FromArgb(71, 85, 105)))
+            using (var textBrush = new SolidBrush(dotsColor))
             {
                 var sf = new StringFormat
                 {
@@ -157,6 +194,12 @@ namespace CRMS_Peguit.winforms.Models.Services
                     LineAlignment = StringAlignment.Center
                 };
                 e.Graphics.DrawString("⋮", font, textBrush, new RectangleF(x, y - 1, btnSize, btnSize), sf);
+            }
+
+            // Bottom border divider
+            using (var pen = new Pen(GridBorder, 1f))
+            {
+                e.Graphics.DrawLine(pen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
             }
 
             e.Handled = true;

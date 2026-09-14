@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CRMS_Peguit.infrastructure.Migrations
+namespace CRMS_Peguit.infrastructure.Migrations.Master
 {
     [DbContext(typeof(MasterCrmsDbContext))]
     partial class MasterCrmsDbContextModelSnapshot : ModelSnapshot
