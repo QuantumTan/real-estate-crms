@@ -56,6 +56,9 @@ namespace CRMS_Peguit.winforms
             lnkForgotPassword.Click += LnkForgotPasswordClick;
             btnLogin.Click += BtnLogin_Click;
             UiRadiusHelper.StyleButton(btnLogin, 8);
+            UiRadiusHelper.SetPadding(txtCompanyId, 8, 8);
+            UiRadiusHelper.SetPadding(txtEmail, 8, 8);
+            UiRadiusHelper.SetPadding(txtPassword, 8, 8);
         }
 
         // ==========================================================

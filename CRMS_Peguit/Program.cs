@@ -16,6 +16,9 @@ namespace CRMS_Peguit.winforms
             var localConnection = DbConfiguration.GetLocalConnectionString();
             var cloudConnection = DbConfiguration.GetCloudConnectionString();
 
+            // Automatically ensure SQL Server LocalDB instance is actively running before database access
+            LocalDbHelper.EnsureLocalDbRunning(localConnection);
+
             // Propagate connection string to environment so all components share the resolved value
             if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CRMS_CONNECTION")))
             {

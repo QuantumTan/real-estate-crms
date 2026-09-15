@@ -25,29 +25,37 @@ namespace CRMS_Peguit.winforms.Controllers
         // =========================================================================
         public List<SupportTicket> GetAll()
         {
-            var query = _db.SupportTickets
-                .Include(t => t.Customer).ThenInclude(c => c.Person)
-                .Include(t => t.RaisedByUser).ThenInclude(u => u.Person)
-                .Include(t => t.AssignedToUser).ThenInclude(u => u!.Person)
-                .AsNoTracking();
-
-            // Row-level ownership check:
-            // Manager & Admin have full oversight across tenant.
-            // Agent sees ONLY their own tickets:
-            // - While Unassigned, visible ONLY to the Agent who logged it.
-            // - Once assigned, visible ONLY to the assigned Agent.
-            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            try
             {
-                int currentUserId = CurrentSession.UserId;
-                query = query.Where(t =>
-                    (t.AssignedToUserId.HasValue && t.AssignedToUserId.Value > 0)
-                        ? t.AssignedToUserId.Value == currentUserId
-                        : t.RaisedByUserId == currentUserId);
-            }
+                var query = _db.SupportTickets
+                    .Include(t => t.Customer).ThenInclude(c => c.Person)
+                    .Include(t => t.RaisedByUser).ThenInclude(u => u.Person)
+                    .Include(t => t.AssignedToUser).ThenInclude(u => u!.Person)
+                    .AsNoTracking();
 
-            return query
-                .OrderByDescending(t => t.CreatedAt)
-                .ToList();
+                // Row-level ownership check:
+                // Manager & Admin have full oversight across tenant.
+                // Agent sees ONLY their own tickets:
+                // - While Unassigned, visible ONLY to the Agent who logged it.
+                // - Once assigned, visible ONLY to the assigned Agent.
+                if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int currentUserId = CurrentSession.UserId;
+                    query = query.Where(t =>
+                        (t.AssignedToUserId.HasValue && t.AssignedToUserId.Value > 0)
+                            ? t.AssignedToUserId.Value == currentUserId
+                            : t.RaisedByUserId == currentUserId);
+                }
+
+                return query
+                    .OrderByDescending(t => t.CreatedAt)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupportTicketController.GetAll] Error: {ex.Message}");
+                return new List<SupportTicket>();
+            }
         }
 
         public SupportTicket? GetById(int id)

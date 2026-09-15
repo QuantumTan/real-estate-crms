@@ -43,7 +43,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 txtSource.Text = _existingLead.Source ?? string.Empty;
                 txtNotes.Text = _existingLead.Notes ?? string.Empty;
                 txtExpectedValue.Text = _existingLead.ExpectedValue.HasValue
-                    ? _existingLead.ExpectedValue.Value.ToString("F0")
+                    ? _existingLead.ExpectedValue.Value.ToString("F2")
                     : string.Empty;
                 SelectComboValue(cmbStage, _existingLead.Stage, "new");
                 SelectComboValue(cmbPriority, _existingLead.Priority, "medium");

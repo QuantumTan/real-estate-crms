@@ -415,7 +415,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 if (_existingDeal.AgentId.HasValue && agents.Any(a => a.Key == _existingDeal.AgentId.Value))
                     _cboAgent.SelectedValue = _existingDeal.AgentId.Value;
 
-                _txtValue.Text = _existingDeal.Value.ToString("N0");
+                _txtValue.Text = _existingDeal.Value.ToString("N2");
                 _numCommission.Value = Math.Min(20, Math.Max(0, _existingDeal.CommissionRate * 100));
 
                 int stgIdx = _cboStage.FindStringExact(_existingDeal.Stage);
@@ -431,7 +431,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 }
 
                 if (_existingDeal.ReservationFee.HasValue)
-                    _txtReservationFee.Text = _existingDeal.ReservationFee.Value.ToString("N0");
+                    _txtReservationFee.Text = _existingDeal.ReservationFee.Value.ToString("N2");
 
                 if (_existingDeal.DownPaymentPercent.HasValue)
                     _numDownPercent.Value = Math.Min(100, Math.Max(0, _existingDeal.DownPaymentPercent.Value));

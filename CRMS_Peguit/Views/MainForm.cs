@@ -27,6 +27,7 @@ namespace CRMS_Peguit.winforms
         // Global search debounce + floating dropdown
         private System.Windows.Forms.Timer? _searchDebounce;
         private ToolStripDropDown? _searchDropDown;
+        private Panel? _pnlSearchBox;
 
         public MainForm()
         {
@@ -84,14 +85,16 @@ namespace CRMS_Peguit.winforms
                 btn.Text = $"   {info.Icon,-2}   {info.Title}";
                 btn.Padding = new Padding(16, 0, 0, 0);
                 btn.TextAlign = ContentAlignment.MiddleLeft;
+                btn.ForeColor = Theme.SidebarText;
 
                 btn.Paint += (s, e) =>
                 {
                     if (s is Button b && b == _activeNavButton)
                     {
                         e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        using var accentBrush = new SolidBrush(Color.FromArgb(96, 165, 250));
-                        using var accentPath = UiRadiusHelper.CreateRoundedPath(new Rectangle(2, 6, 4, b.Height - 12), 2);
+                        // Sleek Fluent-style left indicator accent line
+                        using var accentBrush = new SolidBrush(Theme.SidebarAccent);
+                        using var accentPath = UiRadiusHelper.CreateRoundedPath(new Rectangle(4, 7, 3, b.Height - 14), 2);
                         e.Graphics.FillPath(accentBrush, accentPath);
                     }
                 };
@@ -117,12 +120,14 @@ namespace CRMS_Peguit.winforms
                 if (btn == button)
                 {
                     btn.BackColor = Theme.SidebarSelected;
-                    btn.ForeColor = Color.White;
+                    btn.ForeColor = Theme.SidebarTextActive;
+                    btn.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
                 }
                 else
                 {
                     btn.BackColor = Color.Transparent;
                     btn.ForeColor = Theme.SidebarText;
+                    btn.Font = new Font("Segoe UI", 9.5f, FontStyle.Regular);
                 }
                 btn.Invalidate();
             }
@@ -467,8 +472,6 @@ namespace CRMS_Peguit.winforms
             topHeaderPanel.BackColor = Theme.HeaderBackground;
             mainPanel.BackColor = Theme.Background;
             BackColor = Theme.Background;
-            txtGlobalSearch.BackColor = AzureTints.BackgroundWash;
-            txtGlobalSearch.ForeColor = Theme.TextPrimary;
             lblHeaderUserName.ForeColor = Theme.TextPrimary;
             lblHeaderAvatar.BackColor = AzureTints.SkylineBlue;
             lblHeaderAvatar.ForeColor = AzureTints.PureWhite;
@@ -484,9 +487,72 @@ namespace CRMS_Peguit.winforms
             UiRadiusHelper.MakeCircularAvatar(lblUserAvatar);
             UiRadiusHelper.MakeCircularAvatar(lblHeaderAvatar);
             UiRadiusHelper.MakeStatusDot(lblStatusDot, Color.FromArgb(34, 197, 94));
-            UiRadiusHelper.SetPadding(txtGlobalSearch, 12, 12);
             UiRadiusHelper.StyleButton(btnLogout, 6);
             UiRadiusHelper.StyleButton(btnToggleSidebar, 6);
+
+            // Modernize Global Search container with integrated search icon and Ctrl+K shortcut badge
+            _pnlSearchBox = new Panel
+            {
+                Size = new Size(340, 34),
+                Location = new Point(lblRoleBadge.Right + 16, (topHeaderPanel.Height - 34) / 2),
+                BackColor = Color.FromArgb(241, 245, 249),
+                Cursor = Cursors.IBeam
+            };
+            UiRadiusHelper.ApplyRoundedCorners(_pnlSearchBox, 8);
+
+            var lblSearchIcon = new Label
+            {
+                Text = "🔍",
+                Font = new Font("Segoe UI Emoji", 9.5f),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                Size = new Size(22, 22),
+                Location = new Point(10, 6),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.IBeam
+            };
+
+            var lblSearchBadge = new Label
+            {
+                Text = "Ctrl+K",
+                Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                BackColor = Color.FromArgb(226, 232, 240),
+                Size = new Size(48, 20),
+                Location = new Point(340 - 48 - 10, 7),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
+            };
+            UiRadiusHelper.ApplyRoundedCorners(lblSearchBadge, 4);
+
+            topHeaderPanel.Controls.Remove(txtGlobalSearch);
+
+            txtGlobalSearch.BorderStyle = BorderStyle.None;
+            txtGlobalSearch.BackColor = Color.FromArgb(241, 245, 249);
+            txtGlobalSearch.ForeColor = Theme.TextPrimary;
+            txtGlobalSearch.Location = new Point(36, 7);
+            txtGlobalSearch.Size = new Size(340 - 36 - 62, 20);
+            txtGlobalSearch.PlaceholderText = "Search records, contacts...";
+
+            bool searchFocused = false;
+            _pnlSearchBox.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                Color borderClr = searchFocused ? Color.FromArgb(14, 165, 233) : Color.FromArgb(226, 232, 240);
+                using var pen = new Pen(borderClr, searchFocused ? 1.5f : 1f);
+                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, _pnlSearchBox.Width - 1, _pnlSearchBox.Height - 1), 8);
+                e.Graphics.DrawPath(pen, path);
+            };
+
+            txtGlobalSearch.GotFocus += (_, _) => { searchFocused = true; _pnlSearchBox.Invalidate(); };
+            txtGlobalSearch.LostFocus += (_, _) => { searchFocused = false; _pnlSearchBox.Invalidate(); };
+            _pnlSearchBox.Click += (_, _) => txtGlobalSearch.Focus();
+            lblSearchIcon.Click += (_, _) => txtGlobalSearch.Focus();
+            lblSearchBadge.Click += (_, _) => txtGlobalSearch.Focus();
+
+            _pnlSearchBox.Controls.Add(lblSearchIcon);
+            _pnlSearchBox.Controls.Add(txtGlobalSearch);
+            _pnlSearchBox.Controls.Add(lblSearchBadge);
+            topHeaderPanel.Controls.Add(_pnlSearchBox);
 
             topHeaderPanel.Paint += (s, e) =>
             {
@@ -542,9 +608,14 @@ namespace CRMS_Peguit.winforms
             lblHeaderUserName.Text = $"{user.FullName}\r\n{roleDisplay}";
             lblRoleBadge.Text = $"• {roleDisplay}";
             var badgeSize = TextRenderer.MeasureText(lblRoleBadge.Text, lblRoleBadge.Font);
-            lblRoleBadge.Width = Math.Max(72, badgeSize.Width + 16);
+            lblRoleBadge.Width = Math.Max(72, badgeSize.Width + 18);
             UiRadiusHelper.ApplyPillShape(lblRoleBadge);
-            txtGlobalSearch.Location = new Point(lblRoleBadge.Right + 12, 16);
+
+            if (_pnlSearchBox != null)
+            {
+                _pnlSearchBox.Left = lblRoleBadge.Right + 16;
+                _pnlSearchBox.Top = (topHeaderPanel.Height - _pnlSearchBox.Height) / 2;
+            }
 
             btnApprovals.Visible = CurrentSession.CanAccess("Approvals") && RbacService.CanApproveAssignments;
             btnManageManagers.Visible = CurrentSession.CanAccess("Managers");

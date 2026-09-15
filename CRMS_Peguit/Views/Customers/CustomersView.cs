@@ -226,6 +226,8 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 statusCol.HeaderText = "STATUS";
                 statusCol.FillWeight = 90;
                 statusCol.MinimumWidth = 80;
+                statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
             if (grid.Columns["LastContacted"] is DataGridViewColumn lastCol)
             {
@@ -243,51 +245,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Custom render Status pill badge
+            // Minimalist Status Indicator (Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string status = e.Value.ToString() ?? "";
-                Color bgColor;
-                Color textColor;
-
-                if (status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Theme.StatusActiveBg;
-                    textColor = Theme.StatusActiveText;
-                }
-                else if (status.Equals("PROSPECT", StringComparison.OrdinalIgnoreCase) || status.Contains("FOLLOW"))
-                {
-                    bgColor = Theme.StatusFollowUpBg;
-                    textColor = Theme.StatusFollowUpText;
-                }
-                else
-                {
-                    bgColor = Theme.StatusInactiveBg;
-                    textColor = Theme.StatusInactiveText;
-                }
-
-                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(status, font);
-                    int pillWidth = size.Width + 16;
-                    int pillHeight = 22;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
-                    {
-                        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, status, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: true);
+                return;
             }
             // Custom render Name with circular initials badge
             else if (grid.Columns[e.ColumnIndex].Name == "Name" && e.Value != null)
@@ -537,7 +500,11 @@ namespace CRMS_Peguit.winforms.Views.Customers
             int rightPadding = 30;
             int leftMargin = 30;
             int totalWidth = ClientSize.Width;
-            int y = 88;
+
+            // Explicit header positioning with clear separation
+            lblTitle.Location = new Point(leftMargin, 20);
+            lblSubtitle.Location = new Point(leftMargin + 2, lblTitle.Bottom + 4);
+            int y = Math.Max(96, lblSubtitle.Bottom + 16);
 
             // Position header action buttons
             int rightEdge = totalWidth - rightPadding;
@@ -575,8 +542,9 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 txtSearch.Left = leftMargin;
                 txtSearch.Width = Math.Min(360, availableForSearch);
 
-                pnlCard.Top = 126;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+                int cardTop = y + txtSearch.Height + 14;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 24);
             }
             else
             {
@@ -586,7 +554,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
 
                 int filterX = leftMargin;
-                int pillY = y + 36;
+                int pillY = y + txtSearch.Height + 10;
                 var forwardPills = new[] { btnFilterAll, btnFilterActive, btnFilterFollowUp, btnFilterInactive };
                 foreach (var p in forwardPills)
                 {
@@ -595,8 +563,9 @@ namespace CRMS_Peguit.winforms.Views.Customers
                     filterX += p.Width + 6;
                 }
 
-                pnlCard.Top = pillY + 38;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+                int cardTop = pillY + 34;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 20);
             }
 
             pnlCard.Left = leftMargin;

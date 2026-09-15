@@ -62,7 +62,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.lblSubtitle.Name = "lblSubtitle";
             this.lblSubtitle.Size = new System.Drawing.Size(120, 17);
             this.lblSubtitle.TabIndex = 1;
-            this.lblSubtitle.Text = "0 total · ₱0 pipeline";
+            this.lblSubtitle.Text = "0 total · ₱0.00 pipeline";
             // 
             // txtSearch
             // 

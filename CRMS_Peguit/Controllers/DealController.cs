@@ -21,20 +21,28 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<Deal> GetAll()
         {
-            var query = _db.Deals
-                .Include(d => d.Contingencies)
-                .Include(d => d.DealClauses)
-                .AsNoTracking();
-
-            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            try
             {
-                int currentUserId = CurrentSession.UserId;
-                query = query.Where(d => d.AgentId == currentUserId);
-            }
+                var query = _db.Deals
+                    .Include(d => d.Contingencies)
+                    .Include(d => d.DealClauses)
+                    .AsNoTracking();
 
-            return query
-                .OrderByDescending(x => x.CreatedAt)
-                .ToList();
+                if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int currentUserId = CurrentSession.UserId;
+                    query = query.Where(d => d.AgentId == currentUserId);
+                }
+
+                return query
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DealController.GetAll] Error: {ex.Message}");
+                return new List<Deal>();
+            }
         }
 
         public Deal? GetById(int id)
@@ -224,7 +232,7 @@ namespace CRMS_Peguit.winforms.Controllers
             return _db.Properties
                 .AsNoTracking()
                 .OrderBy(p => p.Address)
-                .Select(p => new KeyValuePair<int, string>(p.PropertyId, $"{p.Address} (₱{p.Price:N0})"))
+                .Select(p => new KeyValuePair<int, string>(p.PropertyId, $"{p.Address} (₱{p.Price:N2})"))
                 .ToList();
         }
 
@@ -259,7 +267,7 @@ namespace CRMS_Peguit.winforms.Controllers
             {
                 DownPaymentAmount = downAmt,
                 BalanceAmount = balAmt,
-                DownPaymentDisplay = $"Downpayment ({downPaymentPercent:N0}%): ₱{downAmt:N2}",
+                DownPaymentDisplay = $"Downpayment ({downPaymentPercent:0.##}%): ₱{downAmt:N2}",
                 BalanceDisplay = $"Balance to Finance: ₱{balAmt:N2}"
             };
         }

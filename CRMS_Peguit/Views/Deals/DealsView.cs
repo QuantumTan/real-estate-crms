@@ -179,7 +179,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             int total = deals.Count;
             decimal totalVolume = deals.Sum(d => d.Value);
-            lblSubtitle.Text = $"{total} deals · ₱{totalVolume:N0} total volume";
+            lblSubtitle.Text = $"{total} deals · ₱{totalVolume:N2} total volume";
 
             IEnumerable<Deal> query = deals;
 
@@ -219,7 +219,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     Customer = GetName(customers, d.CustomerId),
                     Property = GetName(properties, d.PropertyId),
                     Agent = GetName(agents, d.AgentId),
-                    Value = $"₱{d.Value:N0}",
+                    Value = $"₱{d.Value:N2}",
                     Commission = $"{d.CommissionRate:P1}",
                     Stage = string.IsNullOrWhiteSpace(d.Stage) ? "OFFER" : d.Stage.ToUpper(),
                     CloseDate = d.ExpectedCloseDate.HasValue ? d.ExpectedCloseDate.Value.ToString("MMM dd, yyyy") : "-"
@@ -257,6 +257,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 valCol.HeaderText = "DEAL VALUE";
                 valCol.FillWeight = 100;
                 valCol.MinimumWidth = 100;
+                valCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                valCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
 
             if (grid.Columns["Commission"] is DataGridViewColumn comCol)
@@ -264,6 +266,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 comCol.HeaderText = "COMMISSION";
                 comCol.FillWeight = 90;
                 comCol.MinimumWidth = 90;
+                comCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                comCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
 
             if (grid.Columns["Stage"] is DataGridViewColumn stgCol)
@@ -271,6 +275,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 stgCol.HeaderText = "STAGE";
                 stgCol.FillWeight = 95;
                 stgCol.MinimumWidth = 95;
+                stgCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                stgCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
 
             if (grid.Columns["CloseDate"] is DataGridViewColumn dtCol)
@@ -297,7 +303,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             var customerVal = grid.Rows[e.RowIndex].Cells["Customer"]?.Value?.ToString() ?? "Buyer";
             var propVal = grid.Rows[e.RowIndex].Cells["Property"]?.Value?.ToString() ?? "Property";
             var stageVal = grid.Rows[e.RowIndex].Cells["Stage"]?.Value?.ToString() ?? "Stage";
-            var valVal = grid.Rows[e.RowIndex].Cells["Value"]?.Value?.ToString() ?? "₱0";
+            var valVal = grid.Rows[e.RowIndex].Cells["Value"]?.Value?.ToString() ?? "₱0.00";
             var agentVal = grid.Rows[e.RowIndex].Cells["Agent"]?.Value?.ToString() ?? "Agent";
 
             if (!int.TryParse(grid.Rows[e.RowIndex].Cells["DealId"]?.Value?.ToString(), out int dealId)) return;
@@ -378,61 +384,12 @@ namespace CRMS_Peguit.winforms.Views.Deals
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Custom render Stage pill badge
+            // Minimalist Status Indicator (Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Stage" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string stage = e.Value.ToString() ?? "";
-                Color bgColor;
-                Color textColor;
-
-                if (stage.Contains("CLOSED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(220, 252, 231);
-                    textColor = Color.FromArgb(22, 101, 52);
-                }
-                else if (stage.Contains("CONTRACT", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(224, 231, 255);
-                    textColor = Color.FromArgb(55, 48, 163);
-                }
-                else if (stage.Contains("RESERVATION", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(243, 232, 255);
-                    textColor = Color.FromArgb(107, 33, 168);
-                }
-                else if (stage.Contains("LOST", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(254, 226, 226);
-                    textColor = Color.FromArgb(153, 27, 27);
-                }
-                else
-                {
-                    bgColor = Color.FromArgb(224, 242, 254);
-                    textColor = Color.FromArgb(3, 105, 161);
-                }
-
-                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(stage, font);
-                    int pillWidth = size.Width + 16;
-                    int pillHeight = 22;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, stage, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: true);
+                return;
             }
         }
 
@@ -497,7 +454,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
             int rightPadding = 30;
             int leftMargin = 30;
             int totalWidth = ClientSize.Width;
-            int y = 88;
+
+            // Explicit header positioning with clear separation
+            lblTitle.Location = new Point(leftMargin, 20);
+            lblSubtitle.Location = new Point(leftMargin + 2, lblTitle.Bottom + 4);
+            int y = Math.Max(96, lblSubtitle.Bottom + 16);
 
             // Position header action buttons
             int rightEdge = totalWidth - rightPadding;
@@ -536,8 +497,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 txtSearch.Left = leftMargin;
                 txtSearch.Width = Math.Min(360, availableForSearch);
 
-                pnlCard.Top = 126;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+                int cardTop = y + txtSearch.Height + 14;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 24);
             }
             else
             {
@@ -547,7 +509,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
 
                 int filterX = leftMargin;
-                int pillY = y + 36;
+                int pillY = y + txtSearch.Height + 10;
                 var forwardPills = new[] { btnFilterAll, btnFilterOffer, btnFilterContract, btnFilterClosed, btnFilterLost };
                 foreach (var p in forwardPills)
                 {
@@ -556,8 +518,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     filterX += p.Width + 6;
                 }
 
-                pnlCard.Top = pillY + 38;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+                int cardTop = pillY + 34;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 20);
             }
 
             pnlCard.Left = leftMargin;

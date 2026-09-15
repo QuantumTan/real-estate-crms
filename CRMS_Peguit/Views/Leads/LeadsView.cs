@@ -338,7 +338,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     Email = string.IsNullOrWhiteSpace(lead.Email) ? "-" : lead.Email,
                     Phone = string.IsNullOrWhiteSpace(lead.Phone) ? "-" : lead.Phone,
                     Source = string.IsNullOrWhiteSpace(lead.Source) ? "Website" : lead.Source,
-                    ExpectedValue = lead.ExpectedValue.HasValue ? $"₱{lead.ExpectedValue.Value:N0}" : "-",
+                    ExpectedValue = lead.ExpectedValue.HasValue ? $"₱{lead.ExpectedValue.Value:N2}" : "-",
                     Stage = lead.Stage.ToUpper(),
                     Assignment = lead.AssignmentStatus.ToUpper()
                 })
@@ -393,6 +393,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 stageCol.MinimumWidth = 85;
                 stageCol.SortMode = DataGridViewColumnSortMode.Programmatic;
                 stageCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                stageCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
             if (grid.Columns["Assignment"] is DataGridViewColumn assignCol)
             {
@@ -401,6 +402,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 assignCol.MinimumWidth = 95;
                 assignCol.SortMode = DataGridViewColumnSortMode.Programmatic;
                 assignCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                assignCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
 
             UiGridHelper.AddActionsColumn(grid, 64);
@@ -412,19 +414,39 @@ namespace CRMS_Peguit.winforms.Views.Leads
         {
             if (e.Graphics is null) return;
 
-            // Column Header Sort Indicator
+            // Column Header Sort Indicator (Uniform header #F8FAFC with bottom border #E2E8F0, no blue cell glitch)
             if (e.RowIndex == -1 && e.ColumnIndex >= 0)
             {
-                e.Paint(e.CellBounds, DataGridViewPaintParts.All);
-                string colName = grid.Columns[e.ColumnIndex].Name;
+                using (var hBrush = new SolidBrush(UiGridHelper.HeaderBg))
+                {
+                    e.Graphics.FillRectangle(hBrush, e.CellBounds);
+                }
+
+                var col = grid.Columns[e.ColumnIndex];
+                var formatFlags = TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
+                if (col.HeaderCell.Style.Alignment == DataGridViewContentAlignment.MiddleRight)
+                    formatFlags |= TextFormatFlags.Right;
+                else if (col.HeaderCell.Style.Alignment == DataGridViewContentAlignment.MiddleCenter)
+                    formatFlags |= TextFormatFlags.HorizontalCenter;
+                else
+                    formatFlags |= TextFormatFlags.Left;
+
+                var headerTextRect = new Rectangle(e.CellBounds.X + 12, e.CellBounds.Y, e.CellBounds.Width - 24, e.CellBounds.Height);
+                TextRenderer.DrawText(e.Graphics, col.HeaderText, grid.ColumnHeadersDefaultCellStyle.Font, headerTextRect, UiGridHelper.HeaderText, formatFlags);
+
+                using (var bPen = new Pen(Color.FromArgb(226, 232, 240), 1f))
+                {
+                    e.Graphics.DrawLine(bPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
+
+                string colName = col.Name;
                 if (string.Equals(colName, _sortColumn, StringComparison.OrdinalIgnoreCase))
                 {
                     string arrow = _sortDirection == SortOrder.Ascending ? " ▲" : " ▼";
                     using var sortFont = new Font("Segoe UI", 7f, FontStyle.Bold);
-                    using var sortBrush = new SolidBrush(Color.FromArgb(15, 91, 158));
                     
-                    var textSize = TextRenderer.MeasureText(e.Graphics, grid.Columns[e.ColumnIndex].HeaderText, grid.ColumnHeadersDefaultCellStyle.Font);
-                    int arrowX = (grid.Columns[e.ColumnIndex].HeaderCell.Style.Alignment == DataGridViewContentAlignment.MiddleRight)
+                    var textSize = TextRenderer.MeasureText(e.Graphics, col.HeaderText, grid.ColumnHeadersDefaultCellStyle.Font);
+                    int arrowX = (col.HeaderCell.Style.Alignment == DataGridViewContentAlignment.MiddleRight)
                         ? e.CellBounds.Right - 16
                         : e.CellBounds.Left + textSize.Width + 16;
                     int arrowY = e.CellBounds.Y + (e.CellBounds.Height - 12) / 2;
@@ -476,149 +498,24 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             string columnName = grid.Columns[e.ColumnIndex].Name;
 
-            // ── STAGE BADGES (Filled pill badges with intuitive colors) ──
+            // ── STAGE INDICATOR (Minimalist 6px dot + text, NO pills) ──
             if (columnName == "Stage" && e.Value != null)
             {
-                using (var bgBrush = new SolidBrush(rowBg))
-                {
-                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
-                }
-
                 string stage = e.Value.ToString() ?? "";
-                Color bgColor;
-                Color textColor;
-                Color borderColor;
-
-                if (stage.Equals("NEW", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(224, 242, 254);      // Soft Blue
-                    textColor = Color.FromArgb(3, 105, 161);
-                    borderColor = Color.FromArgb(186, 230, 253);
-                }
-                else if (stage.Equals("CONTACTED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(254, 243, 199);      // Amber
-                    textColor = Color.FromArgb(180, 83, 9);
-                    borderColor = Color.FromArgb(253, 230, 138);
-                }
-                else if (stage.Equals("QUALIFIED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(243, 232, 255);      // Purple
-                    textColor = Color.FromArgb(107, 33, 168);
-                    borderColor = Color.FromArgb(233, 213, 255);
-                }
-                else if (stage.Equals("CONVERTED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(220, 252, 231);      // Emerald Green
-                    textColor = Color.FromArgb(21, 128, 61);
-                    borderColor = Color.FromArgb(187, 247, 208);
-                }
-                else if (stage.Equals("LOST", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(254, 226, 226);      // Rose / Red
-                    textColor = Color.FromArgb(185, 28, 28);
-                    borderColor = Color.FromArgb(254, 202, 202);
-                }
-                else
-                {
-                    bgColor = Color.FromArgb(224, 231, 255);      // Indigo / Default
-                    textColor = Color.FromArgb(55, 48, 163);
-                    borderColor = Color.FromArgb(199, 210, 254);
-                }
-
-                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(stage, font);
-                    int pillWidth = size.Width + 18;
-                    int pillHeight = 24;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var pen = new Pen(borderColor, 1f))
-                    using (var path = GetRoundedRectangle(pillRect, 12))
-                    {
-                        e.Graphics.FillPath(brush, path);
-                        e.Graphics.DrawPath(pen, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, stage, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                // Row divider
-                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
-                {
-                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
-                }
-
+                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: true);
                 e.Handled = true;
             }
-            // ── ASSIGNMENT STATUS BADGES (Pill chips: Pending = Yellow/Amber, Approved = Green) ──
+            // ── ASSIGNMENT STATUS INDICATOR (Minimalist 6px dot + text, NO pills) ──
             else if (columnName == "Assignment" && e.Value != null)
             {
-                using (var bgBrush = new SolidBrush(rowBg))
-                {
-                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
-                }
-
                 string rawAssign = e.Value.ToString() ?? "";
-                string displayLabel;
-                Color bgColor;
-                Color textColor;
-                Color borderColor;
+                string displayLabel = rawAssign.Contains("PENDING", StringComparison.OrdinalIgnoreCase)
+                    ? "PENDING REVIEW"
+                    : (rawAssign.Contains("APPROVED", StringComparison.OrdinalIgnoreCase)
+                        ? "APPROVED"
+                        : (string.IsNullOrWhiteSpace(rawAssign) ? "UNASSIGNED" : rawAssign));
 
-                if (rawAssign.Contains("PENDING", StringComparison.OrdinalIgnoreCase))
-                {
-                    displayLabel = "PENDING REVIEW";
-                    bgColor = Color.FromArgb(254, 249, 195);      // Soft Amber/Yellow
-                    textColor = Color.FromArgb(133, 77, 14);
-                    borderColor = Color.FromArgb(254, 240, 138);
-                }
-                else if (rawAssign.Contains("APPROVED", StringComparison.OrdinalIgnoreCase))
-                {
-                    displayLabel = "APPROVED";
-                    bgColor = Color.FromArgb(220, 252, 231);      // Soft Green
-                    textColor = Color.FromArgb(22, 101, 52);
-                    borderColor = Color.FromArgb(187, 247, 208);
-                }
-                else
-                {
-                    displayLabel = string.IsNullOrWhiteSpace(rawAssign) ? "UNASSIGNED" : rawAssign;
-                    bgColor = Color.FromArgb(241, 245, 249);      // Muted Slate
-                    textColor = Color.FromArgb(71, 85, 105);
-                    borderColor = Color.FromArgb(226, 232, 240);
-                }
-
-                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(displayLabel, font);
-                    int chipWidth = size.Width + 14;
-                    int chipHeight = 22;
-                    int chipX = e.CellBounds.X + (e.CellBounds.Width - chipWidth) / 2;
-                    int chipY = e.CellBounds.Y + (e.CellBounds.Height - chipHeight) / 2;
-                    var chipRect = new Rectangle(chipX, chipY, chipWidth, chipHeight);
-
-                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var pen = new Pen(borderColor, 1f))
-                    using (var path = GetRoundedRectangle(chipRect, 11))
-                    {
-                        e.Graphics.FillPath(brush, path);
-                        e.Graphics.DrawPath(pen, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, displayLabel, font, chipRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
-                {
-                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
-                }
-
+                UiGridHelper.PaintStatusIndicator(grid, e, displayLabel, center: true);
                 e.Handled = true;
             }
             // ── NAME COLUMN (Initial avatar + text) ──

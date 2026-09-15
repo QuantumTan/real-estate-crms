@@ -13,6 +13,8 @@ namespace CRMS_Peguit.winforms.Models.Services
 
         public static RealEstateDbContext CreateContext(int tenantId = 1)
         {
+            LocalDbHelper.EnsureLocalDbRunning(ConnectionString);
+
             var options = new DbContextOptionsBuilder<RealEstateDbContext>()
                 .UseSqlServer(ConnectionString, sql => sql.EnableRetryOnFailure())
                 .Options;

@@ -56,8 +56,8 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 foreach (var tile in new[] { tile1, tile2, tile3 })
                 {
                     tile.Location = new Point(20, y);
-                    tile.Size = new Size(tileWidth, 88);
-                    y += 100;
+                    tile.Size = new Size(tileWidth, 76);
+                    y += 88;
                 }
             }
 
@@ -74,25 +74,27 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             var panel = new Panel
             {
                 BackColor = Color.FromArgb(248, 250, 252),
-                Padding = new Padding(14)
+                Padding = new Padding(12),
+                Height = 76
             };
-            UiRadiusHelper.ApplyRoundedCorners(panel, 10);
+            UiRadiusHelper.ApplyRoundedCorners(panel, 8);
             panel.Paint += (s, e) =>
             {
                 using var pen = new Pen(Color.FromArgb(226, 232, 240), 1f);
-                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), 10);
+                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), 8);
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 e.Graphics.DrawPath(pen, path);
             };
 
+            // Left Column: Icon and descriptive title
             var iconLabel = new Label
             {
                 Text = icon,
-                Font = new Font("Segoe UI Emoji", 14f),
+                Font = new Font("Segoe UI Emoji", 13f),
                 ForeColor = iconColor,
                 BackColor = iconBg,
-                Size = new Size(42, 42),
-                Location = new Point(14, 23),
+                Size = new Size(38, 38),
+                Location = new Point(14, 19),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             UiRadiusHelper.MakeCircularAvatar(iconLabel);
@@ -100,20 +102,34 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             var titleLabel = new Label
             {
                 Text = title,
-                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(100, 116, 139),
-                Location = new Point(68, 18),
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 116, 139), // #64748B
+                Location = new Point(60, 22),
                 AutoSize = true
             };
 
+            // Right Column: Primary metric value cleanly aligned to the far right (#0F172A, Bold)
             valueLabel.Parent = null;
             valueLabel.Font = new Font("Segoe UI", 16f, FontStyle.Bold);
-            valueLabel.Location = new Point(66, 38);
+            valueLabel.ForeColor = Color.FromArgb(15, 23, 42); // #0F172A
             valueLabel.AutoSize = true;
+            valueLabel.TextAlign = ContentAlignment.MiddleRight;
+
+            void LayoutTile()
+            {
+                if (panel.Width <= 0) return;
+                int valWidth = valueLabel.PreferredWidth;
+                valueLabel.Location = new Point(panel.Width - valWidth - 16, (panel.Height - valueLabel.Height) / 2);
+                titleLabel.Location = new Point(60, (panel.Height - titleLabel.Height) / 2);
+                iconLabel.Location = new Point(14, (panel.Height - iconLabel.Height) / 2);
+            }
 
             panel.Controls.Add(iconLabel);
             panel.Controls.Add(titleLabel);
             panel.Controls.Add(valueLabel);
+
+            panel.SizeChanged += (_, _) => LayoutTile();
+            LayoutTile();
 
             return panel;
         }
@@ -144,7 +160,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 kpiLeads.SetValue(summary.QualifiedLeads);
                 kpiDeals.SetValue(summary.TotalDeals);
 
-                lblStat1Value.Text = $"₱{summary.PipelineValue:N0}";
+                lblStat1Value.Text = $"₱{summary.PipelineValue:N2}";
                 lblStat2Value.Text = $"{summary.ActiveProperties} listings";
                 lblStat3Value.Text = $"{summary.TotalAgents} agents";
 
@@ -180,12 +196,16 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                     valCol.HeaderText = "VALUE";
                     valCol.FillWeight = 90;
                     valCol.MinimumWidth = 70;
+                    valCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                    valCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
                 }
                 if (gridRecent.Columns["Stage"] is DataGridViewColumn stageCol)
                 {
                     stageCol.HeaderText = "STAGE";
                     stageCol.FillWeight = 95;
                     stageCol.MinimumWidth = 70;
+                    stageCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    stageCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
                 }
 
                 gridRecent.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -201,55 +221,11 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
+            // Minimalist Status Indicator (Strictly No Badges/Pills)
             if (gridRecent.Columns[e.ColumnIndex].Name == "Stage" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string stage = e.Value.ToString() ?? "";
-                Color bgColor;
-                Color textColor;
-
-                if (stage.Equals("NEW", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(224, 242, 254);
-                    textColor = Color.FromArgb(3, 105, 161);
-                }
-                else if (stage.Equals("QUALIFIED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(220, 252, 231);
-                    textColor = Color.FromArgb(22, 101, 52);
-                }
-                else if (stage.Equals("CONVERTED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(187, 247, 208);
-                    textColor = Color.FromArgb(20, 83, 45);
-                }
-                else
-                {
-                    bgColor = Color.FromArgb(241, 245, 249);
-                    textColor = Color.FromArgb(71, 85, 105);
-                }
-
-                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(stage, font);
-                    int pillWidth = size.Width + 14;
-                    int pillHeight = 20;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var path = GetRoundedRectangle(pillRect, 6))
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, stage, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(gridRecent, e, stage, center: true);
             }
         }
 

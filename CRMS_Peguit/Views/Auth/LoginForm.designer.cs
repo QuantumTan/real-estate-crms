@@ -70,7 +70,7 @@ namespace CRMS_Peguit.winforms
             // 
             // pnlHero
             // 
-            this.pnlHero.BackColor = System.Drawing.Color.FromArgb(6, 29, 51);
+            this.pnlHero.BackColor = System.Drawing.Color.FromArgb(15, 23, 42);
             this.pnlHero.Controls.Add(this.picBrandLogo);
             this.pnlHero.Controls.Add(this.lblBrandLogo);
             this.pnlHero.Controls.Add(this.lblBrandSub);
@@ -175,7 +175,7 @@ namespace CRMS_Peguit.winforms
             this.lblWelcome.AutoSize = true;
             this.lblWelcome.Font = new System.Drawing.Font("Segoe UI", 22F, System.Drawing.FontStyle.Bold);
             this.lblWelcome.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblWelcome.Location = new System.Drawing.Point(80, 60);
+            this.lblWelcome.Location = new System.Drawing.Point(80, 50);
             this.lblWelcome.Name = "lblWelcome";
             this.lblWelcome.Size = new System.Drawing.Size(225, 41);
             this.lblWelcome.TabIndex = 0;
@@ -186,7 +186,7 @@ namespace CRMS_Peguit.winforms
             this.lblWelcomeSub.AutoSize = true;
             this.lblWelcomeSub.Font = new System.Drawing.Font("Segoe UI", 10.5F);
             this.lblWelcomeSub.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblWelcomeSub.Location = new System.Drawing.Point(82, 105);
+            this.lblWelcomeSub.Location = new System.Drawing.Point(82, 96);
             this.lblWelcomeSub.Name = "lblWelcomeSub";
             this.lblWelcomeSub.Size = new System.Drawing.Size(232, 19);
             this.lblWelcomeSub.TabIndex = 1;
@@ -197,7 +197,7 @@ namespace CRMS_Peguit.winforms
             this.lblCompanyId.AutoSize = true;
             this.lblCompanyId.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblCompanyId.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblCompanyId.Location = new System.Drawing.Point(82, 148);
+            this.lblCompanyId.Location = new System.Drawing.Point(82, 140);
             this.lblCompanyId.Name = "lblCompanyId";
             this.lblCompanyId.Size = new System.Drawing.Size(91, 17);
             this.lblCompanyId.TabIndex = 2;
@@ -209,7 +209,7 @@ namespace CRMS_Peguit.winforms
             this.txtCompanyId.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtCompanyId.Font = new System.Drawing.Font("Segoe UI", 10.5F);
             this.txtCompanyId.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.txtCompanyId.Location = new System.Drawing.Point(82, 170);
+            this.txtCompanyId.Location = new System.Drawing.Point(82, 162);
             this.txtCompanyId.Name = "txtCompanyId";
             this.txtCompanyId.PlaceholderText = "e.g. 1";
             this.txtCompanyId.Size = new System.Drawing.Size(390, 26);
@@ -220,7 +220,7 @@ namespace CRMS_Peguit.winforms
             this.lblEmail.AutoSize = true;
             this.lblEmail.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblEmail.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblEmail.Location = new System.Drawing.Point(82, 212);
+            this.lblEmail.Location = new System.Drawing.Point(82, 206);
             this.lblEmail.Name = "lblEmail";
             this.lblEmail.Size = new System.Drawing.Size(102, 17);
             this.lblEmail.TabIndex = 4;
@@ -232,7 +232,7 @@ namespace CRMS_Peguit.winforms
             this.txtEmail.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtEmail.Font = new System.Drawing.Font("Segoe UI", 10.5F);
             this.txtEmail.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.txtEmail.Location = new System.Drawing.Point(82, 234);
+            this.txtEmail.Location = new System.Drawing.Point(82, 228);
             this.txtEmail.Name = "txtEmail";
             this.txtEmail.PlaceholderText = "you@company.com";
             this.txtEmail.Size = new System.Drawing.Size(390, 26);
@@ -243,7 +243,7 @@ namespace CRMS_Peguit.winforms
             this.lblPassword.AutoSize = true;
             this.lblPassword.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblPassword.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.lblPassword.Location = new System.Drawing.Point(82, 276);
+            this.lblPassword.Location = new System.Drawing.Point(82, 272);
             this.lblPassword.Name = "lblPassword";
             this.lblPassword.Size = new System.Drawing.Size(74, 17);
             this.lblPassword.TabIndex = 6;
@@ -255,7 +255,7 @@ namespace CRMS_Peguit.winforms
             this.txtPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtPassword.Font = new System.Drawing.Font("Segoe UI", 10.5F);
             this.txtPassword.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
-            this.txtPassword.Location = new System.Drawing.Point(82, 298);
+            this.txtPassword.Location = new System.Drawing.Point(82, 294);
             this.txtPassword.Name = "txtPassword";
             this.txtPassword.PlaceholderText = "••••••••";
             this.txtPassword.Size = new System.Drawing.Size(390, 26);
@@ -267,7 +267,7 @@ namespace CRMS_Peguit.winforms
             this.chkShowPassword.AutoSize = true;
             this.chkShowPassword.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.chkShowPassword.ForeColor = System.Drawing.Color.FromArgb(71, 85, 105);
-            this.chkShowPassword.Location = new System.Drawing.Point(82, 335);
+            this.chkShowPassword.Location = new System.Drawing.Point(82, 336);
             this.chkShowPassword.Name = "chkShowPassword";
             this.chkShowPassword.Size = new System.Drawing.Size(107, 19);
             this.chkShowPassword.TabIndex = 8;
@@ -280,7 +280,7 @@ namespace CRMS_Peguit.winforms
             this.lnkForgotPassword.AutoSize = true;
             this.lnkForgotPassword.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lnkForgotPassword.LinkColor = System.Drawing.Color.FromArgb(15, 91, 158);
-            this.lnkForgotPassword.Location = new System.Drawing.Point(368, 336);
+            this.lnkForgotPassword.Location = new System.Drawing.Point(368, 338);
             this.lnkForgotPassword.Name = "lnkForgotPassword";
             this.lnkForgotPassword.Size = new System.Drawing.Size(104, 15);
             this.lnkForgotPassword.TabIndex = 9;
@@ -291,9 +291,9 @@ namespace CRMS_Peguit.winforms
             // 
             this.lblError.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.lblError.ForeColor = System.Drawing.Color.FromArgb(180, 40, 40);
-            this.lblError.Location = new System.Drawing.Point(82, 362);
+            this.lblError.Location = new System.Drawing.Point(82, 368);
             this.lblError.Name = "lblError";
-            this.lblError.Size = new System.Drawing.Size(390, 30);
+            this.lblError.Size = new System.Drawing.Size(390, 26);
             this.lblError.TabIndex = 10;
             // 
             // btnLogin
@@ -304,7 +304,7 @@ namespace CRMS_Peguit.winforms
             this.btnLogin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnLogin.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Bold);
             this.btnLogin.ForeColor = System.Drawing.Color.White;
-            this.btnLogin.Location = new System.Drawing.Point(82, 398);
+            this.btnLogin.Location = new System.Drawing.Point(82, 404);
             this.btnLogin.Name = "btnLogin";
             this.btnLogin.Size = new System.Drawing.Size(390, 42);
             this.btnLogin.TabIndex = 11;

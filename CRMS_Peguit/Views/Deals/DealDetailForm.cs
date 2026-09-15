@@ -293,10 +293,10 @@ namespace CRMS_Peguit.winforms.Views.Deals
             decimal downAmt = _deal.DownPaymentAmount;
             decimal balAmt = _deal.BalanceAmount;
 
-            AddSummaryTile(pnlFinancialTiles, 0, "TOTAL PURCHASE PRICE", $"₱{_deal.Value:N0}", Color.FromArgb(15, 23, 42));
-            AddSummaryTile(pnlFinancialTiles, 164, "RESERVATION DEPOSIT", $"₱{resFee:N0}", Color.FromArgb(30, 41, 59));
-            AddSummaryTile(pnlFinancialTiles, 328, $"DOWNPAYMENT ({_deal.DownPaymentPercent ?? 20:N0}%)", $"₱{downAmt:N0}", Color.FromArgb(21, 128, 61));
-            AddSummaryTile(pnlFinancialTiles, 492, "BALANCE TO FINANCE", $"₱{balAmt:N0}", Color.FromArgb(29, 78, 216));
+            AddSummaryTile(pnlFinancialTiles, 0, "TOTAL PURCHASE PRICE", $"₱{_deal.Value:N2}", Color.FromArgb(15, 23, 42));
+            AddSummaryTile(pnlFinancialTiles, 164, "RESERVATION DEPOSIT", $"₱{resFee:N2}", Color.FromArgb(30, 41, 59));
+            AddSummaryTile(pnlFinancialTiles, 328, $"DOWNPAYMENT ({_deal.DownPaymentPercent ?? 20:0.##}%)", $"₱{downAmt:N2}", Color.FromArgb(21, 128, 61));
+            AddSummaryTile(pnlFinancialTiles, 492, "BALANCE TO FINANCE", $"₱{balAmt:N2}", Color.FromArgb(29, 78, 216));
             UiDetailCardHelper.AddControl(cardFinancials, pnlFinancialTiles);
 
             string closeDateStr = _deal.ExpectedCloseDate.HasValue ? _deal.ExpectedCloseDate.Value.ToString("MMMM d, yyyy") : "Not set";

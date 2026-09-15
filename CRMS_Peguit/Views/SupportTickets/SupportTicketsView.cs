@@ -18,7 +18,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
         private readonly SupportTicketController _controller;
         private string _filterStatus = "All";
         private Button? _btnExport;
-        private Label _lblEmptyState = null!;
+        private Panel _pnlEmptyState = null!;
 
         public SupportTicketsView()
         {
@@ -37,17 +37,80 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
 
         private void InitEmptyState()
         {
-            _lblEmptyState = new Label
+            _pnlEmptyState = new Panel
             {
-                Text = "No support tickets match your search or filter criteria.\nTry selecting another filter or adjusting your search term.",
-                Font = new Font("Segoe UI", 11f),
-                ForeColor = Theme.TextSecondary,
-                TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
+                BackColor = Color.White,
                 Visible = false
             };
-            pnlCard.Controls.Add(_lblEmptyState);
-            _lblEmptyState.BringToFront();
+
+            var innerPanel = new Panel
+            {
+                Size = new Size(420, 230),
+                BackColor = Color.Transparent
+            };
+
+            var lblIcon = new Label
+            {
+                Text = "🎫",
+                Font = new Font("Segoe UI Emoji", 32f),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(420, 56),
+                Location = new Point(0, 8)
+            };
+
+            var lblTitle = new Label
+            {
+                Text = "No Support Tickets Found",
+                Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 23, 42),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(420, 26),
+                Location = new Point(0, 68)
+            };
+
+            var lblDesc = new Label
+            {
+                Text = "No tickets match your search or filter criteria.\nTry clearing your search query or selecting a different status filter.",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Size = new Size(400, 42),
+                Location = new Point(10, 98)
+            };
+
+            var btnReset = new Button
+            {
+                Text = "Clear Filters & Search",
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(15, 91, 158),
+                BackColor = Color.FromArgb(239, 246, 255),
+                Cursor = Cursors.Hand,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(180, 36),
+                Location = new Point((420 - 180) / 2, 154)
+            };
+            btnReset.FlatAppearance.BorderColor = Color.FromArgb(191, 219, 254);
+            UiRadiusHelper.StyleButton(btnReset, 8);
+            btnReset.Click += (_, _) =>
+            {
+                txtSearch.Clear();
+                SetFilter("All");
+            };
+
+            innerPanel.Controls.Add(lblIcon);
+            innerPanel.Controls.Add(lblTitle);
+            innerPanel.Controls.Add(lblDesc);
+            innerPanel.Controls.Add(btnReset);
+
+            _pnlEmptyState.Controls.Add(innerPanel);
+            _pnlEmptyState.Resize += (_, _) =>
+            {
+                innerPanel.Location = new Point((_pnlEmptyState.Width - innerPanel.Width) / 2, Math.Max(20, (_pnlEmptyState.Height - innerPanel.Height) / 2));
+            };
+
+            pnlCard.Controls.Add(_pnlEmptyState);
+            _pnlEmptyState.BringToFront();
         }
 
         private void ApplyStyling()
@@ -256,6 +319,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 priCol.FillWeight = 90;
                 priCol.MinimumWidth = 80;
                 priCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                priCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
             if (grid.Columns["Status"] is DataGridViewColumn statCol)
             {
@@ -263,6 +327,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 statCol.FillWeight = 95;
                 statCol.MinimumWidth = 85;
                 statCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                statCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
             if (grid.Columns["DueDate"] is DataGridViewColumn dueCol)
             {
@@ -285,7 +350,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _lblEmptyState.Visible = (grid.Rows.Count == 0);
+            _pnlEmptyState.Visible = (grid.Rows.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
@@ -303,66 +368,18 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                     TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
                 e.Handled = true;
             }
-            // Custom render Status pill badge
+            // Custom render Status (minimalist 6px dot + text, NO pills)
             else if (colName == "Status" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string status = e.Value.ToString() ?? "";
-                var (bgColor, textColor, strokeColor) = UiDetailCardHelper.GetStatusColors(status);
-
-                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(status, font);
-                    int pillWidth = size.Width + 14;
-                    int pillHeight = 22;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var pen = new Pen(strokeColor, 1f))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                        e.Graphics.DrawPath(pen, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, status, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: true);
                 e.Handled = true;
             }
-            // Custom render Priority pill badge
+            // Custom render Priority (minimalist 6px dot + text, NO pills)
             else if (colName == "Priority" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string priority = e.Value.ToString() ?? "";
-                var (bgColor, textColor, strokeColor) = UiDetailCardHelper.GetPriorityColors(priority);
-
-                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(priority, font);
-                    int pillWidth = size.Width + 14;
-                    int pillHeight = 22;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var pen = new Pen(strokeColor, 1f))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                        e.Graphics.DrawPath(pen, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, priority, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
+                UiGridHelper.PaintStatusIndicator(grid, e, priority, center: true);
                 e.Handled = true;
             }
             // Custom render DueDate with red warning highlighting if overdue

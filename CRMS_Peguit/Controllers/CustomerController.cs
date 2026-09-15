@@ -23,23 +23,31 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<Customer> GetAll()
         {
-            var query = _db.Customers.AsNoTracking();
-
-            // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
-            // Manager/Admin retain full oversight (R26).
-            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            try
             {
-                int currentUserId = CurrentSession.UserId;
-                query = query.Where(c =>
-                    (c.AssignedAgentId.HasValue && c.AssignedAgentId.Value > 0)
-                        ? c.AssignedAgentId.Value == currentUserId
-                        : c.CreatedByUserId == currentUserId);
-            }
+                var query = _db.Customers.AsNoTracking();
 
-            return query
-                .OrderBy(x => x.Person.LastName)
-                .ThenBy(x => x.Person.FirstName)
-                .ToList();
+                // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
+                // Manager/Admin retain full oversight (R26).
+                if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int currentUserId = CurrentSession.UserId;
+                    query = query.Where(c =>
+                        (c.AssignedAgentId.HasValue && c.AssignedAgentId.Value > 0)
+                            ? c.AssignedAgentId.Value == currentUserId
+                            : c.CreatedByUserId == currentUserId);
+                }
+
+                return query
+                    .OrderBy(x => x.Person.LastName)
+                    .ThenBy(x => x.Person.FirstName)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomerController.GetAll] Error: {ex.Message}");
+                return new List<Customer>();
+            }
         }
 
         public Customer? GetById(int id)

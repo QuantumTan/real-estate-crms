@@ -22,23 +22,31 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<Property> GetAll()
         {
-            var query = _db.Properties.AsNoTracking();
-
-            // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
-            // Manager/Admin retain full oversight (R26).
-            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            try
             {
-                int currentUserId = CurrentSession.UserId;
-                query = query.Where(p =>
-                    (p.ListedByAgentId.HasValue && p.ListedByAgentId.Value > 0)
-                        ? p.ListedByAgentId.Value == currentUserId
-                        : p.CreatedByUserId == currentUserId);
-            }
+                var query = _db.Properties.AsNoTracking();
 
-            return query
-                .OrderByDescending(x => x.CreatedAt)
-                .ThenBy(x => x.Address)
-                .ToList();
+                // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
+                // Manager/Admin retain full oversight (R26).
+                if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int currentUserId = CurrentSession.UserId;
+                    query = query.Where(p =>
+                        (p.ListedByAgentId.HasValue && p.ListedByAgentId.Value > 0)
+                            ? p.ListedByAgentId.Value == currentUserId
+                            : p.CreatedByUserId == currentUserId);
+                }
+
+                return query
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ThenBy(x => x.Address)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PropertyController.GetAll] Error: {ex.Message}");
+                return new List<Property>();
+            }
         }
 
         public Property? GetById(int id)
@@ -207,20 +215,28 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<AgentPickerItem> GetAgents()
         {
-            var agentRoleIds = _db.Roles
-                .AsNoTracking()
-                .Where(r => r.RoleName.ToLower() == "agent")
-                .Select(r => r.RoleId)
-                .ToList();
+            try
+            {
+                var agentRoleIds = _db.Roles
+                    .AsNoTracking()
+                    .Where(r => r.RoleName.ToLower() == "agent")
+                    .Select(r => r.RoleId)
+                    .ToList();
 
-            return _db.Users
-                .AsNoTracking()
-                .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
-                .OrderBy(u => u.Person.LastName)
-                .ThenBy(u => u.Person.FirstName)
-                .AsEnumerable()
-                .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
-                .ToList();
+                return _db.Users
+                    .AsNoTracking()
+                    .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
+                    .OrderBy(u => u.Person.LastName)
+                    .ThenBy(u => u.Person.FirstName)
+                    .AsEnumerable()
+                    .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PropertyController.GetAgents] Error: {ex.Message}");
+                return new List<AgentPickerItem>();
+            }
         }
 
         public string? GetOwnerName(int ownerCustomerId)

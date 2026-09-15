@@ -113,7 +113,7 @@ namespace CRMS_Peguit.winforms.Views.Marketing
                 Name = l.FullName,
                 CampaignSource = string.IsNullOrWhiteSpace(l.Source) ? "Untagged" : l.Source,
                 Stage = (l.Stage ?? "New").ToUpper(),
-                Value = l.ExpectedValue.HasValue ? $"₱{l.ExpectedValue.Value:N0}" : "-",
+                Value = l.ExpectedValue.HasValue ? $"₱{l.ExpectedValue.Value:N2}" : "-",
                 Contact = string.IsNullOrWhiteSpace(l.Phone) ? l.Email ?? "-" : l.Phone,
                 AssignedAgent = _leadController.GetAssignedAgentName(l.AssignedAgentId) ?? "Unassigned",
                 CapturedDate = l.CreatedAt.ToString("MMM dd, yyyy")

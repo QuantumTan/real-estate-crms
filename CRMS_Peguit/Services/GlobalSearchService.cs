@@ -61,7 +61,7 @@ namespace CRMS_Peguit.winforms.Services
                         Module: "leads",
                         Icon: "🎯",
                         Title: l.FullName,
-                        Subtitle: $"{Cap(l.Stage)} · {(l.ExpectedValue.HasValue ? string.Format("Ph{0:N0}", l.ExpectedValue.Value) : "No value")}",
+                        Subtitle: $"{Cap(l.Stage)} · {(l.ExpectedValue.HasValue ? string.Format("₱{0:N2}", l.ExpectedValue.Value) : "No value")}",
                         RecordId: l.LeadId
                     ));
                 }
@@ -80,7 +80,7 @@ namespace CRMS_Peguit.winforms.Services
                         Module: "properties",
                         Icon: "🏠",
                         Title: p.Address,
-                        Subtitle: string.Format("{0} · Ph{1:N0}", Cap(p.PropertyType), p.Price),
+                        Subtitle: string.Format("{0} · ₱{1:N2}", Cap(p.PropertyType), p.Price),
                         RecordId: p.PropertyId
                     ));
                 }
@@ -104,7 +104,7 @@ namespace CRMS_Peguit.winforms.Services
                         Module: "deals",
                         Icon: "🤝",
                         Title: GetName(custNames, d.CustomerId),
-                        Subtitle: string.Format("Deal · {0} · Ph{1:N0}", Cap(d.Stage), d.Value),
+                        Subtitle: string.Format("Deal · {0} · ₱{1:N2}", Cap(d.Stage), d.Value),
                         RecordId: d.DealId
                     ));
                 }

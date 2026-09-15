@@ -13,7 +13,7 @@ namespace CRMS_Peguit.winforms.Models.Services
     public static class DbConfiguration
     {
         private const string DefaultLocalDbConnection =
-            "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;";
+            "Server=(localdb)\\mssqllocaldb;Database=CRMS_Local;Trusted_Connection=True;TrustServerCertificate=True;Connect Timeout=30;MultipleActiveResultSets=True;";
 
         public static string GetLocalConnectionString()
         {

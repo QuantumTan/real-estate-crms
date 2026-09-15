@@ -275,7 +275,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.lblStat1Value.Name = "lblStat1Value";
             this.lblStat1Value.Size = new System.Drawing.Size(42, 32);
             this.lblStat1Value.TabIndex = 2;
-            this.lblStat1Value.Text = "₱0";
+            this.lblStat1Value.Text = "₱0.00";
             // 
             // lblStat2Title
             // 

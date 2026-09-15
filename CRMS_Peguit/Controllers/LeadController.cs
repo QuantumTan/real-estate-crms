@@ -23,23 +23,31 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public List<Lead> GetAll()
         {
-            var query = _db.Leads.AsNoTracking();
-
-            // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
-            // Manager/Admin retain full oversight (R26).
-            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            try
             {
-                int currentUserId = CurrentSession.UserId;
-                query = query.Where(l =>
-                    (l.AssignedAgentId.HasValue && l.AssignedAgentId.Value > 0)
-                        ? l.AssignedAgentId.Value == currentUserId
-                        : l.CreatedByUserId == currentUserId);
-            }
+                var query = _db.Leads.AsNoTracking();
 
-            return query
-                .OrderBy(x => x.Person.LastName)
-                .ThenBy(x => x.Person.FirstName)
-                .ToList();
+                // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
+                // Manager/Admin retain full oversight (R26).
+                if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int currentUserId = CurrentSession.UserId;
+                    query = query.Where(l =>
+                        (l.AssignedAgentId.HasValue && l.AssignedAgentId.Value > 0)
+                            ? l.AssignedAgentId.Value == currentUserId
+                            : l.CreatedByUserId == currentUserId);
+                }
+
+                return query
+                    .OrderBy(x => x.Person.LastName)
+                    .ThenBy(x => x.Person.FirstName)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LeadController.GetAll] Error: {ex.Message}");
+                return new List<Lead>();
+            }
         }
 
         public Lead? GetById(int id)
@@ -407,7 +415,7 @@ namespace CRMS_Peguit.winforms.Controllers
 
             if (!string.IsNullOrWhiteSpace(expectedValueText))
             {
-                if (decimal.TryParse(expectedValueText.Trim(), out decimal parsedVal) && parsedVal >= 0)
+                if (decimal.TryParse(expectedValueText.Replace(",", "").Trim(), out decimal parsedVal) && parsedVal >= 0)
                 {
                     parsedExpectedValue = parsedVal;
                 }

@@ -110,7 +110,7 @@ namespace CRMS_Peguit.winforms
             // 
             // sidebarPanel
             // 
-            this.sidebarPanel.BackColor = System.Drawing.Color.FromArgb(6, 29, 51);
+            this.sidebarPanel.BackColor = System.Drawing.Color.FromArgb(15, 23, 42);
             this.sidebarPanel.Controls.Add(this.pnlNav);
             this.sidebarPanel.Controls.Add(this.btnLogout);
             this.sidebarPanel.Controls.Add(this.pnlUserContainer);
@@ -167,7 +167,7 @@ namespace CRMS_Peguit.winforms
             // 
             // pnlUserProfile
             // 
-            this.pnlUserProfile.BackColor = System.Drawing.Color.FromArgb(12, 40, 68);
+            this.pnlUserProfile.BackColor = System.Drawing.Color.FromArgb(30, 41, 59);
             this.pnlUserProfile.Controls.Add(this.lblUserAvatar);
             this.pnlUserProfile.Controls.Add(this.lblUserName);
             this.pnlUserProfile.Controls.Add(this.lblUserRole);
