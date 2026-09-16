@@ -32,19 +32,17 @@ namespace CRMS_Peguit.winforms.Auth
             _localCache = new LocalAuthCache();
         }
 
-        public async Task<AuthResult> LoginAsync(string companyId, string email, string password)
+        public async Task<AuthResult> LoginAsync(string email, string password)
         {
             try
             {
-                // Login has no JWT yet, so the tenant must be sent explicitly -
-                // this is the one request HttpTenantResolver trusts the header for.
-                var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/login")
+                // User emails are globally unique; tenant is discovered automatically
+                // on the server and returned inside the JWT claims.
+                var response = await _httpClient.PostAsJsonAsync("api/auth/login", new
                 {
-                    Content = JsonContent.Create(new { email, password })
-                };
-                request.Headers.Add("X-Company-Id", companyId);
-
-                var response = await _httpClient.SendAsync(request);
+                    email = email.Trim(),
+                    password
+                });
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -57,7 +55,7 @@ namespace CRMS_Peguit.winforms.Auth
                     // hash back to the client) so offline login can verify
                     // against it next time.
                     var localHash = PasswordHasher.Hash(password);
-                    _localCache.SaveSuccessfulLogin(companyId, result.UserId, result.FullName, result.Email, localHash, result.RoleName);
+                    _localCache.SaveSuccessfulLogin(result.TenantId, result.UserId, result.FullName, result.Email, localHash, result.RoleName);
 
                     int effectiveUserId = EnsureLocalUser(result.UserId, result.TenantId, result.FullName, result.Email, localHash, result.RoleName);
 
@@ -79,37 +77,38 @@ namespace CRMS_Peguit.winforms.Auth
             }
             catch (Exception) // network unreachable, monsterASP down, timeout, etc.
             {
-                return TryLocalDbLogin(companyId, email, password);
+                return TryLocalDbLogin(email, password);
             }
         }
 
-        private AuthResult TryLocalDbLogin(string companyId, string email, string password)
+        private AuthResult TryLocalDbLogin(string email, string password)
         {
             try
             {
-                if (!int.TryParse(companyId, out int tenantId) || tenantId <= 0)
-                    tenantId = 1;
-
-                using var db = LocalDb.CreateContext(tenantId);
+                using var db = LocalDb.CreateContext(1);
                 var user = db.Users
+                    .IgnoreQueryFilters()
+                    .Include(u => u.Person)
+                    .Include(u => u.Role)
                     .AsNoTracking()
                     .Where(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == email.Trim().ToLower())
-                    .SingleOrDefault();
+                    .FirstOrDefault();
 
                 if (user != null)
                 {
                     bool verify = PasswordHasher.Verify(password, user.PasswordHash);
                     if (verify)
                     {
-                        var role = db.Roles.AsNoTracking().FirstOrDefault(r => r.RoleId == user.RoleId);
+                        var role = user.Role ?? db.Roles.IgnoreQueryFilters().AsNoTracking().FirstOrDefault(r => r.RoleId == user.RoleId);
                         string roleName = role?.RoleName ?? "Agent";
+                        int tenantId = role?.TenantId ?? 1;
                         string displayName = string.IsNullOrWhiteSpace(user.FullName) ? user.Email : user.FullName;
 
-                        _localCache.SaveSuccessfulLogin(companyId, user.UserId, displayName, user.Email, user.PasswordHash, roleName);
+                        _localCache.SaveSuccessfulLogin(tenantId, user.UserId, displayName, user.Email, user.PasswordHash, roleName);
 
                         CurrentSession.Start(
                             user.UserId,
-                            (role != null && role.TenantId > 0) ? role.TenantId : tenantId,
+                            tenantId,
                             displayName,
                             user.Email,
                             roleName,
@@ -129,12 +128,12 @@ namespace CRMS_Peguit.winforms.Auth
                 // Fallback to cached credentials
             }
 
-            return TryOfflineLogin(companyId, email, password);
+            return TryOfflineLogin(email, password);
         }
 
-        private AuthResult TryOfflineLogin(string companyId, string email, string password)
+        private AuthResult TryOfflineLogin(string email, string password)
         {
-            var cached = _localCache.TryGetCachedLogin(companyId, email);
+            var cached = _localCache.TryGetCachedLogin(email.Trim());
 
             if (cached is null)
             {
@@ -160,16 +159,7 @@ namespace CRMS_Peguit.winforms.Auth
                 };
             }
 
-            // Company ID is also the Tenant ID in the current design.
-            if (!int.TryParse(companyId, out int tenantId) || tenantId <= 0)
-            {
-                return new AuthResult
-                {
-                    Success = false,
-                    WasOffline = true,
-                    ErrorMessage = "The Company ID must be a valid numeric Tenant ID."
-                };
-            }
+            int tenantId = cached.TenantId > 0 ? cached.TenantId : 1;
 
             int effectiveUserId = EnsureLocalUser(cached.UserId, tenantId, cached.FullName, cached.Email, cached.PasswordHash, cached.RoleName);
 

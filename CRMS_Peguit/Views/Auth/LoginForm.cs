@@ -56,7 +56,6 @@ namespace CRMS_Peguit.winforms
             lnkForgotPassword.Click += LnkForgotPasswordClick;
             btnLogin.Click += BtnLogin_Click;
             UiRadiusHelper.StyleButton(btnLogin, 8);
-            UiRadiusHelper.SetPadding(txtCompanyId, 8, 8);
             UiRadiusHelper.SetPadding(txtEmail, 8, 8);
             UiRadiusHelper.SetPadding(txtPassword, 8, 8);
         }
@@ -69,12 +68,14 @@ namespace CRMS_Peguit.winforms
         {
             lblError.Text = "";
 
-            var validation = _authController.ValidateCredentials(txtCompanyId.Text, txtEmail.Text, txtPassword.Text);
+            var validation = _authController.ValidateCredentials(txtEmail.Text, txtPassword.Text);
             if (!validation.IsValid)
             {
                 lblError.Text = validation.ErrorMessage ?? "Invalid credentials.";
                 if (lblError.Text.Contains("email", StringComparison.OrdinalIgnoreCase))
                     txtEmail.Focus();
+                else if (lblError.Text.Contains("password", StringComparison.OrdinalIgnoreCase))
+                    txtPassword.Focus();
                 return;
             }
 
@@ -84,7 +85,6 @@ namespace CRMS_Peguit.winforms
             try
             {
                 var result = await _authController.LoginAsync(
-                    txtCompanyId.Text,
                     txtEmail.Text,
                     txtPassword.Text
                 );
@@ -129,13 +129,6 @@ namespace CRMS_Peguit.winforms
         {
             lblError.Text = "";
 
-            if (string.IsNullOrWhiteSpace(txtCompanyId.Text))
-            {
-                lblError.Text = "Company ID is required before requesting a reset.";
-                txtCompanyId.Focus();
-                return;
-            }
-
             if (string.IsNullOrWhiteSpace(txtEmail.Text))
             {
                 lblError.Text = "Email is required before requesting a reset.";
@@ -155,8 +148,7 @@ namespace CRMS_Peguit.winforms
             try
             {
                 var result = await ContactEmailService.SendForgotPasswordAsync(
-                    txtEmail.Text.Trim(),
-                    txtCompanyId.Text.Trim());
+                    txtEmail.Text.Trim());
 
                 MessageBox.Show(
                     result.Message,

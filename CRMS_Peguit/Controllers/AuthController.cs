@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Models.Services;
@@ -31,13 +31,8 @@ namespace CRMS_Peguit.winforms.Controllers
             _authService = authService;
         }
 
-        public LoginValidationResult ValidateCredentials(string companyId, string email, string password)
+        public LoginValidationResult ValidateCredentials(string email, string password)
         {
-            if (string.IsNullOrWhiteSpace(companyId))
-            {
-                return LoginValidationResult.Failure("Company ID is required.");
-            }
-
             if (string.IsNullOrWhiteSpace(email))
             {
                 return LoginValidationResult.Failure("Email is required.");
@@ -56,9 +51,9 @@ namespace CRMS_Peguit.winforms.Controllers
             return LoginValidationResult.Success();
         }
 
-        public async Task<AuthResult> LoginAsync(string companyId, string email, string password)
+        public async Task<AuthResult> LoginAsync(string email, string password)
         {
-            var validation = ValidateCredentials(companyId, email, password);
+            var validation = ValidateCredentials(email, password);
             if (!validation.IsValid)
             {
                 return new AuthResult
@@ -69,7 +64,6 @@ namespace CRMS_Peguit.winforms.Controllers
             }
 
             return await _authService.LoginAsync(
-                companyId.Trim(),
                 email.Trim(),
                 password
             );

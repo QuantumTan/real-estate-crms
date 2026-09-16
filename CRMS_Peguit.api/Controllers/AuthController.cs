@@ -65,11 +65,14 @@ namespace CRMS_Peguit.api.Controllers
             }
 
             // ----------------------------------------------
-            // FIND USER
+            // FIND USER ACROSS ALL TENANTS
             // ----------------------------------------------
 
             var user =
                 await _db.Users
+                    .IgnoreQueryFilters()
+                    .Include(u => u.Person)
+                    .Include(u => u.Role)
                     .FirstOrDefaultAsync(
                         u =>
                             u.Person.Email == request.Email.Trim()
@@ -117,11 +120,12 @@ namespace CRMS_Peguit.api.Controllers
             }
 
             // ----------------------------------------------
-            // GET ROLE
+            // GET ROLE ACROSS ALL TENANTS
             // ----------------------------------------------
 
-            var role =
+            var role = user.Role ??
                 await _db.Roles
+                    .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(
                         r =>
                             r.RoleId == user.RoleId
