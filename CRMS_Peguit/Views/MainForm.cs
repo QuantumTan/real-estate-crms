@@ -7,6 +7,7 @@ using CRMS_Peguit.winforms.Views.Deals;
 using CRMS_Peguit.winforms.Views.Marketing;
 using CRMS_Peguit.winforms.Views.Shared;
 using CRMS_Peguit.winforms.Views.Users;
+using CRMS_Peguit.winforms.Views.FollowUps;
 using CRMS_Peguit.Models;
 using CRMS_Peguit.winforms.Models.Services;
 using CRMS_Peguit.winforms.Services;
@@ -629,7 +630,7 @@ namespace CRMS_Peguit.winforms
             btnDeals.Visible = CurrentSession.CanAccess("Deals");
             btnCampaigns.Visible = CurrentSession.CanAccess("Campaigns");
             btnActivities.Visible = CurrentSession.CanAccess("Activities");
-            btnFollowUps.Visible = CurrentSession.CanAccess("TasksReminders");
+            btnFollowUps.Visible = CurrentSession.CanAccess("TasksReminders") && RbacService.IsAgent;
             btnReports.Visible = CurrentSession.CanAccess("Reports");
             btnSupportTickets.Visible = CurrentSession.CanAccess("SupportTickets");
 
@@ -693,6 +694,13 @@ namespace CRMS_Peguit.winforms
                     if (!CurrentSession.CanAccess("SupportTickets")) return;
                     SetActiveNavButton(btnSupportTickets);
                     BtnSupportTicketsClick(btnSupportTickets, EventArgs.Empty);
+                    break;
+                case "followups":
+                case "tasksreminders":
+                case "reminders":
+                    if (!CurrentSession.CanAccess("TasksReminders") || !RbacService.IsAgent) return;
+                    SetActiveNavButton(btnFollowUps);
+                    BtnFollowUpsClick(btnFollowUps, EventArgs.Empty);
                     break;
             }
         }
@@ -762,10 +770,8 @@ namespace CRMS_Peguit.winforms
 
         private void BtnFollowUpsClick(object? sender, EventArgs e)
         {
-            if (!CurrentSession.CanAccess("TasksReminders")) return;
-            ShowView(new PlaceholderView(
-                "Follow Ups",
-                "Follow-up and reminder workflow placeholder for agent activities."));
+            if (!CurrentSession.CanAccess("TasksReminders") || !RbacService.IsAgent) return;
+            ShowView(new FollowUpsView());
         }
 
         private void BtnReportsClick(object? sender, EventArgs e)

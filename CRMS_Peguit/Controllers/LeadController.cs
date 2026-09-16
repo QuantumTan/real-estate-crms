@@ -136,6 +136,11 @@ namespace CRMS_Peguit.winforms.Controllers
 
                 if (oldAgentId != newAgentId)
                 {
+                    if (newAgentId.HasValue && newAgentId.Value > 0)
+                    {
+                        TransferOpenFollowUps(item.LeadId, newAgentId.Value);
+                    }
+
                     LogActivity("Lead Assignment Changed", item.LeadId, null,
                         $"Lead '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
                 }
@@ -266,8 +271,34 @@ namespace CRMS_Peguit.winforms.Controllers
 
             if (oldAgentId != newAgentId)
             {
+                if (newAgentId.HasValue && newAgentId.Value > 0)
+                {
+                    TransferOpenFollowUps(item.LeadId, newAgentId.Value);
+                    _db.SaveChanges();
+                }
+
                 LogActivity("Lead Assignment Changed", item.LeadId, null,
                     $"Lead '{item.FullName}' assigned to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+            }
+        }
+
+        private void TransferOpenFollowUps(int leadId, int newAgentId)
+        {
+            try
+            {
+                var openFollowUps = _db.TaskReminders
+                    .Where(t => t.RelatedLeadId == leadId && !t.IsDeleted && t.Status != "Completed")
+                    .ToList();
+
+                foreach (var fu in openFollowUps)
+                {
+                    fu.AssignedToUserId = newAgentId;
+                    fu.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LeadController.TransferOpenFollowUps] Error: {ex.Message}");
             }
         }
 

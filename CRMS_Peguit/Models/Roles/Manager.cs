@@ -27,7 +27,6 @@ namespace CRMS_Peguit.winforms.Models.Roles
                 "Deals",
                 "Campaigns",
                 "Activities",
-                "TasksReminders",
                 "Approvals",
                 "SalesStaff",
                 "Reports",

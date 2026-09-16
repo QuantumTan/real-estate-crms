@@ -45,9 +45,9 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             pnlRightCard.Controls.Add(lblRightTitle);
             lblRightTitle.Location = new Point(20, 20);
 
-            var tile1 = CreateHighlightTile("💰", "TOTAL PIPELINE VOLUME", lblStat1Value, Color.FromArgb(224, 242, 254), Color.FromArgb(2, 132, 199));
-            var tile2 = CreateHighlightTile("🏢", "AVAILABLE INVENTORY", lblStat2Value, Color.FromArgb(220, 252, 231), Color.FromArgb(22, 163, 74));
-            var tile3 = CreateHighlightTile("👥", "ACTIVE SALES AGENTS", lblStat3Value, Color.FromArgb(237, 233, 254), Color.FromArgb(124, 58, 237));
+            var tile1 = CreateHighlightTile(KpiIconType.Currency, "TOTAL PIPELINE VOLUME", lblStat1Value, Color.FromArgb(224, 242, 254), Color.FromArgb(2, 132, 199));
+            var tile2 = CreateHighlightTile(KpiIconType.Building, "AVAILABLE INVENTORY", lblStat2Value, Color.FromArgb(220, 252, 231), Color.FromArgb(22, 163, 74));
+            var tile3 = CreateHighlightTile(KpiIconType.Users, "ACTIVE SALES AGENTS", lblStat3Value, Color.FromArgb(237, 233, 254), Color.FromArgb(124, 58, 237));
 
             void PositionTiles()
             {
@@ -69,62 +69,61 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             pnlRightCard.Resize += (_, _) => PositionTiles();
         }
 
-        private Panel CreateHighlightTile(string icon, string title, Label valueLabel, Color iconBg, Color iconColor)
+        private Panel CreateHighlightTile(KpiIconType icon, string title, Label valueLabel, Color iconBg, Color iconColor)
         {
             var panel = new Panel
             {
-                BackColor = Color.FromArgb(248, 250, 252),
+                BackColor = Color.White,
                 Padding = new Padding(12),
                 Height = 76
             };
-            UiRadiusHelper.ApplyRoundedCorners(panel, 8);
+            UiRadiusHelper.ApplyRoundedCorners(panel, 10);
             panel.Paint += (s, e) =>
             {
-                using var pen = new Pen(Color.FromArgb(226, 232, 240), 1f);
-                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), 8);
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                e.Graphics.DrawPath(pen, path);
-            };
+                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-            // Left Column: Icon and descriptive title
-            var iconLabel = new Label
-            {
-                Text = icon,
-                Font = new Font("Segoe UI Emoji", 13f),
-                ForeColor = iconColor,
-                BackColor = iconBg,
-                Size = new Size(38, 38),
-                Location = new Point(14, 19),
-                TextAlign = ContentAlignment.MiddleCenter
+                using var pen = new Pen(Color.FromArgb(226, 232, 240), 1f);
+                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, panel.Width - 1, panel.Height - 1), 10);
+                e.Graphics.DrawPath(pen, path);
+
+                // Unified accent icon container (36x36, rounded-lg 8px)
+                var iconRect = new Rectangle(14, (panel.Height - 36) / 2, 36, 36);
+                using var bgBrush = new SolidBrush(iconBg);
+                using var iconPath = UiRadiusHelper.CreateRoundedPath(iconRect, 8);
+                e.Graphics.FillPath(bgBrush, iconPath);
+
+                // Anti-aliased vector icon
+                var vectorRect = new Rectangle(14 + (36 - 18) / 2, (panel.Height - 18) / 2, 18, 18);
+                UiIconHelper.DrawIcon(e.Graphics, icon, vectorRect, iconColor);
             };
-            UiRadiusHelper.MakeCircularAvatar(iconLabel);
 
             var titleLabel = new Label
             {
                 Text = title,
-                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(100, 116, 139), // #64748B
-                Location = new Point(60, 22),
-                AutoSize = true
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                ForeColor = Color.FromArgb(100, 116, 139), // Slate 500 (#64748B)
+                Location = new Point(62, 22),
+                AutoSize = true,
+                BackColor = Color.Transparent
             };
 
-            // Right Column: Primary metric value cleanly aligned to the far right (#0F172A, Bold)
+            // Primary metric value aligned cleanly to the right
             valueLabel.Parent = null;
-            valueLabel.Font = new Font("Segoe UI", 16f, FontStyle.Bold);
-            valueLabel.ForeColor = Color.FromArgb(15, 23, 42); // #0F172A
+            valueLabel.Font = new Font("Segoe UI", 15f, FontStyle.Bold);
+            valueLabel.ForeColor = Color.FromArgb(15, 23, 42); // Slate 900 (#0F172A)
             valueLabel.AutoSize = true;
             valueLabel.TextAlign = ContentAlignment.MiddleRight;
+            valueLabel.BackColor = Color.Transparent;
 
             void LayoutTile()
             {
                 if (panel.Width <= 0) return;
                 int valWidth = valueLabel.PreferredWidth;
                 valueLabel.Location = new Point(panel.Width - valWidth - 16, (panel.Height - valueLabel.Height) / 2);
-                titleLabel.Location = new Point(60, (panel.Height - titleLabel.Height) / 2);
-                iconLabel.Location = new Point(14, (panel.Height - iconLabel.Height) / 2);
+                titleLabel.Location = new Point(62, (panel.Height - titleLabel.Height) / 2);
             }
 
-            panel.Controls.Add(iconLabel);
             panel.Controls.Add(titleLabel);
             panel.Controls.Add(valueLabel);
 
@@ -159,6 +158,11 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 kpiProperties.SetValue(summary.ActiveProperties);
                 kpiLeads.SetValue(summary.QualifiedLeads);
                 kpiDeals.SetValue(summary.TotalDeals);
+
+                kpiCustomers.SetSubtitle("Active accounts");
+                kpiProperties.SetSubtitle("Current listings");
+                kpiLeads.SetSubtitle("High probability");
+                kpiDeals.SetSubtitle("Active pipeline");
 
                 lblStat1Value.Text = $"₱{summary.PipelineValue:N2}";
                 lblStat2Value.Text = $"{summary.ActiveProperties} listings";

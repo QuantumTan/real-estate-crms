@@ -105,11 +105,11 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             this.pnlKpiContainer.Controls.Add(this.kpiOpen, 1, 0);
             this.pnlKpiContainer.Controls.Add(this.kpiInProgress, 2, 0);
             this.pnlKpiContainer.Controls.Add(this.kpiOverdue, 3, 0);
-            this.pnlKpiContainer.Location = new System.Drawing.Point(30, 84);
+            this.pnlKpiContainer.Location = new System.Drawing.Point(30, 90);
             this.pnlKpiContainer.Name = "pnlKpiContainer";
             this.pnlKpiContainer.RowCount = 1;
             this.pnlKpiContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.pnlKpiContainer.Size = new System.Drawing.Size(970, 94);
+            this.pnlKpiContainer.Size = new System.Drawing.Size(970, 104);
             this.pnlKpiContainer.TabIndex = 3;
             // 
             // kpiTotal
@@ -118,7 +118,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             this.kpiTotal.Location = new System.Drawing.Point(0, 0);
             this.kpiTotal.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
             this.kpiTotal.Name = "kpiTotal";
-            this.kpiTotal.Size = new System.Drawing.Size(234, 94);
+            this.kpiTotal.Size = new System.Drawing.Size(234, 104);
             this.kpiTotal.TabIndex = 0;
             // 
             // kpiOpen
@@ -127,7 +127,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             this.kpiOpen.Location = new System.Drawing.Point(242, 0);
             this.kpiOpen.Margin = new System.Windows.Forms.Padding(4, 0, 6, 0);
             this.kpiOpen.Name = "kpiOpen";
-            this.kpiOpen.Size = new System.Drawing.Size(232, 94);
+            this.kpiOpen.Size = new System.Drawing.Size(232, 104);
             this.kpiOpen.TabIndex = 1;
             // 
             // kpiInProgress
@@ -136,7 +136,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             this.kpiInProgress.Location = new System.Drawing.Point(486, 0);
             this.kpiInProgress.Margin = new System.Windows.Forms.Padding(6, 0, 4, 0);
             this.kpiInProgress.Name = "kpiInProgress";
-            this.kpiInProgress.Size = new System.Drawing.Size(232, 94);
+            this.kpiInProgress.Size = new System.Drawing.Size(232, 104);
             this.kpiInProgress.TabIndex = 2;
             // 
             // kpiOverdue
@@ -145,7 +145,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             this.kpiOverdue.Location = new System.Drawing.Point(728, 0);
             this.kpiOverdue.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
             this.kpiOverdue.Name = "kpiOverdue";
-            this.kpiOverdue.Size = new System.Drawing.Size(242, 94);
+            this.kpiOverdue.Size = new System.Drawing.Size(242, 104);
             this.kpiOverdue.TabIndex = 3;
             // 
             // txtSearch

@@ -50,13 +50,19 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 BackColor = Color.Transparent
             };
 
-            var lblIcon = new Label
+            var pnlIcon = new Panel
             {
-                Text = "🎫",
-                Font = new Font("Segoe UI Emoji", 32f),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Size = new Size(420, 56),
-                Location = new Point(0, 8)
+                Size = new Size(48, 48),
+                Location = new Point((420 - 48) / 2, 10),
+                BackColor = Color.FromArgb(239, 246, 255)
+            };
+            UiRadiusHelper.ApplyRoundedCorners(pnlIcon, 12);
+            pnlIcon.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                var iconRect = new Rectangle(12, 12, 24, 24);
+                UiIconHelper.DrawIcon(e.Graphics, KpiIconType.Ticket, iconRect, Color.FromArgb(37, 99, 235));
             };
 
             var lblTitle = new Label
@@ -98,7 +104,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 SetFilter("All");
             };
 
-            innerPanel.Controls.Add(lblIcon);
+            innerPanel.Controls.Add(pnlIcon);
             innerPanel.Controls.Add(lblTitle);
             innerPanel.Controls.Add(lblDesc);
             innerPanel.Controls.Add(btnReset);
@@ -188,11 +194,17 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
         {
             var kpis = _controller.GetKpiCounts();
 
-            // Refresh KPI card values
+            // Refresh KPI card values and context subtitles
             kpiTotal.SetValue(kpis.Total);
             kpiOpen.SetValue(kpis.Open);
             kpiInProgress.SetValue(kpis.InProgress);
             kpiOverdue.SetValue(kpis.Overdue);
+
+            kpiTotal.SetSubtitle("All registered");
+            kpiOpen.SetSubtitle("Awaiting triage");
+            kpiInProgress.SetSubtitle("In active resolution");
+            kpiOverdue.SetSubtitle(kpis.Overdue > 0 ? "Requires attention" : "All within SLA",
+                kpis.Overdue > 0 ? Color.FromArgb(220, 38, 38) : Color.FromArgb(22, 163, 74));
 
             kpiTotal.SetSelected(string.Equals(_filterStatus, "All", StringComparison.OrdinalIgnoreCase));
             kpiOpen.SetSelected(string.Equals(_filterStatus, "Open", StringComparison.OrdinalIgnoreCase));
@@ -669,11 +681,11 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 _btnExport.Top = 22;
             }
 
-            // 2. Position and size KPI container explicitly
+            // 2. Position and size KPI container explicitly with generous clearance from subtitle
             pnlKpiContainer.Left = leftMargin;
-            pnlKpiContainer.Top = 84;
+            pnlKpiContainer.Top = Math.Max(90, lblSubtitle.Bottom + 10);
             pnlKpiContainer.Width = Math.Max(100, totalWidth - leftMargin - rightPadding);
-            pnlKpiContainer.Height = 88;
+            pnlKpiContainer.Height = 104;
 
             // 3. Position search & filter pills ALWAYS below the KPI container
             int y = pnlKpiContainer.Bottom + 16;

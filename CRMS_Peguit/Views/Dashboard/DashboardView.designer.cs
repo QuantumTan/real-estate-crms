@@ -106,7 +106,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.pnlKpiContainer.Name = "pnlKpiContainer";
             this.pnlKpiContainer.RowCount = 1;
             this.pnlKpiContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.pnlKpiContainer.Size = new System.Drawing.Size(970, 100);
+            this.pnlKpiContainer.Size = new System.Drawing.Size(970, 104);
             this.pnlKpiContainer.TabIndex = 3;
             // 
             // kpiCustomers
@@ -115,25 +115,25 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.kpiCustomers.Dock = System.Windows.Forms.DockStyle.Fill;
             this.kpiCustomers.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
             this.kpiCustomers.Name = "kpiCustomers";
-            this.kpiCustomers.Size = new System.Drawing.Size(234, 100);
+            this.kpiCustomers.Size = new System.Drawing.Size(234, 104);
             this.kpiCustomers.TabIndex = 0;
             // 
             // kpiProperties
             // 
             this.kpiProperties.BackColor = System.Drawing.Color.White;
             this.kpiProperties.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.kpiProperties.Margin = new System.Windows.Forms.Padding(8, 0, 8, 0);
+            this.kpiProperties.Margin = new System.Windows.Forms.Padding(4, 0, 6, 0);
             this.kpiProperties.Name = "kpiProperties";
-            this.kpiProperties.Size = new System.Drawing.Size(234, 100);
+            this.kpiProperties.Size = new System.Drawing.Size(234, 104);
             this.kpiProperties.TabIndex = 1;
             // 
             // kpiLeads
             // 
             this.kpiLeads.BackColor = System.Drawing.Color.White;
             this.kpiLeads.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.kpiLeads.Margin = new System.Windows.Forms.Padding(8, 0, 8, 0);
+            this.kpiLeads.Margin = new System.Windows.Forms.Padding(6, 0, 4, 0);
             this.kpiLeads.Name = "kpiLeads";
-            this.kpiLeads.Size = new System.Drawing.Size(234, 100);
+            this.kpiLeads.Size = new System.Drawing.Size(234, 104);
             this.kpiLeads.TabIndex = 2;
             // 
             // kpiDeals
@@ -142,7 +142,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.kpiDeals.Dock = System.Windows.Forms.DockStyle.Fill;
             this.kpiDeals.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
             this.kpiDeals.Name = "kpiDeals";
-            this.kpiDeals.Size = new System.Drawing.Size(234, 100);
+            this.kpiDeals.Size = new System.Drawing.Size(234, 104);
             this.kpiDeals.TabIndex = 3;
             // 
             // pnlContentSplit
@@ -155,11 +155,11 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.pnlContentSplit.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 32F));
             this.pnlContentSplit.Controls.Add(this.pnlLeftCard, 0, 0);
             this.pnlContentSplit.Controls.Add(this.pnlRightCard, 1, 0);
-            this.pnlContentSplit.Location = new System.Drawing.Point(30, 202);
+            this.pnlContentSplit.Location = new System.Drawing.Point(30, 206);
             this.pnlContentSplit.Name = "pnlContentSplit";
             this.pnlContentSplit.RowCount = 1;
             this.pnlContentSplit.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.pnlContentSplit.Size = new System.Drawing.Size(970, 470);
+            this.pnlContentSplit.Size = new System.Drawing.Size(970, 466);
             this.pnlContentSplit.TabIndex = 4;
             // 
             // pnlLeftCard

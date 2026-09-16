@@ -28,6 +28,7 @@ namespace CRMS_Peguit.infrastructure.data
         public DbSet<TicketComment> TicketComments => Set<TicketComment>();
         public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
         public DbSet<BackupLog> BackupLogs => Set<BackupLog>();
+        public DbSet<TaskReminder> TaskReminders => Set<TaskReminder>();
 
         public RealEstateDbContext(
             DbContextOptions<RealEstateDbContext> options,
@@ -406,6 +407,38 @@ namespace CRMS_Peguit.infrastructure.data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            builder.Entity<TaskReminder>(entity =>
+            {
+                entity.HasKey(x => x.TaskReminderId);
+                entity.Ignore(x => x.Id);
+
+                entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+                entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.Type).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
+                entity.Property(x => x.Notes).HasMaxLength(2000);
+
+                entity.HasIndex(x => x.IsDeleted);
+                entity.HasIndex(x => x.DueDate);
+                entity.HasIndex(x => x.Status);
+                entity.HasIndex(x => x.AssignedToUserId);
+
+                entity.HasOne(x => x.AssignedToUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.AssignedToUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.RelatedCustomer)
+                    .WithMany()
+                    .HasForeignKey(x => x.RelatedCustomerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(x => x.RelatedLead)
+                    .WithMany()
+                    .HasForeignKey(x => x.RelatedLeadId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
             // --- Global query filters (3NF Transitively Derived via FK chains) ---
             builder.Entity<Role>().HasQueryFilter(x => x.TenantId == _tenantId);
             builder.Entity<User>().HasQueryFilter(x => x.Role.TenantId == _tenantId);
@@ -419,6 +452,7 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<PropertyShowingDetail>().HasQueryFilter(x => x.Activity.LoggedByAgent.Role.TenantId == _tenantId);
             builder.Entity<SupportTicket>().HasQueryFilter(x => x.RaisedByUser.Role.TenantId == _tenantId && !x.IsDeleted);
             builder.Entity<TicketComment>().HasQueryFilter(x => x.Ticket.RaisedByUser.Role.TenantId == _tenantId && !x.Ticket.IsDeleted);
+            builder.Entity<TaskReminder>().HasQueryFilter(x => x.AssignedToUser.Role.TenantId == _tenantId && !x.IsDeleted);
             builder.Entity<SystemSetting>().HasQueryFilter(x => x.UpdatedByUser.Role.TenantId == _tenantId);
             builder.Entity<BackupLog>().HasQueryFilter(x => x.PerformedByUser.Role.TenantId == _tenantId);
         }

@@ -33,7 +33,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
         {
             _lblEmptyState = new Label
             {
-                Text = "🔍 No customers match your search or filter criteria.\nTry adjusting your search terms or filter.",
+                Text = "No customers match your search or filter criteria.\nTry adjusting your search terms or filter.",
                 Font = new Font("Segoe UI", 11f),
                 ForeColor = Theme.TextSecondary,
                 TextAlign = ContentAlignment.MiddleCenter,

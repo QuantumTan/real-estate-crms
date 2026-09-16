@@ -29,6 +29,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                     {
                         EnsureDealSchema(context);
                         EnsureSupportTicketSchema(context);
+                        EnsureFollowUpSchema(context);
                         _dealSchemaChecked = true;
                     }
                 }
@@ -172,6 +173,50 @@ namespace CRMS_Peguit.winforms.Models.Services
             catch
             {
                 // Silent fallback if server offline or already updated
+            }
+        }
+
+        private static void EnsureFollowUpSchema(RealEstateDbContext context)
+        {
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF OBJECT_ID('TaskReminders', 'U') IS NULL
+                    BEGIN
+                        CREATE TABLE [dbo].[TaskReminders] (
+                            [TaskReminderId] INT IDENTITY(1,1) NOT NULL,
+                            [Title] NVARCHAR(200) NOT NULL,
+                            [DueDate] DATETIME2 NOT NULL,
+                            [AssignedToUserId] INT NOT NULL,
+                            [RelatedCustomerId] INT NULL,
+                            [RelatedLeadId] INT NULL,
+                            [Status] NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+                            [Type] NVARCHAR(50) NOT NULL DEFAULT 'Call',
+                            [Notes] NVARCHAR(2000) NULL,
+                            [Priority] NVARCHAR(20) NOT NULL DEFAULT 'Medium',
+                            [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                            [UpdatedAt] DATETIME2 NULL,
+                            [CompletedAt] DATETIME2 NULL,
+                            [IsDeleted] BIT NOT NULL DEFAULT 0,
+                            [DeletedAt] DATETIME2 NULL,
+                            CONSTRAINT [PK_TaskReminders] PRIMARY KEY CLUSTERED ([TaskReminderId] ASC),
+                            CONSTRAINT [FK_TaskReminders_Users_AssignedToUserId] FOREIGN KEY ([AssignedToUserId]) REFERENCES [dbo].[Users] ([UserId]),
+                            CONSTRAINT [FK_TaskReminders_Customers_RelatedCustomerId] FOREIGN KEY ([RelatedCustomerId]) REFERENCES [dbo].[Customers] ([CustomerId]) ON DELETE SET NULL,
+                            CONSTRAINT [FK_TaskReminders_Leads_RelatedLeadId] FOREIGN KEY ([RelatedLeadId]) REFERENCES [dbo].[Leads] ([LeadId]) ON DELETE SET NULL
+                        );
+
+                        CREATE INDEX [IX_TaskReminders_AssignedToUserId] ON [dbo].[TaskReminders] ([AssignedToUserId]);
+                        CREATE INDEX [IX_TaskReminders_DueDate] ON [dbo].[TaskReminders] ([DueDate]);
+                        CREATE INDEX [IX_TaskReminders_IsDeleted] ON [dbo].[TaskReminders] ([IsDeleted]);
+                        CREATE INDEX [IX_TaskReminders_RelatedCustomerId] ON [dbo].[TaskReminders] ([RelatedCustomerId]);
+                        CREATE INDEX [IX_TaskReminders_RelatedLeadId] ON [dbo].[TaskReminders] ([RelatedLeadId]);
+                        CREATE INDEX [IX_TaskReminders_Status] ON [dbo].[TaskReminders] ([Status]);
+                    END
+                ");
+            }
+            catch
+            {
+                // Silent fallback if server offline or already created
             }
         }
     }
