@@ -55,28 +55,45 @@ namespace CRMS_Peguit.winforms.Auth
             return createdByUserId.HasValue && createdByUserId.Value == currentUserId;
         }
 
-        // R17: Admin does not directly manage records in Sales Force Automation.
-        // Direct record creation, editing, and archiving are performed by Agents (and Managers).
-        // Admin retains agency-wide read-only oversight (R26) and data import/export.
+        // Operational sales records (Leads, Customers, Deals) are created by frontline Agents.
+        // Managers supervise, approve, reassign, and archive.
         public static bool CanCreateSalesRecord =>
-            IsAgent || IsManager;
+            IsAgent || IsSuperAdmin;
 
         public static bool CanExportData =>
             IsAdmin || IsManager;
 
-        public static bool CanEditRecord(int? assignedAgentId, int? createdByUserId)
+        public static bool CanViewBrokerageMargins =>
+            IsAdmin || IsSuperAdmin;
+
+        public static bool CanExportFinancialSettlements =>
+            IsAdmin || IsSuperAdmin;
+
+        public static bool CanEditRecord(int? assignedAgentId, int? createdByUserId, string? assignmentStatus = null)
         {
             if (IsAdmin)
-                return false; // R17: Admin has oversight, does not directly manage records
+                return false; // Admin has oversight, does not directly manage records
+
+            if (IsManager || IsSuperAdmin)
+                return true;
+
+            // While a record is pending review by management, operational editing is locked for agents
+            if (string.Equals(assignmentStatus, "pending_review", System.StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return CanAgentViewRecord(assignedAgentId, createdByUserId);
+        }
+
+        public static bool CanArchiveRecord(int? assignedAgentId, int? createdByUserId)
+        {
+            if (IsAdmin)
+                return false;
 
             if (IsManager || IsSuperAdmin)
                 return true;
 
             return CanAgentViewRecord(assignedAgentId, createdByUserId);
         }
-
-        public static bool CanArchiveRecord(int? assignedAgentId, int? createdByUserId) =>
-            CanEditRecord(assignedAgentId, createdByUserId);
 
         public static bool CanEditAssignedRecord(int? assignedAgentId, int? createdByUserId = null) =>
             CanEditRecord(assignedAgentId, createdByUserId);

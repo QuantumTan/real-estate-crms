@@ -58,12 +58,22 @@ namespace CRMS_Peguit.winforms.Views.FollowUps
             _assignedCustomers = _controller.GetAssignedCustomers();
             _assignedLeads = _controller.GetAssignedLeads();
 
-            if (_existing != null)
+            bool isEdit = _existing != null && _existing.TaskReminderId > 0;
+            if (isEdit)
             {
                 lblHeaderTitle.Text = "Edit Follow-Up";
                 Text = "Edit Follow-Up";
                 btnSave.Text = "Save Changes";
+            }
+            else
+            {
+                lblHeaderTitle.Text = "Schedule Follow-Up";
+                Text = "Schedule Follow-Up";
+                btnSave.Text = "Save Follow-Up";
+            }
 
+            if (_existing != null)
+            {
                 txtTitle.Text = _existing.Title;
 
                 if (!string.IsNullOrWhiteSpace(_existing.Type) && cmbType.Items.Contains(_existing.Type))

@@ -163,8 +163,8 @@ namespace CRMS_Peguit.winforms.Views.Marketing
         {
             using var inputForm = new Form
             {
-                Text = "Create New Lead Source / Campaign",
-                Size = new Size(420, 210),
+                Text = "Create New Campaign / Lead Source",
+                Size = new Size(460, 300),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -174,7 +174,7 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 
             var lblPrompt = new Label
             {
-                Text = "Campaign / Source Name (e.g., Google Ads, Billboard, Event):",
+                Text = "Campaign / Source Name * (e.g., Summer Promo 2026, Ayala Expo):",
                 Location = new Point(24, 20),
                 AutoSize = true,
                 Font = new Font("Segoe UI", 9.5f)
@@ -183,16 +183,44 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             var txtName = new TextBox
             {
                 Location = new Point(24, 48),
-                Size = new Size(350, 30),
+                Size = new Size(390, 30),
                 Font = new Font("Segoe UI", 10f)
             };
+
+            var lblChannel = new Label
+            {
+                Text = "Channel / Category (e.g., Social Media, Portal, Event, Direct):",
+                Location = new Point(24, 90),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9.5f)
+            };
+
+            var cmbChannel = new ComboBox
+            {
+                Location = new Point(24, 118),
+                Size = new Size(390, 30),
+                Font = new Font("Segoe UI", 10f),
+                DropDownStyle = ComboBoxStyle.DropDown
+            };
+            cmbChannel.Items.AddRange(new object[]
+            {
+                "Social Media",
+                "Property Portal",
+                "Search Engine / Paid Ads",
+                "Referral",
+                "Event / Expo",
+                "Outdoor / Billboard",
+                "Direct / Walk-in",
+                "Website"
+            });
+            cmbChannel.SelectedIndex = 0;
 
             var btnCancel = new Button
             {
                 Text = "Cancel",
                 DialogResult = DialogResult.Cancel,
-                Location = new Point(134, 105),
-                Size = new Size(90, 38),
+                Location = new Point(174, 195),
+                Size = new Size(100, 38),
                 BackColor = Color.White,
                 ForeColor = Color.FromArgb(8, 52, 87),
                 FlatStyle = FlatStyle.Flat,
@@ -205,8 +233,8 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             {
                 Text = "Save Campaign",
                 DialogResult = DialogResult.OK,
-                Location = new Point(234, 105),
-                Size = new Size(140, 38),
+                Location = new Point(284, 195),
+                Size = new Size(130, 38),
                 BackColor = Color.FromArgb(15, 91, 158),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -216,6 +244,8 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 
             inputForm.Controls.Add(lblPrompt);
             inputForm.Controls.Add(txtName);
+            inputForm.Controls.Add(lblChannel);
+            inputForm.Controls.Add(cmbChannel);
             inputForm.Controls.Add(btnCancel);
             inputForm.Controls.Add(btnSubmit);
             inputForm.AcceptButton = btnSubmit;
@@ -224,17 +254,29 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             if (inputForm.ShowDialog(this) == DialogResult.OK)
             {
                 string newSource = txtName.Text.Trim();
+                string channel = cmbChannel.Text.Trim();
                 if (!string.IsNullOrWhiteSpace(newSource))
                 {
-                    _campaignController.AddCustomChannel(newSource);
-                    _selectedSource = newSource;
-                    LoadData();
+                    bool saved = _campaignController.AddCampaign(newSource, string.IsNullOrWhiteSpace(channel) ? "Direct" : channel);
+                    if (saved)
+                    {
+                        _selectedSource = newSource;
+                        LoadData();
 
-                    MessageBox.Show(
-                        $"Lead source / campaign '{newSource}' is now active and ready for lead tagging.",
-                        "Campaign Created",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                        MessageBox.Show(
+                            $"Campaign '{newSource}' has been successfully saved to the database.\n\nIt is now immediately available in the Agent's Lead Source dropdown for lead attribution.",
+                            "Campaign Saved",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Unable to save the campaign. Please check connection and try again.",
+                            "Error Saving Campaign",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
                 }
             }
         }

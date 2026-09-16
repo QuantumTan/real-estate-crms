@@ -336,15 +336,30 @@ namespace CRMS_Peguit.winforms.Controllers
 
         // ---- NEW: for the lead detail view ----
 
+        private Dictionary<int, string>? _cachedAgentDict;
+
+        public Dictionary<int, string> GetAgentDictionary()
+        {
+            if (_cachedAgentDict != null) return _cachedAgentDict;
+            try
+            {
+                _cachedAgentDict = _db.Users
+                    .AsNoTracking()
+                    .Include(u => u.Person)
+                    .ToDictionary(u => u.UserId, u => u.FullName);
+            }
+            catch
+            {
+                _cachedAgentDict = new Dictionary<int, string>();
+            }
+            return _cachedAgentDict;
+        }
+
         public string? GetAssignedAgentName(int? assignedAgentId)
         {
             if (assignedAgentId is null) return null;
-            return _db.Users
-                .AsNoTracking()
-                .Where(u => u.UserId == assignedAgentId)
-                .AsEnumerable()
-                .Select(u => u.FullName)
-                .SingleOrDefault();
+            var dict = GetAgentDictionary();
+            return dict.TryGetValue(assignedAgentId.Value, out var name) ? name : null;
         }
 
         public List<Activity> GetActivityHistory(int leadId)
@@ -396,6 +411,17 @@ namespace CRMS_Peguit.winforms.Controllers
                     Notes = notes,
                     ActivityDate = DateTime.UtcNow
                 });
+
+                // Auto-advance lead stage from 'new' to 'contacted' upon outbound activity/email
+                if (leadId.HasValue && leadId.Value > 0)
+                {
+                    var lead = _db.Leads.FirstOrDefault(l => l.LeadId == leadId.Value);
+                    if (lead != null && string.Equals(lead.Stage, "new", StringComparison.OrdinalIgnoreCase))
+                    {
+                        lead.Stage = "contacted";
+                    }
+                }
+
                 _db.SaveChanges();
             }
             catch (Exception ex)
@@ -460,6 +486,66 @@ namespace CRMS_Peguit.winforms.Controllers
 
             errorMessage = null;
             return true;
+        }
+
+        public int GetActiveLeadsCount(int? agentId = null)
+        {
+            try
+            {
+                var query = _db.Leads.AsNoTracking().Where(l => !l.IsDeleted && l.Stage.ToLower() != "converted" && l.Stage.ToLower() != "lost");
+                if (agentId.HasValue && agentId.Value > 0)
+                {
+                    int uid = agentId.Value;
+                    query = query.Where(l => (l.AssignedAgentId.HasValue && l.AssignedAgentId.Value > 0)
+                        ? l.AssignedAgentId.Value == uid
+                        : l.CreatedByUserId == uid);
+                }
+                else if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int uid = CurrentSession.UserId;
+                    query = query.Where(l => (l.AssignedAgentId.HasValue && l.AssignedAgentId.Value > 0)
+                        ? l.AssignedAgentId.Value == uid
+                        : l.CreatedByUserId == uid);
+                }
+
+                return query.Count();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LeadController.GetActiveLeadsCount] Error: {ex.Message}");
+                return 0;
+            }
+        }
+
+        public double GetTeamConversionRate()
+        {
+            try
+            {
+                int total = _db.Leads.AsNoTracking().Count(l => !l.IsDeleted);
+                if (total == 0) return 0.0;
+                int converted = _db.Leads.AsNoTracking().Count(l => !l.IsDeleted && l.Stage.ToLower() == "converted");
+                return Math.Round(((double)converted / total) * 100.0, 1);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LeadController.GetTeamConversionRate] Error: {ex.Message}");
+                return 0.0;
+            }
+        }
+
+        public int GetPendingReviewCount()
+        {
+            try
+            {
+                return _db.Leads
+                    .AsNoTracking()
+                    .Count(l => !l.IsDeleted && (l.AssignmentStatus == "pending_review" || l.AssignedAgentId == null));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LeadController.GetPendingReviewCount] Error: {ex.Message}");
+                return 0;
+            }
         }
 
         public void Dispose() => _db.Dispose();

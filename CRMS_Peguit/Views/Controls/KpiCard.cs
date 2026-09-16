@@ -181,12 +181,28 @@ namespace CRMS_Peguit.winforms.Controls
             _lblTitle.Location = new Point(LeftPadding, TopPadding + 2);
             _lblTitle.Size = new Size(titleWidth, 18);
 
-            // Value beneath title
-            _lblValue.Location = new Point(LeftPadding - 1, _lblTitle.Bottom + 2);
+            // Primary value beneath title
+            int valueY = _lblTitle.Bottom + 2;
+            _lblValue.Location = new Point(LeftPadding - 1, valueY);
 
-            // Subtitle beneath value
-            int subY = Math.Min(Height - 20, _lblValue.Bottom + 1);
-            _lblSubtitle.Location = new Point(LeftPadding, subY);
+            // Structured secondary metric / amount layout:
+            // If primary value is compact (like deals closed "85" or count), place secondary amount horizontally beside it with an 8px gap.
+            // Otherwise, stack it cleanly below the value with guaranteed spacing without vertical collision.
+            const int horizontalGap = 8;
+            int availableWidth = Width - RightPadding;
+
+            if (_lblValue.Right + horizontalGap + _lblSubtitle.PreferredWidth <= availableWidth)
+            {
+                // Position beside the value aligned near baseline
+                int subY = Math.Max(_lblTitle.Bottom + 2, _lblValue.Bottom - _lblSubtitle.PreferredHeight - 4);
+                _lblSubtitle.Location = new Point(_lblValue.Right + horizontalGap, subY);
+            }
+            else
+            {
+                // Stack below the value with guaranteed gap
+                int subY = Math.Max(_lblValue.Bottom + 2, Height - _lblSubtitle.PreferredHeight - 6);
+                _lblSubtitle.Location = new Point(LeftPadding, subY);
+            }
         }
 
         protected override void OnPaint(PaintEventArgs e)

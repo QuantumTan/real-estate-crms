@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
@@ -457,6 +458,21 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     }
                 }
             }
+            else
+            {
+                // On new deal creation, default assigned agent to the current logged-in agent
+                int currentUserId = CurrentSession.UserId;
+                if (agents.Any(a => a.Key == currentUserId))
+                {
+                    _cboAgent.SelectedValue = currentUserId;
+                }
+            }
+
+            // R24: Only Manager or Admin may set or change ownership. Regular agents are locked.
+            if (!RbacService.CanAssignRecords)
+            {
+                _cboAgent.Enabled = false;
+            }
 
             RecalculateFinancing();
         }
@@ -499,7 +515,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 DealId = _existingDeal?.DealId ?? 0,
                 CustomerId = Convert.ToInt32(_cboCustomer.SelectedValue),
                 PropertyId = Convert.ToInt32(_cboProperty.SelectedValue),
-                AgentId = _cboAgent.SelectedValue as int?,
+                AgentId = RbacService.CanAssignRecords ? (_cboAgent.SelectedValue as int?) : (_existingDeal?.AgentId ?? CurrentSession.UserId),
                 Value = dealVal,
                 CommissionRate = _numCommission.Value / 100m,
                 Stage = stage,

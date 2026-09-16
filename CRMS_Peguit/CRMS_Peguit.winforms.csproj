@@ -6,6 +6,7 @@
 		<Nullable>enable</Nullable>
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<NoWarn>$(NoWarn);NU1701</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -19,7 +20,9 @@
 		  <PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
+		<PackageReference Include="QuestPDF" Version="2026.9.0" />
 		<PackageReference Include="ReaLTaiizor" Version="3.8.2.1" />
+		<PackageReference Include="ScottPlot.WinForms" Version="5.1.59" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -459,13 +459,45 @@ namespace CRMS_Peguit.winforms.Views.FollowUps
                 Font = new Font("Segoe UI", 9.5f)
             };
 
+            string? clientEmail = reminder.RelatedCustomer?.Email ?? reminder.RelatedLead?.Email;
+            string clientName = reminder.RelatedCustomer?.FullName ?? reminder.RelatedLead?.FullName ?? "Client";
+            bool hasValidEmail = !string.IsNullOrWhiteSpace(clientEmail) && ContactEmailService.IsValidEmail(clientEmail);
+
+            // 0. Message / Email Shortcut
+            var messageItem = new ToolStripMenuItem($"✉️  Message {clientName}");
+            messageItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            messageItem.Enabled = hasValidEmail;
+            if (!hasValidEmail)
+            {
+                messageItem.ToolTipText = "No valid email address recorded for this client.";
+            }
+            messageItem.Click += (_, _) =>
+            {
+                using var msgForm = new Shared.EmailMessageForm(clientName, clientEmail, $"Regarding: {reminder.Title}");
+                if (msgForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    var askComplete = MessageBox.Show(
+                        $"Email sent to {clientName}.\n\nWould you like to mark this follow-up as completed?",
+                        "Follow-Up Action",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (askComplete == DialogResult.Yes)
+                    {
+                        _controller.MarkComplete(reminder.TaskReminderId, logActivity: true, activityNotes: $"Sent email regarding '{reminder.Title}': {msgForm.SentSubject}");
+                    }
+                    RefreshData();
+                }
+            };
+            menu.Items.Add(messageItem);
+            menu.Items.Add(new ToolStripSeparator());
+
             bool isCompleted = string.Equals(reminder.Status, "Completed", StringComparison.OrdinalIgnoreCase);
 
             // 1. Mark Complete
             if (!isCompleted)
             {
                 var completeItem = new ToolStripMenuItem("✓  Mark Complete");
-                completeItem.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
                 completeItem.Click += (_, _) => CompleteFollowUp(reminder);
                 menu.Items.Add(completeItem);
 

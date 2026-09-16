@@ -186,7 +186,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             _pnlFooter.Controls.Add(_btnClose);
 
             // Edit Button (if permitted)
-            bool canEdit = RbacService.CanCreateSalesRecord;
+            bool canEdit = _deal != null && RbacService.CanEditRecord(_deal.AgentId, _deal.CreatedByUserId);
             if (canEdit)
             {
                 _btnEdit = new Button
@@ -735,7 +735,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
         private void BtnEditClick(object? sender, EventArgs e)
         {
-            if (_deal == null) return;
+            if (_deal == null || !RbacService.CanEditRecord(_deal.AgentId, _deal.CreatedByUserId)) return;
 
             using var editForm = new DealInputForm(_controller, _deal);
             if (editForm.ShowDialog(this) == DialogResult.OK && editForm.Result is not null)

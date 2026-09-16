@@ -30,6 +30,8 @@ namespace CRMS_Peguit.winforms.Models.Services
                         EnsureDealSchema(context);
                         EnsureSupportTicketSchema(context);
                         EnsureFollowUpSchema(context);
+                        EnsureCampaignSchema(context);
+                        EnsureActivitySchema(context);
                         _dealSchemaChecked = true;
                     }
                 }
@@ -217,6 +219,74 @@ namespace CRMS_Peguit.winforms.Models.Services
             catch
             {
                 // Silent fallback if server offline or already created
+            }
+        }
+
+        private static void EnsureCampaignSchema(RealEstateDbContext context)
+        {
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF OBJECT_ID('Campaigns', 'U') IS NULL
+                    BEGIN
+                        CREATE TABLE [dbo].[Campaigns] (
+                            [CampaignId] INT IDENTITY(1,1) NOT NULL,
+                            [TenantId] INT NOT NULL DEFAULT 1,
+                            [Name] NVARCHAR(150) NOT NULL,
+                            [Channel] NVARCHAR(100) NULL,
+                            [Status] NVARCHAR(50) NOT NULL DEFAULT 'Active',
+                            [Budget] DECIMAL(18,2) NULL,
+                            [StartDate] DATETIME2 NULL,
+                            [EndDate] DATETIME2 NULL,
+                            [IsActive] BIT NOT NULL DEFAULT 1,
+                            [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                            CONSTRAINT [PK_Campaigns] PRIMARY KEY CLUSTERED ([CampaignId] ASC)
+                        );
+
+                        CREATE INDEX [IX_Campaigns_TenantId] ON [dbo].[Campaigns] ([TenantId]);
+                        CREATE INDEX [IX_Campaigns_IsActive] ON [dbo].[Campaigns] ([IsActive]);
+                        CREATE INDEX [IX_Campaigns_Name] ON [dbo].[Campaigns] ([Name]);
+
+                        INSERT INTO [dbo].[Campaigns] ([TenantId], [Name], [Channel], [Status], [IsActive], [CreatedAt])
+                        VALUES 
+                            (1, 'Facebook Ad', 'Social Media', 'Active', 1, GETUTCDATE()),
+                            (1, 'Referral', 'Referral', 'Active', 1, GETUTCDATE()),
+                            (1, 'Walk-in', 'Direct', 'Active', 1, GETUTCDATE()),
+                            (1, 'Website', 'Website', 'Active', 1, GETUTCDATE()),
+                            (1, 'Property Portal', 'Property Portal', 'Active', 1, GETUTCDATE()),
+                            (1, 'Google Ads', 'Search Engine', 'Active', 1, GETUTCDATE()),
+                            (1, 'Billboard / Outdoor', 'Outdoor', 'Active', 1, GETUTCDATE()),
+                            (1, 'Open House / Event', 'Event', 'Active', 1, GETUTCDATE());
+                    END
+                ");
+            }
+            catch
+            {
+                // Silent fallback if server offline or already created
+            }
+        }
+
+        private static void EnsureActivitySchema(RealEstateDbContext context)
+        {
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF OBJECT_ID('Activities', 'U') IS NOT NULL
+                    BEGIN
+                        IF COL_LENGTH('Activities', 'Outcome') IS NULL
+                        BEGIN
+                            ALTER TABLE Activities ADD Outcome NVARCHAR(50) NULL;
+                        END
+                        IF COL_LENGTH('Activities', 'DurationMinutes') IS NULL
+                        BEGIN
+                            ALTER TABLE Activities ADD DurationMinutes INT NULL;
+                        END
+                    END
+                ");
+            }
+            catch
+            {
+                // Silent fallback if server offline or already updated
             }
         }
     }

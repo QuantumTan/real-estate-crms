@@ -631,24 +631,76 @@ namespace CRMS_Peguit.winforms
             btnCampaigns.Visible = CurrentSession.CanAccess("Campaigns");
             btnActivities.Visible = CurrentSession.CanAccess("Activities");
             btnFollowUps.Visible = CurrentSession.CanAccess("TasksReminders") && RbacService.IsAgent;
-            btnReports.Visible = CurrentSession.CanAccess("Reports");
+            btnReports.Visible = CurrentSession.CanAccess("Reports") || CurrentSession.CanAccess("Analytics");
+            if (RbacService.IsAgent)
+            {
+                _navButtonInfo[btnReports] = ("📊", "My Performance");
+                btnReports.Text = "  📊  My Performance";
+            }
+            else if (RbacService.IsManager)
+            {
+                _navButtonInfo[btnReports] = ("📊", "Analytics");
+                btnReports.Text = "  📊  Analytics";
+            }
+            else
+            {
+                _navButtonInfo[btnReports] = ("📊", "Reports");
+                btnReports.Text = "  📊  Reports";
+            }
             btnSupportTickets.Visible = CurrentSession.CanAccess("SupportTickets");
 
             Text = $"NEXA CRM SYSTEM — {user.FullName} ({roleDisplay})";
         }
 
         // =====================================================
-        // VIEW MANAGEMENT
+        // VIEW MANAGEMENT (Smart View Caching for 0ms transitions)
         // =====================================================
+
+        private readonly Dictionary<string, UserControl> _viewCache = new(StringComparer.OrdinalIgnoreCase);
+
+        private void ShowViewCached(string key, Func<UserControl> factory)
+        {
+            if (!_viewCache.TryGetValue(key, out var view) || view.IsDisposed)
+            {
+                view = factory();
+                view.Dock = DockStyle.Fill;
+                mainPanel.Controls.Add(view);
+                _viewCache[key] = view;
+            }
+
+            foreach (Control c in mainPanel.Controls)
+            {
+                if (c != view)
+                    c.Visible = false;
+            }
+
+            view.Visible = true;
+            view.BringToFront();
+            view.Focus();
+        }
 
         private void ShowView(UserControl view)
         {
-            foreach (Control control in mainPanel.Controls)
-                control.Dispose();
+            string key = view.GetType().Name;
+            if (_viewCache.TryGetValue(key, out var oldView) && !oldView.IsDisposed)
+            {
+                mainPanel.Controls.Remove(oldView);
+                oldView.Dispose();
+            }
 
-            mainPanel.Controls.Clear();
             view.Dock = DockStyle.Fill;
             mainPanel.Controls.Add(view);
+            _viewCache[key] = view;
+
+            foreach (Control c in mainPanel.Controls)
+            {
+                if (c != view)
+                    c.Visible = false;
+            }
+
+            view.Visible = true;
+            view.BringToFront();
+            view.Focus();
         }
 
         // =====================================================
@@ -702,90 +754,130 @@ namespace CRMS_Peguit.winforms
                     SetActiveNavButton(btnFollowUps);
                     BtnFollowUpsClick(btnFollowUps, EventArgs.Empty);
                     break;
+                case "reports":
+                    if (!CurrentSession.CanAccess("Reports")) return;
+                    SetActiveNavButton(btnReports);
+                    ShowViewCached("Reports", () =>
+                    {
+                        var rpt = new CRMS_Peguit.winforms.Views.Reports.ReportsView();
+                        rpt.NavigationRequested += m => NavigateTo(m);
+                        return rpt;
+                    });
+                    break;
+                case "analytics":
+                case "teamperformance":
+                case "performance":
+                case "insights":
+                    if (!CurrentSession.CanAccess("Analytics") && !CurrentSession.CanAccess("Reports")) return;
+                    SetActiveNavButton(btnReports);
+                    ShowViewCached("Analytics", () =>
+                    {
+                        var ana = new CRMS_Peguit.winforms.Views.Analytics.AnalyticsView();
+                        ana.NavigationRequested += m => NavigateTo(m);
+                        return ana;
+                    });
+                    break;
             }
         }
 
         private void BtnCampaignsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Campaigns")) return;
-            ShowView(new CampaignsView());
+            ShowViewCached("Campaigns", () => new CampaignsView());
         }
 
         private void BtnDashboardClick(object? sender, EventArgs e)
         {
-            var dashboard = new DashboardView();
-            dashboard.NavigationRequested += module => NavigateTo(module);
-            ShowView(dashboard);
+            ShowViewCached("Dashboard", () =>
+            {
+                var dashboard = new DashboardView();
+                dashboard.NavigationRequested += module => NavigateTo(module);
+                return dashboard;
+            });
         }
 
         private void BtnApprovalsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Approvals") && !RbacService.CanApproveAssignments) return;
-            ShowView(new CRMS_Peguit.winforms.Views.Management.ApprovalsView());
+            ShowViewCached("Approvals", () => new CRMS_Peguit.winforms.Views.Management.ApprovalsView());
         }
 
         private void BtnManageManagersClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Managers")) return;
-            ShowView(new AdminUserListForm("Manager"));
+            ShowViewCached("ManageManagers", () => new AdminUserListForm("Manager"));
         }
 
         private void BtnManageAgentsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("SalesStaff")) return;
-            ShowView(new AdminUserListForm("Agent"));
+            ShowViewCached("ManageAgents", () => new AdminUserListForm("Agent"));
         }
 
         private void BtnCustomersClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Customers")) return;
-            ShowView(new CustomersView());
+            ShowViewCached("Customers", () => new CustomersView());
         }
 
         private void BtnLeadsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Leads")) return;
-            ShowView(new LeadsView());
+            ShowViewCached("Leads", () => new LeadsView());
         }
 
         private void BtnPropertiesClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Properties")) return;
-            ShowView(new PropertiesView());
+            ShowViewCached("Properties", () => new PropertiesView());
         }
 
         private void BtnDealsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Deals")) return;
-            ShowView(new DealsView());
+            ShowViewCached("Deals", () => new DealsView());
         }
 
         private void BtnActivitiesClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("Activities")) return;
-            ShowView(new PlaceholderView(
-                "Activities",
-                "Activity management placeholder. Recent email and lifecycle activity is already recorded on leads and customers."));
+            ShowViewCached("Activities", () => new CRMS_Peguit.winforms.Views.Activities.ActivitiesView());
         }
 
         private void BtnFollowUpsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("TasksReminders") || !RbacService.IsAgent) return;
-            ShowView(new FollowUpsView());
+            ShowViewCached("FollowUps", () => new FollowUpsView());
         }
 
         private void BtnReportsClick(object? sender, EventArgs e)
         {
-            if (!CurrentSession.CanAccess("Reports")) return;
-            ShowView(new PlaceholderView(
-                "Reports",
-                "Reports placeholder. All roles have dashboard/report access, with role-specific restrictions applied in navigation."));
+            if (!CurrentSession.CanAccess("Reports") && !CurrentSession.CanAccess("Analytics")) return;
+
+            if (RbacService.IsAdmin || RbacService.IsSuperAdmin)
+            {
+                ShowViewCached("Reports", () =>
+                {
+                    var rpt = new CRMS_Peguit.winforms.Views.Reports.ReportsView();
+                    rpt.NavigationRequested += m => NavigateTo(m);
+                    return rpt;
+                });
+            }
+            else
+            {
+                ShowViewCached("Analytics", () =>
+                {
+                    var ana = new CRMS_Peguit.winforms.Views.Analytics.AnalyticsView();
+                    ana.NavigationRequested += m => NavigateTo(m);
+                    return ana;
+                });
+            }
         }
 
         private void BtnSupportTicketsClick(object? sender, EventArgs e)
         {
             if (!CurrentSession.CanAccess("SupportTickets")) return;
-            ShowView(new CRMS_Peguit.winforms.Views.SupportTickets.SupportTicketsView());
+            ShowViewCached("SupportTickets", () => new CRMS_Peguit.winforms.Views.SupportTickets.SupportTicketsView());
         }
 
         // =====================================================
@@ -805,6 +897,14 @@ namespace CRMS_Peguit.winforms
                 return;
 
             CurrentSession.SignOut();
+
+            foreach (var v in _viewCache.Values)
+            {
+                if (!v.IsDisposed)
+                    v.Dispose();
+            }
+            _viewCache.Clear();
+            mainPanel.Controls.Clear();
 
             var loginForm = Application.OpenForms.OfType<LoginForm>().FirstOrDefault();
 

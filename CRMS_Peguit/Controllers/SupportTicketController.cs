@@ -444,16 +444,30 @@ namespace CRMS_Peguit.winforms.Controllers
             };
         }
 
+        private Dictionary<int, string>? _cachedAgentDict;
+
+        public Dictionary<int, string> GetAgentDictionary()
+        {
+            if (_cachedAgentDict != null) return _cachedAgentDict;
+            try
+            {
+                _cachedAgentDict = _db.Users
+                    .AsNoTracking()
+                    .Include(u => u.Person)
+                    .ToDictionary(u => u.UserId, u => u.FullName);
+            }
+            catch
+            {
+                _cachedAgentDict = new Dictionary<int, string>();
+            }
+            return _cachedAgentDict;
+        }
+
         public string? GetAssignedAgentName(int? assignedAgentId)
         {
             if (!assignedAgentId.HasValue || assignedAgentId.Value <= 0) return null;
-
-            return _db.Users
-                .AsNoTracking()
-                .Where(u => u.UserId == assignedAgentId.Value)
-                .AsEnumerable()
-                .Select(u => u.FullName)
-                .SingleOrDefault();
+            var dict = GetAgentDictionary();
+            return dict.TryGetValue(assignedAgentId.Value, out var name) ? name : null;
         }
 
         public List<Customer> GetCustomers()
@@ -482,6 +496,29 @@ namespace CRMS_Peguit.winforms.Controllers
                 .AsEnumerable()
                 .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
                 .ToList();
+        }
+
+        public int GetOpenTicketsCount()
+        {
+            try
+            {
+                var query = _db.SupportTickets.AsNoTracking().Where(t => !t.IsDeleted && t.Status != "Resolved" && t.Status != "Closed");
+                if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int currentUserId = CurrentSession.UserId;
+                    query = query.Where(t =>
+                        (t.AssignedToUserId.HasValue && t.AssignedToUserId.Value > 0)
+                            ? t.AssignedToUserId.Value == currentUserId
+                            : t.RaisedByUserId == currentUserId);
+                }
+
+                return query.Count();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SupportTicketController.GetOpenTicketsCount] Error: {ex.Message}");
+                return 0;
+            }
         }
 
         public void Dispose()

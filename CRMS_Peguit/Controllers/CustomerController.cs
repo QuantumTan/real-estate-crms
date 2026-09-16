@@ -174,15 +174,30 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public void Delete(Customer customer) => SoftDelete(customer);
 
+        private Dictionary<int, string>? _cachedAgentDict;
+
+        public Dictionary<int, string> GetAgentDictionary()
+        {
+            if (_cachedAgentDict != null) return _cachedAgentDict;
+            try
+            {
+                _cachedAgentDict = _db.Users
+                    .AsNoTracking()
+                    .Include(u => u.Person)
+                    .ToDictionary(u => u.UserId, u => u.FullName);
+            }
+            catch
+            {
+                _cachedAgentDict = new Dictionary<int, string>();
+            }
+            return _cachedAgentDict;
+        }
+
         public string? GetAssignedAgentName(int? assignedAgentId)
         {
             if (assignedAgentId is null) return null;
-            return _db.Users
-                .AsNoTracking()
-                .Where(u => u.UserId == assignedAgentId)
-                .AsEnumerable()
-                .Select(u => u.FullName)
-                .SingleOrDefault();
+            var dict = GetAgentDictionary();
+            return dict.TryGetValue(assignedAgentId.Value, out var name) ? name : null;
         }
 
         public List<Property> GetOwnedProperties(int customerId)
@@ -404,6 +419,39 @@ namespace CRMS_Peguit.winforms.Controllers
 
             errorMessage = null;
             return true;
+        }
+
+        public List<Activity> GetRecentActivitiesForAgent(int agentId, int maxCount = 5)
+        {
+            try
+            {
+                return _db.Activities
+                    .AsNoTracking()
+                    .Where(a => a.LoggedByAgentId == agentId)
+                    .OrderByDescending(a => a.ActivityDate)
+                    .Take(maxCount)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomerController.GetRecentActivitiesForAgent] Error: {ex.Message}");
+                return new List<Activity>();
+            }
+        }
+
+        public int GetPendingReviewCount()
+        {
+            try
+            {
+                return _db.Customers
+                    .AsNoTracking()
+                    .Count(c => !c.IsDeleted && (c.AssignmentStatus == "pending_review" || c.AssignedAgentId == null));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomerController.GetPendingReviewCount] Error: {ex.Message}");
+                return 0;
+            }
         }
 
         public void Dispose() => _db.Dispose();

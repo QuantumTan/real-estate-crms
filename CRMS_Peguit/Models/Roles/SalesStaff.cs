@@ -22,6 +22,7 @@ namespace CRMS_Peguit.winforms.Models.Roles
             {
                 "Dashboard",
                 "Reports",
+                "Analytics",
                 "SupportTickets",
                 "Leads",
                 "Customers",

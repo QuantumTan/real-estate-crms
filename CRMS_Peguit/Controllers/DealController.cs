@@ -24,8 +24,9 @@ namespace CRMS_Peguit.winforms.Controllers
             try
             {
                 var query = _db.Deals
-                    .Include(d => d.Contingencies)
-                    .Include(d => d.DealClauses)
+                    .Include(d => d.Customer).ThenInclude(c => c!.Person)
+                    .Include(d => d.Property)
+                    .Include(d => d.Agent).ThenInclude(u => u!.Person)
                     .AsNoTracking();
 
                 if (!RbacService.HasFullOversight && RbacService.IsAgent)
@@ -295,6 +296,49 @@ namespace CRMS_Peguit.winforms.Controllers
 
             errorMessage = null;
             return true;
+        }
+
+        public int GetOpenDealsCount(int? agentId = null)
+        {
+            try
+            {
+                var query = _db.Deals.AsNoTracking().Where(d => d.Stage.ToLower() != "closed" && d.Stage.ToLower() != "lost");
+                if (agentId.HasValue && agentId.Value > 0)
+                {
+                    int uid = agentId.Value;
+                    query = query.Where(d => d.AgentId == uid);
+                }
+                else if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int uid = CurrentSession.UserId;
+                    query = query.Where(d => d.AgentId == uid);
+                }
+
+                return query.Count();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DealController.GetOpenDealsCount] Error: {ex.Message}");
+                return 0;
+            }
+        }
+
+        public int GetDealsClosedThisMonthCount()
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                return _db.Deals
+                    .AsNoTracking()
+                    .Count(d => d.Stage.ToLower() == "closed" &&
+                               ((d.ContractSignedDate.HasValue && d.ContractSignedDate.Value.Year == now.Year && d.ContractSignedDate.Value.Month == now.Month) ||
+                                (d.CreatedAt.Year == now.Year && d.CreatedAt.Month == now.Month)));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DealController.GetDealsClosedThisMonthCount] Error: {ex.Message}");
+                return 0;
+            }
         }
 
         public void Dispose()

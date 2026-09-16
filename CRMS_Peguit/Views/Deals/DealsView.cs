@@ -2,6 +2,7 @@ using System.Drawing.Drawing2D;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
+using CRMS_Peguit.winforms.Controls;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Deals
@@ -13,12 +14,19 @@ namespace CRMS_Peguit.winforms.Views.Deals
         private Label _lblEmptyState = null!;
         private Button? _btnExport;
         private Button? _btnAdd;
+        private PaginationControl _pagination = null!;
+        private List<Deal> _allDeals = new();
+        private List<Deal> _filteredDeals = new();
+        private Dictionary<int, string> _customers = new();
+        private Dictionary<int, string> _properties = new();
+        private Dictionary<int, string> _agents = new();
 
         public DealsView()
         {
             InitializeComponent();
             _controller = new DealController();
 
+            InitPagination();
             InitEmptyState();
             ApplyStyling();
             BindEvents();
@@ -27,6 +35,16 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             this.Load += (_, _) => LayoutToolbar();
             this.Resize += (_, _) => LayoutToolbar();
+        }
+
+        private void InitPagination()
+        {
+            _pagination = new PaginationControl();
+            _pagination.SetItemLabel("deals");
+            _pagination.PageChanged += (_, _) => BindCurrentPage();
+            _pagination.PageSizeChanged += (_, _) => BindCurrentPage();
+            pnlCard.Controls.Add(_pagination);
+            _pagination.BringToFront();
         }
 
         private void InitEmptyState()
@@ -56,7 +74,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
         private void BindEvents()
         {
-            txtSearch.TextChanged += (_, _) => RefreshGrid();
+            txtSearch.TextChanged += (_, _) => RefreshGrid(reloadFromDb: false);
 
             if (RbacService.CanCreateSalesRecord)
             {
@@ -135,7 +153,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
         {
             _filterStage = stage;
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(reloadFromDb: false);
         }
 
         private void UpdateFilterPillStyles()
@@ -167,21 +185,21 @@ namespace CRMS_Peguit.winforms.Views.Deals
             }
         }
 
-        private void RefreshGrid()
+        private void RefreshGrid(bool reloadFromDb = true)
         {
-            grid.Columns.Clear();
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            if (reloadFromDb || _allDeals.Count == 0)
+            {
+                _allDeals = _controller.GetAll();
+                _customers = _controller.GetCustomerNames();
+                _properties = _controller.GetPropertyAddresses();
+                _agents = _controller.GetAgentNames();
+            }
 
-            var deals = _controller.GetAll();
-            var customers = _controller.GetCustomerNames();
-            var properties = _controller.GetPropertyAddresses();
-            var agents = _controller.GetAgentNames();
-
-            int total = deals.Count;
-            decimal totalVolume = deals.Sum(d => d.Value);
+            int total = _allDeals.Count;
+            decimal totalVolume = _allDeals.Sum(d => d.Value);
             lblSubtitle.Text = $"{total} deals · ₱{totalVolume:N2} total volume";
 
-            IEnumerable<Deal> query = deals;
+            IEnumerable<Deal> query = _allDeals;
 
             if (string.Equals(_filterStage, "Offer", StringComparison.OrdinalIgnoreCase))
             {
@@ -207,18 +225,30 @@ namespace CRMS_Peguit.winforms.Views.Deals
             {
                 query = query.Where(d =>
                     ContainsText(d.Stage, search) ||
-                    ContainsText(GetName(customers, d.CustomerId), search) ||
-                    ContainsText(GetName(properties, d.PropertyId), search) ||
-                    ContainsText(GetName(agents, d.AgentId), search));
+                    ContainsText(d.Customer?.FullName ?? GetName(_customers, d.CustomerId), search) ||
+                    ContainsText(d.Property?.Address ?? GetName(_properties, d.PropertyId), search) ||
+                    ContainsText(d.Agent?.FullName ?? GetName(_agents, d.AgentId), search));
             }
 
-            grid.DataSource = query
+            _filteredDeals = query.ToList();
+            _pagination.UpdatePagination(_filteredDeals.Count, 1, _pagination.PageSize);
+            BindCurrentPage();
+        }
+
+        private void BindCurrentPage()
+        {
+            grid.Columns.Clear();
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            var pageItems = _filteredDeals
+                .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
+                .Take(_pagination.PageSize)
                 .Select(d => new
                 {
                     d.DealId,
-                    Customer = GetName(customers, d.CustomerId),
-                    Property = GetName(properties, d.PropertyId),
-                    Agent = GetName(agents, d.AgentId),
+                    Customer = d.Customer?.FullName ?? GetName(_customers, d.CustomerId),
+                    Property = d.Property?.Address ?? GetName(_properties, d.PropertyId),
+                    Agent = d.Agent?.FullName ?? GetName(_agents, d.AgentId),
                     Value = $"₱{d.Value:N2}",
                     Commission = $"{d.CommissionRate:P1}",
                     Stage = string.IsNullOrWhiteSpace(d.Stage) ? "OFFER" : d.Stage.ToUpper(),
@@ -226,7 +256,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 })
                 .ToList();
 
-            grid.ShowCellToolTips = true;
+            grid.DataSource = pageItems;
 
             var dealIdCol = grid.Columns["DealId"];
             if (dealIdCol is not null) dealIdCol.Visible = false;
@@ -288,7 +318,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _lblEmptyState.Visible = (grid.Rows.Count == 0);
+            _lblEmptyState.Visible = (_filteredDeals.Count == 0);
         }
 
         private void GridCellContentClick(object? sender, DataGridViewCellEventArgs e)
@@ -315,45 +345,36 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 Font = new Font("Segoe UI", 10)
             };
 
+            var deal = _controller.GetById(dealId);
+            if (deal == null) return;
+
             var viewItem = new ToolStripMenuItem("📄 View Details & Terms");
             viewItem.Click += (_, _) =>
             {
-                var deal = _controller.GetById(dealId);
-                if (deal != null)
-                {
-                    using var form = new DealDetailForm(deal, _controller);
-                    form.ShowDialog(this.FindForm());
-                    RefreshGrid();
-                }
+                using var form = new DealDetailForm(deal, _controller);
+                form.ShowDialog(this.FindForm());
+                RefreshGrid();
             };
             menu.Items.Add(viewItem);
 
             var contractItem = new ToolStripMenuItem("📜 View Contract & Terms");
             contractItem.Click += (_, _) =>
             {
-                var deal = _controller.GetById(dealId);
-                if (deal != null)
-                {
-                    using var viewer = new ContractTermsViewerDialog(deal, _controller);
-                    viewer.ShowDialog(this.FindForm());
-                }
+                using var viewer = new ContractTermsViewerDialog(deal, _controller);
+                viewer.ShowDialog(this.FindForm());
             };
             menu.Items.Add(contractItem);
 
-            if (RbacService.CanCreateSalesRecord)
+            if (RbacService.CanEditRecord(deal.AgentId, deal.CreatedByUserId))
             {
                 var editItem = new ToolStripMenuItem("✏️ Edit Deal & Terms");
                 editItem.Click += (_, _) =>
                 {
-                    var deal = _controller.GetById(dealId);
-                    if (deal != null)
+                    using var form = new DealInputForm(_controller, deal);
+                    if (form.ShowDialog(this.FindForm()) == DialogResult.OK && form.Result != null)
                     {
-                        using var form = new DealInputForm(_controller, deal);
-                        if (form.ShowDialog(this.FindForm()) == DialogResult.OK && form.Result != null)
-                        {
-                            _controller.Update(form.Result);
-                            RefreshGrid();
-                        }
+                        _controller.Update(form.Result);
+                        RefreshGrid();
                     }
                 };
                 menu.Items.Add(editItem);
@@ -364,14 +385,10 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 var deleteItem = new ToolStripMenuItem("🗑️ Remove Deal");
                 deleteItem.Click += (_, _) =>
                 {
-                    var deal = _controller.GetById(dealId);
-                    if (deal != null)
+                    if (MessageBox.Show($"Are you sure you want to remove Deal #{deal.DealId}?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     {
-                        if (MessageBox.Show($"Are you sure you want to remove Deal #{deal.DealId}?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
-                        {
-                            _controller.Delete(deal);
-                            RefreshGrid();
-                        }
+                        _controller.Delete(deal);
+                        RefreshGrid();
                     }
                 };
                 menu.Items.Add(deleteItem);

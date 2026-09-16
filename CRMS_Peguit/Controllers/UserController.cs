@@ -174,6 +174,19 @@ namespace CRMS_Peguit.winforms.Controllers
             await _db.SaveChangesAsync();
         }
 
+        public int GetActiveUsersCount()
+        {
+            try
+            {
+                return _db.Users.AsNoTracking().Count(u => u.Status.ToLower() == "active");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[UserController.GetActiveUsersCount] Error: {ex.Message}");
+                return 0;
+            }
+        }
+
         public void Dispose() => _db.Dispose();
     }
 }

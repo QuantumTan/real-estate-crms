@@ -11,7 +11,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
         private System.Windows.Forms.Label lblLastName = null!;
         private System.Windows.Forms.TextBox txtLastName = null!;
         private System.Windows.Forms.Label lblSuffix = null!;
-        private System.Windows.Forms.TextBox txtSuffix = null!;
+        private System.Windows.Forms.ComboBox cmbSuffix = null!;
 
         private System.Windows.Forms.Label lblEmail = null!;
         private System.Windows.Forms.TextBox txtEmail = null!;
@@ -46,7 +46,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.lblLastName = new System.Windows.Forms.Label();
             this.txtLastName = new System.Windows.Forms.TextBox();
             this.lblSuffix = new System.Windows.Forms.Label();
-            this.txtSuffix = new System.Windows.Forms.TextBox();
+            this.cmbSuffix = new System.Windows.Forms.ComboBox();
             this.lblEmail = new System.Windows.Forms.Label();
             this.txtEmail = new System.Windows.Forms.TextBox();
             this.lblPhone = new System.Windows.Forms.Label();
@@ -132,17 +132,18 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.lblSuffix.TabIndex = 6;
             this.lblSuffix.Text = "Suffix";
             // 
-            // txtSuffix
+            // cmbSuffix
             // 
-            this.txtSuffix.BackColor = System.Drawing.Color.White;
-            this.txtSuffix.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtSuffix.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
-            this.txtSuffix.Location = new System.Drawing.Point(260, 115);
-            this.txtSuffix.MaxLength = 20;
-            this.txtSuffix.Name = "txtSuffix";
-            this.txtSuffix.PlaceholderText = "Jr., Sr., III, etc.";
-            this.txtSuffix.Size = new System.Drawing.Size(220, 25);
-            this.txtSuffix.TabIndex = 7;
+            this.cmbSuffix.BackColor = System.Drawing.Color.White;
+            this.cmbSuffix.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cmbSuffix.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.cmbSuffix.FormattingEnabled = true;
+            this.cmbSuffix.Items.AddRange(new object[] { "", "Jr.", "Sr.", "II", "III", "IV", "V" });
+            this.cmbSuffix.Location = new System.Drawing.Point(260, 115);
+            this.cmbSuffix.MaxLength = 20;
+            this.cmbSuffix.Name = "cmbSuffix";
+            this.cmbSuffix.Size = new System.Drawing.Size(220, 25);
+            this.cmbSuffix.TabIndex = 7;
             // 
             // lblEmail
             // 
@@ -283,7 +284,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.Controls.Add(this.lblLastName);
             this.Controls.Add(this.txtLastName);
             this.Controls.Add(this.lblSuffix);
-            this.Controls.Add(this.txtSuffix);
+            this.Controls.Add(this.cmbSuffix);
             this.Controls.Add(this.lblEmail);
             this.Controls.Add(this.txtEmail);
             this.Controls.Add(this.lblPhone);

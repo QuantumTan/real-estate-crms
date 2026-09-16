@@ -20,20 +20,33 @@ namespace CRMS_Peguit.winforms.Views.Leads
         private SortOrder _sortDirection = SortOrder.Ascending;
         private bool _isSkeletonLoading = false;
         private System.Windows.Forms.Timer? _skeletonTimer;
+        private PaginationControl _pagination = null!;
+        private List<Lead> _allLeads = new();
+        private List<Lead> _filteredLeads = new();
 
         public LeadsView()
         {
             InitializeComponent();
             _controller = new LeadController();
 
+            InitPagination();
             InitEmptyState();
             ApplyStyling();
             BindEvents();
-            UpdateFilterPillStyles();
-            RefreshGrid(animate: false);
+            RefreshGrid(reloadFromDb: true, animate: false);
 
             this.Load += (_, _) => LayoutToolbar();
             this.Resize += (_, _) => LayoutToolbar();
+        }
+
+        private void InitPagination()
+        {
+            _pagination = new PaginationControl();
+            _pagination.SetItemLabel("leads");
+            _pagination.PageChanged += (_, _) => BindCurrentPage();
+            _pagination.PageSizeChanged += (_, _) => BindCurrentPage();
+            pnlCard.Controls.Add(_pagination);
+            _pagination.BringToFront();
         }
 
         private void InitEmptyState()
@@ -130,7 +143,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
         {
             btnAdd.Visible = RbacService.CanCreateSalesRecord;
             btnAdd.Click += BtnAddClick;
-            txtSearch.TextChanged += (_, _) => RefreshGrid(animate: false);
+            txtSearch.TextChanged += (_, _) => RefreshGrid(reloadFromDb: false, animate: false);
 
             if (RbacService.CanExportData)
             {
@@ -199,12 +212,12 @@ namespace CRMS_Peguit.winforms.Views.Leads
             if (string.Equals(_filterStage, stage, StringComparison.OrdinalIgnoreCase)) return;
             _filterStage = stage;
             UpdateFilterPillStyles();
-            RefreshGrid(animate: true);
+            RefreshGrid(reloadFromDb: false, animate: true);
         }
 
         private void UpdateFilterPillStyles()
         {
-            var allList = _controller.GetAll().ToList();
+            var allList = _allLeads;
             int total = allList.Count;
             int countNew = allList.Count(l => string.Equals(l.Stage, "new", StringComparison.OrdinalIgnoreCase));
             int countContacted = allList.Count(l => string.Equals(l.Stage, "contacted", StringComparison.OrdinalIgnoreCase));
@@ -261,43 +274,18 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 _sortDirection = SortOrder.Ascending;
             }
 
-            RefreshGrid(animate: false);
+            RefreshGrid(reloadFromDb: false, animate: false);
         }
 
-        private void RefreshGrid(bool animate = false)
+        private void RefreshGrid(bool reloadFromDb = true, bool animate = false)
         {
-            if (animate)
+            if (reloadFromDb || _allLeads.Count == 0)
             {
-                _isSkeletonLoading = true;
-                _skeletonTimer?.Stop();
-                _skeletonTimer?.Dispose();
-
-                PopulateGridData();
-                grid.Invalidate();
-
-                _skeletonTimer = new System.Windows.Forms.Timer { Interval = 130 };
-                _skeletonTimer.Tick += (_, _) =>
-                {
-                    _skeletonTimer.Stop();
-                    _isSkeletonLoading = false;
-                    grid.Invalidate();
-                };
-                _skeletonTimer.Start();
+                _allLeads = _controller.GetAll().ToList();
+                UpdateFilterPillStyles();
             }
-            else
-            {
-                _isSkeletonLoading = false;
-                PopulateGridData();
-            }
-        }
 
-        private void PopulateGridData()
-        {
-            grid.Columns.Clear();
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-
-            var allList = _controller.GetAll().ToList();
-            IEnumerable<Lead> query = allList;
+            IEnumerable<Lead> query = _allLeads;
 
             if (!string.Equals(_filterStage, "All", StringComparison.OrdinalIgnoreCase))
             {
@@ -330,7 +318,42 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 _ => query
             };
 
-            grid.DataSource = query
+            _filteredLeads = query.ToList();
+            _pagination.UpdatePagination(_filteredLeads.Count, 1, _pagination.PageSize);
+
+            if (animate)
+            {
+                _isSkeletonLoading = true;
+                _skeletonTimer?.Stop();
+                _skeletonTimer?.Dispose();
+
+                BindCurrentPage();
+                grid.Invalidate();
+
+                _skeletonTimer = new System.Windows.Forms.Timer { Interval = 130 };
+                _skeletonTimer.Tick += (_, _) =>
+                {
+                    _skeletonTimer.Stop();
+                    _isSkeletonLoading = false;
+                    grid.Invalidate();
+                };
+                _skeletonTimer.Start();
+            }
+            else
+            {
+                _isSkeletonLoading = false;
+                BindCurrentPage();
+            }
+        }
+
+        private void BindCurrentPage()
+        {
+            grid.Columns.Clear();
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            var pageItems = _filteredLeads
+                .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
+                .Take(_pagination.PageSize)
                 .Select(lead => new
                 {
                     lead.LeadId,
@@ -343,6 +366,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     Assignment = lead.AssignmentStatus.ToUpper()
                 })
                 .ToList();
+
+            grid.DataSource = pageItems;
 
             var idCol = grid.Columns["LeadId"];
             if (idCol is not null) idCol.Visible = false;
@@ -407,7 +432,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _pnlEmptyState.Visible = (grid.Rows.Count == 0);
+            _pnlEmptyState.Visible = (_filteredLeads.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
@@ -655,11 +680,12 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
         private Lead? GetLeadAtRow(int rowIndex)
         {
+            if (rowIndex < 0 || rowIndex >= grid.Rows.Count) return null;
             object? idValue = grid.Rows[rowIndex].Cells["LeadId"].Value;
             if (idValue is null || !int.TryParse(idValue.ToString(), out int leadId))
                 return null;
 
-            return _controller.GetAll().FirstOrDefault(lead => lead.LeadId == leadId);
+            return _allLeads.FirstOrDefault(lead => lead.LeadId == leadId) ?? _controller.GetById(leadId);
         }
 
         private Lead? GetSelectedLead()
@@ -695,7 +721,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
             messageItem.Enabled = CRMS_Peguit.winforms.Models.Services.ContactEmailService.IsValidEmail(lead.Email);
             menu.Items.Add(messageItem);
 
-            if (CRMS_Peguit.winforms.Auth.RbacService.CanEditRecord(lead.AssignedAgentId, lead.CreatedByUserId))
+            if (CRMS_Peguit.winforms.Auth.RbacService.CanEditRecord(lead.AssignedAgentId, lead.CreatedByUserId, lead.AssignmentStatus))
             {
                 var editItem = new ToolStripMenuItem("Edit");
                 editItem.Click += (_, _) => EditLead(lead);

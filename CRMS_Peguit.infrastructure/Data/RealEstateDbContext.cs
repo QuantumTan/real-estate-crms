@@ -29,6 +29,7 @@ namespace CRMS_Peguit.infrastructure.data
         public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
         public DbSet<BackupLog> BackupLogs => Set<BackupLog>();
         public DbSet<TaskReminder> TaskReminders => Set<TaskReminder>();
+        public DbSet<Campaign> Campaigns => Set<Campaign>();
 
         public RealEstateDbContext(
             DbContextOptions<RealEstateDbContext> options,
@@ -439,6 +440,45 @@ namespace CRMS_Peguit.infrastructure.data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
+            builder.Entity<Campaign>(entity =>
+            {
+                entity.HasKey(x => x.CampaignId);
+                entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
+                entity.Property(x => x.Channel).HasMaxLength(100);
+                entity.Property(x => x.Status).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.Budget).HasColumnType("decimal(18,2)");
+
+                entity.HasIndex(x => x.TenantId);
+                entity.HasIndex(x => x.IsActive);
+                entity.HasIndex(x => x.Name);
+            });
+
+            builder.Entity<Activity>(entity =>
+            {
+                entity.HasKey(x => x.ActivityId);
+
+                entity.Property(x => x.Type).HasMaxLength(50).IsRequired();
+                entity.Property(x => x.Outcome)
+                    .HasConversion<string>()
+                    .HasMaxLength(50);
+                entity.Property(x => x.Notes).HasMaxLength(2000);
+
+                entity.HasOne(x => x.LoggedByAgent)
+                    .WithMany()
+                    .HasForeignKey(x => x.LoggedByAgentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.RelatedCustomer)
+                    .WithMany()
+                    .HasForeignKey(x => x.RelatedCustomerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(x => x.RelatedLead)
+                    .WithMany()
+                    .HasForeignKey(x => x.RelatedLeadId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
             // --- Global query filters (3NF Transitively Derived via FK chains) ---
             builder.Entity<Role>().HasQueryFilter(x => x.TenantId == _tenantId);
             builder.Entity<User>().HasQueryFilter(x => x.Role.TenantId == _tenantId);
@@ -455,6 +495,7 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<TaskReminder>().HasQueryFilter(x => x.AssignedToUser.Role.TenantId == _tenantId && !x.IsDeleted);
             builder.Entity<SystemSetting>().HasQueryFilter(x => x.UpdatedByUser.Role.TenantId == _tenantId);
             builder.Entity<BackupLog>().HasQueryFilter(x => x.PerformedByUser.Role.TenantId == _tenantId);
+            builder.Entity<Campaign>().HasQueryFilter(x => x.TenantId == _tenantId);
         }
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)

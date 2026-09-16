@@ -186,6 +186,16 @@ namespace CRMS_Peguit.winforms.Controllers
                 _db.Activities.Add(activity);
             }
 
+            // Auto-advance lead stage from 'new' to 'contacted' upon completing follow-up
+            if (item.RelatedLeadId.HasValue && item.RelatedLeadId.Value > 0)
+            {
+                var lead = _db.Leads.FirstOrDefault(l => l.LeadId == item.RelatedLeadId.Value);
+                if (lead != null && string.Equals(lead.Stage, "new", StringComparison.OrdinalIgnoreCase))
+                {
+                    lead.Stage = "contacted";
+                }
+            }
+
             _db.SaveChanges();
         }
 
@@ -341,6 +351,33 @@ namespace CRMS_Peguit.winforms.Controllers
             if (hasCust && hasLead)
             {
                 throw new InvalidOperationException("A follow-up cannot relate to both Customer and Lead simultaneously.");
+            }
+        }
+
+        public List<TaskReminder> GetFollowUpsDueToday(int maxCount = 5)
+        {
+            try
+            {
+                int currentUserId = CurrentSession.UserId;
+                if (currentUserId <= 0) return new List<TaskReminder>();
+
+                var todayLocal = DateTime.Today;
+
+                return _db.TaskReminders
+                    .AsNoTracking()
+                    .Include(r => r.RelatedCustomer).ThenInclude(c => c!.Person)
+                    .Include(r => r.RelatedLead).ThenInclude(l => l!.Person)
+                    .Where(r => r.AssignedToUserId == currentUserId && !r.IsDeleted && r.Status != "Completed")
+                    .AsEnumerable()
+                    .Where(r => r.DueDate.ToLocalTime().Date == todayLocal || r.Status == "Overdue" || r.DueDate < DateTime.UtcNow)
+                    .OrderBy(r => r.DueDate)
+                    .Take(maxCount)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FollowUpController.GetFollowUpsDueToday] Error: {ex.Message}");
+                return new List<TaskReminder>();
             }
         }
 

@@ -12,7 +12,7 @@ namespace CRMS_Peguit.winforms.Views.Shared
         {
         }
 
-        public EmailMessageForm(string recipientName, string? recipientEmail)
+        public EmailMessageForm(string recipientName, string? recipientEmail, string? defaultSubject = null)
         {
             _recipientName = recipientName;
             InitializeComponent();
@@ -23,6 +23,10 @@ namespace CRMS_Peguit.winforms.Views.Shared
             this.Text = $"Message {_recipientName}";
             btnSend.Click += BtnSendClick;
             txtRecipient.Text = recipientEmail ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(defaultSubject))
+            {
+                txtSubject.Text = defaultSubject.Trim();
+            }
         }
 
         private async void BtnSendClick(object? sender, EventArgs e)

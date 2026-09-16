@@ -178,7 +178,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             _pnlFooter.Controls.Add(_btnClose);
 
             // Edit Button (if permitted)
-            bool canEdit = _property is not null && RbacService.CanEditRecord(_property.ListedByAgentId, _property.CreatedByUserId);
+            bool canEdit = _property is not null && RbacService.CanEditRecord(_property.ListedByAgentId, _property.CreatedByUserId, _property.AssignmentStatus);
             if (canEdit)
             {
                 _btnEdit = new Button

@@ -14,20 +14,36 @@ namespace CRMS_Peguit.winforms.Views.Properties
         private string _filterStatus = "All";
         private Button? _btnExport;
         private Label _lblEmptyState = null!;
+        private PaginationControl _pagination = null!;
+        private List<Property> _allProperties = new();
+        private List<Property> _filteredProperties = new();
+        private Dictionary<int, string> _owners = new();
+        private Dictionary<int, string> _agents = new();
 
         public PropertiesView()
         {
             InitializeComponent();
             _controller = new PropertyController();
 
+            InitPagination();
             InitEmptyState();
             ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(reloadFromDb: true);
 
             this.Load += (_, _) => LayoutToolbar();
             this.Resize += (_, _) => LayoutToolbar();
+        }
+
+        private void InitPagination()
+        {
+            _pagination = new PaginationControl();
+            _pagination.SetItemLabel("properties");
+            _pagination.PageChanged += (_, _) => BindCurrentPage();
+            _pagination.PageSizeChanged += (_, _) => BindCurrentPage();
+            pnlCard.Controls.Add(_pagination);
+            _pagination.BringToFront();
         }
 
         private void InitEmptyState()
@@ -59,7 +75,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
         {
             btnAdd.Visible = RbacService.CanCreateSalesRecord;
             btnAdd.Click += BtnAddClick;
-            txtSearch.TextChanged += (_, _) => RefreshGrid();
+            txtSearch.TextChanged += (_, _) => RefreshGrid(reloadFromDb: false);
 
             if (RbacService.CanExportData)
             {
@@ -103,7 +119,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
         {
             _filterStatus = filter;
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(reloadFromDb: false);
         }
 
         private void UpdateFilterPillStyles()
@@ -134,23 +150,22 @@ namespace CRMS_Peguit.winforms.Views.Properties
             }
         }
 
-        private void RefreshGrid()
+        private void RefreshGrid(bool reloadFromDb = true)
         {
-            grid.Columns.Clear();
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            if (reloadFromDb || _allProperties.Count == 0)
+            {
+                _allProperties = _controller.GetAll().ToList();
+                _owners = _controller.GetOwnerCustomers()
+                    .ToDictionary(x => x.CustomerId, x => x.FullName);
+                _agents = _controller.GetAgents()
+                    .ToDictionary(x => x.UserId, x => x.FullName);
+            }
 
-            var allList = _controller.GetAll().ToList();
-            int total = allList.Count;
-            int available = allList.Count(p => string.Equals(p.Status, "available", StringComparison.OrdinalIgnoreCase));
+            int total = _allProperties.Count;
+            int available = _allProperties.Count(p => string.Equals(p.Status, "available", StringComparison.OrdinalIgnoreCase));
             lblSubtitle.Text = $"{total} total · {available} available";
 
-            var owners = _controller.GetOwnerCustomers()
-                .ToDictionary(x => x.CustomerId, x => x.FullName);
-
-            var agents = _controller.GetAgents()
-                .ToDictionary(x => x.UserId, x => x.FullName);
-
-            IEnumerable<Property> query = allList;
+            IEnumerable<Property> query = _allProperties;
 
             if (string.Equals(_filterStatus, "Available", StringComparison.OrdinalIgnoreCase))
             {
@@ -174,11 +189,23 @@ namespace CRMS_Peguit.winforms.Views.Properties
                     ContainsText(property.Address, search) ||
                     ContainsText(property.PropertyType, search) ||
                     ContainsText(property.Status, search) ||
-                    ContainsText(GetName(owners, property.OwnerCustomerId), search) ||
-                    ContainsText(GetName(agents, property.ListedByAgentId), search));
+                    ContainsText(GetName(_owners, property.OwnerCustomerId), search) ||
+                    ContainsText(GetName(_agents, property.ListedByAgentId), search));
             }
 
-            grid.DataSource = query
+            _filteredProperties = query.ToList();
+            _pagination.UpdatePagination(_filteredProperties.Count, 1, _pagination.PageSize);
+            BindCurrentPage();
+        }
+
+        private void BindCurrentPage()
+        {
+            grid.Columns.Clear();
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            var pageItems = _filteredProperties
+                .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
+                .Take(_pagination.PageSize)
                 .Select(property => new
                 {
                     property.PropertyId,
@@ -187,10 +214,12 @@ namespace CRMS_Peguit.winforms.Views.Properties
                     Price = $"₱{property.Price:N2}",
                     Status = property.Status.ToUpper(),
                     Assignment = string.IsNullOrWhiteSpace(property.AssignmentStatus) ? "-" : property.AssignmentStatus,
-                    Owner = GetName(owners, property.OwnerCustomerId),
-                    ListedBy = GetName(agents, property.ListedByAgentId)
+                    Owner = GetName(_owners, property.OwnerCustomerId),
+                    ListedBy = GetName(_agents, property.ListedByAgentId)
                 })
                 .ToList();
+
+            grid.DataSource = pageItems;
 
             var propertyIdColumn = grid.Columns["PropertyId"];
             if (propertyIdColumn is not null)
@@ -255,7 +284,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _lblEmptyState.Visible = (grid.Rows.Count == 0);
+            _lblEmptyState.Visible = (_filteredProperties.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
@@ -307,13 +336,14 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
         private Property? GetPropertyAtRow(int rowIndex)
         {
+            if (rowIndex < 0 || rowIndex >= grid.Rows.Count) return null;
             object? idValue = grid.Rows[rowIndex].Cells["PropertyId"].Value;
             if (idValue is null || !int.TryParse(idValue.ToString(), out int propertyId))
             {
                 return null;
             }
 
-            return _controller.GetAll().FirstOrDefault(property => property.PropertyId == propertyId);
+            return _allProperties.FirstOrDefault(property => property.PropertyId == propertyId) ?? _controller.GetById(propertyId);
         }
 
         private Property? GetSelectedProperty()
@@ -344,7 +374,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             viewItem.Click += (_, _) => ViewProperty(property);
             menu.Items.Add(viewItem);
 
-            if (RbacService.CanEditRecord(property.ListedByAgentId, property.CreatedByUserId))
+            if (RbacService.CanEditRecord(property.ListedByAgentId, property.CreatedByUserId, property.AssignmentStatus))
             {
                 var editItem = new ToolStripMenuItem("Edit");
                 editItem.Click += (_, _) => EditProperty(property);
