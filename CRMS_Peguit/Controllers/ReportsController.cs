@@ -355,7 +355,8 @@ namespace CRMS_Peguit.winforms.Controllers
                     decimal totalComm = deals.Sum(d => d.Value * (d.CommissionRate > 1m ? d.CommissionRate / 100m : d.CommissionRate));
 
                     int ticketsResolved = _db.SupportTickets.Count(t => t.AssignedToUserId == agent.UserId && t.ResolvedAt.HasValue && t.ResolvedAt.Value >= range.Start && t.ResolvedAt.Value <= range.End);
-                    int followUpsCompleted = _db.TaskReminders.Count(t => t.AssignedToUserId == agent.UserId && t.Status.ToLower() == "completed" && t.CompletedAt.HasValue && t.CompletedAt.Value >= range.Start && t.CompletedAt.Value <= range.End);
+                    // Strictly enforce RBAC boundary: Manager has NO visibility into individual Agent follow-up task records
+                    int followUpsCompleted = RbacService.IsManager ? 0 : _db.TaskReminders.Count(t => t.AssignedToUserId == agent.UserId && t.Status.ToLower() == "completed" && t.CompletedAt.HasValue && t.CompletedAt.Value >= range.Start && t.CompletedAt.Value <= range.End);
 
                     report.Add(new AgentActivityRow
                     {

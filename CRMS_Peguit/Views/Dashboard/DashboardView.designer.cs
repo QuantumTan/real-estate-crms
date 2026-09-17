@@ -27,6 +27,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
         private System.Windows.Forms.Label lblRightSubtitle = null!;
         private System.Windows.Forms.Panel pnlRightList = null!;
         private System.Windows.Forms.Label lblRightEmpty = null!;
+        private System.Windows.Forms.Label lblLoading = null!;
 
         protected override void Dispose(bool disposing)
         {
@@ -43,6 +44,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
         {
             this.lblTitle = new System.Windows.Forms.Label();
             this.lblSubtitle = new System.Windows.Forms.Label();
+            this.lblLoading = new System.Windows.Forms.Label();
             this.pnlQuickActions = new System.Windows.Forms.FlowLayoutPanel();
 
             this.pnlKpiContainer = new System.Windows.Forms.TableLayoutPanel();
@@ -94,6 +96,18 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.lblSubtitle.Size = new System.Drawing.Size(120, 17);
             this.lblSubtitle.TabIndex = 1;
             this.lblSubtitle.Text = "Today's Overview";
+            // 
+            // lblLoading
+            // 
+            this.lblLoading.AutoSize = true;
+            this.lblLoading.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this.lblLoading.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.lblLoading.Location = new System.Drawing.Point(32, 56);
+            this.lblLoading.Name = "lblLoading";
+            this.lblLoading.Size = new System.Drawing.Size(150, 15);
+            this.lblLoading.TabIndex = 4;
+            this.lblLoading.Text = "Refreshing live snapshot...";
+            this.lblLoading.Visible = false;
 
             // 
             // pnlQuickActions
@@ -329,6 +343,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             this.Controls.Add(this.pnlContentSplit);
             this.Controls.Add(this.pnlKpiContainer);
             this.Controls.Add(this.pnlQuickActions);
+            this.Controls.Add(this.lblLoading);
             this.Controls.Add(this.lblSubtitle);
             this.Controls.Add(this.lblTitle);
             this.Name = "DashboardView";

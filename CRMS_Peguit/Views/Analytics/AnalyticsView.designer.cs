@@ -22,6 +22,7 @@ namespace CRMS_Peguit.winforms.Views.Analytics
             this.pnlHeader = new System.Windows.Forms.Panel();
             this.lblTitle = new System.Windows.Forms.Label();
             this.lblSubtitle = new System.Windows.Forms.Label();
+            this.lblLoading = new System.Windows.Forms.Label();
             this.btnGoToReports = new System.Windows.Forms.Button();
             this.cboDateRange = new System.Windows.Forms.ComboBox();
             this.btnExport = new System.Windows.Forms.Button();
@@ -82,6 +83,7 @@ namespace CRMS_Peguit.winforms.Views.Analytics
             this.pnlHeader.Controls.Add(this.btnGoToReports);
             this.pnlHeader.Controls.Add(this.btnExport);
             this.pnlHeader.Controls.Add(this.cboDateRange);
+            this.pnlHeader.Controls.Add(this.lblLoading);
             this.pnlHeader.Controls.Add(this.lblSubtitle);
             this.pnlHeader.Controls.Add(this.lblTitle);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
@@ -101,6 +103,14 @@ namespace CRMS_Peguit.winforms.Views.Analytics
             this.lblSubtitle.ForeColor = CRMS_Peguit.winforms.Models.Services.Theme.TextSecondary;
             this.lblSubtitle.Location = new System.Drawing.Point(22, 50);
             this.lblSubtitle.Text = "Live business intelligence across your deals, leads, and operations";
+
+            // lblLoading
+            this.lblLoading.AutoSize = true;
+            this.lblLoading.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this.lblLoading.ForeColor = CRMS_Peguit.winforms.Models.Services.Theme.TextSecondary;
+            this.lblLoading.Location = new System.Drawing.Point(22, 50);
+            this.lblLoading.Text = "Calculating live metrics & charts...";
+            this.lblLoading.Visible = false;
 
             // btnGoToReports
             this.btnGoToReports.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -239,6 +249,7 @@ namespace CRMS_Peguit.winforms.Views.Analytics
         private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblSubtitle;
+        private System.Windows.Forms.Label lblLoading;
         private System.Windows.Forms.Button btnGoToReports;
         private System.Windows.Forms.ComboBox cboDateRange;
         private System.Windows.Forms.Button btnExport;

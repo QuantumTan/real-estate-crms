@@ -28,6 +28,7 @@ namespace CRMS_Peguit.winforms
         private System.Windows.Forms.Label lblSupportSection = null!;
         private System.Windows.Forms.Button btnSupportTickets = null!;
         private System.Windows.Forms.Label lblInsightsSection = null!;
+        private System.Windows.Forms.Button btnAnalytics = null!;
         private System.Windows.Forms.Button btnReports = null!;
         private System.Windows.Forms.Label lblAdminSection = null!;
         private System.Windows.Forms.Button btnApprovals = null!;
@@ -82,6 +83,7 @@ namespace CRMS_Peguit.winforms
             this.lblSupportSection = new System.Windows.Forms.Label();
             this.btnSupportTickets = new System.Windows.Forms.Button();
             this.lblInsightsSection = new System.Windows.Forms.Label();
+            this.btnAnalytics = new System.Windows.Forms.Button();
             this.btnReports = new System.Windows.Forms.Button();
             this.lblAdminSection = new System.Windows.Forms.Label();
             this.btnApprovals = new System.Windows.Forms.Button();
@@ -230,6 +232,7 @@ namespace CRMS_Peguit.winforms
             this.pnlNav.Controls.Add(this.btnApprovals);
             this.pnlNav.Controls.Add(this.lblAdminSection);
             this.pnlNav.Controls.Add(this.btnReports);
+            this.pnlNav.Controls.Add(this.btnAnalytics);
             this.pnlNav.Controls.Add(this.lblInsightsSection);
             this.pnlNav.Controls.Add(this.btnSupportTickets);
             this.pnlNav.Controls.Add(this.lblSupportSection);
@@ -438,6 +441,23 @@ namespace CRMS_Peguit.winforms
             this.lblInsightsSection.TabIndex = 10;
             this.lblInsightsSection.Text = "INSIGHTS";
             // 
+            // btnAnalytics
+            // 
+            this.btnAnalytics.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnAnalytics.Dock = System.Windows.Forms.DockStyle.Top;
+            this.btnAnalytics.FlatAppearance.BorderSize = 0;
+            this.btnAnalytics.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnAnalytics.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.btnAnalytics.ForeColor = System.Drawing.Color.FromArgb(203, 213, 225);
+            this.btnAnalytics.Location = new System.Drawing.Point(0, 388);
+            this.btnAnalytics.Name = "btnAnalytics";
+            this.btnAnalytics.Padding = new System.Windows.Forms.Padding(16, 0, 0, 0);
+            this.btnAnalytics.Size = new System.Drawing.Size(240, 38);
+            this.btnAnalytics.TabIndex = 11;
+            this.btnAnalytics.Text = "  📊  Analytics";
+            this.btnAnalytics.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnAnalytics.UseVisualStyleBackColor = true;
+            // 
             // btnReports
             // 
             this.btnReports.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -446,12 +466,12 @@ namespace CRMS_Peguit.winforms
             this.btnReports.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnReports.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.btnReports.ForeColor = System.Drawing.Color.FromArgb(203, 213, 225);
-            this.btnReports.Location = new System.Drawing.Point(0, 388);
+            this.btnReports.Location = new System.Drawing.Point(0, 426);
             this.btnReports.Name = "btnReports";
             this.btnReports.Padding = new System.Windows.Forms.Padding(16, 0, 0, 0);
             this.btnReports.Size = new System.Drawing.Size(240, 38);
-            this.btnReports.TabIndex = 11;
-            this.btnReports.Text = "  📊  Reports";
+            this.btnReports.TabIndex = 12;
+            this.btnReports.Text = "  📋  Reports & Exports";
             this.btnReports.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnReports.UseVisualStyleBackColor = true;
             // 

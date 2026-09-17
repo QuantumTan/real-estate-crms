@@ -35,8 +35,21 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
         private void SetupStyling()
         {
+            this.BackColor = Theme.Background;
+            lblTitle.ForeColor = Theme.TextPrimary;
+            lblSubtitle.ForeColor = Theme.TextSecondary;
+            lblLoading.ForeColor = Theme.TextSecondary;
+
             UiRadiusHelper.StyleCard(pnlLeftCard, 12);
             UiRadiusHelper.StyleCard(pnlRightCard, 12);
+
+            lblLeftTitle.ForeColor = Theme.TextPrimary;
+            lblLeftSubtitle.ForeColor = Theme.TextSecondary;
+            lblLeftEmpty.ForeColor = Theme.TextSecondary;
+
+            lblRightTitle.ForeColor = Theme.TextPrimary;
+            lblRightSubtitle.ForeColor = Theme.TextSecondary;
+            lblRightEmpty.ForeColor = Theme.TextSecondary;
 
             pnlLeftList.AutoScroll = true;
             pnlRightList.AutoScroll = true;
@@ -49,6 +62,9 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
         {
             try
             {
+                lblLoading.Visible = true;
+                lblSubtitle.Visible = false;
+
                 var user = CurrentSession.CurrentUser;
                 var role = user?.Role ?? UserRole.SalesStaff;
 
@@ -66,6 +82,9 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 });
 
                 if (IsDisposed) return;
+
+                lblLoading.Visible = false;
+                lblSubtitle.Visible = true;
 
                 switch (role)
                 {
@@ -87,6 +106,8 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             }
             catch (Exception ex)
             {
+                lblLoading.Visible = false;
+                lblSubtitle.Visible = true;
                 System.Diagnostics.Debug.WriteLine($"[DashboardView.LoadData] Error: {ex.Message}");
             }
         }
@@ -139,10 +160,10 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             pnlQuickActions.Controls.Add(btnLogActivity);
 
             // 4 KPI Cards
-            ConfigureKpiCard(kpi1, "MY ACTIVE LEADS", snapshot.ActiveLeadsCount, "Pipeline leads", AzureTints.SkylineBlue, KpiIconType.Target, () => RequestNavigation("Leads"));
-            ConfigureKpiCard(kpi2, "MY OPEN DEALS", snapshot.OpenDealsCount, "Active pipeline", Color.FromArgb(139, 92, 246), KpiIconType.Briefcase, () => RequestNavigation("Deals"));
-            ConfigureKpiCard(kpi3, "FOLLOW-UPS TODAY", snapshot.FollowUpsDueTodayCount, "Due & overdue", Color.FromArgb(217, 119, 6), KpiIconType.Clock, () => RequestNavigation("FollowUps"));
-            ConfigureKpiCard(kpi4, "MY OPEN TICKETS", snapshot.OpenSupportTicketsCount, "Awaiting triage", Color.FromArgb(14, 165, 233), KpiIconType.Ticket, () => RequestNavigation("SupportTickets"));
+            ConfigureKpiCard(kpi1, "MY ACTIVE LEADS", snapshot.ActiveLeadsCount, "Pipeline leads", BiDisplayConstants.PrimaryAccent, KpiIconType.Target, () => RequestNavigation("Leads"));
+            ConfigureKpiCard(kpi2, "MY OPEN DEALS", snapshot.OpenDealsCount, "Active pipeline", BiDisplayConstants.HighlightAccent, KpiIconType.Briefcase, () => RequestNavigation("Deals"));
+            ConfigureKpiCard(kpi3, "FOLLOW-UPS TODAY", snapshot.FollowUpsDueTodayCount, "Due & overdue", BiDisplayConstants.StatusPending, KpiIconType.Clock, () => RequestNavigation("FollowUps"));
+            ConfigureKpiCard(kpi4, "MY OPEN TICKETS", snapshot.OpenSupportTicketsCount, "Awaiting triage", BiDisplayConstants.SkyAccent, KpiIconType.Ticket, () => RequestNavigation("SupportTickets"));
 
             // Left Card: "My Follow-Ups Today" (max 5, clickable to open)
             lblLeftTitle.Text = "My Follow-Ups Today";
@@ -151,7 +172,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
             if (snapshot.FollowUpsToday.Count == 0)
             {
-                lblLeftEmpty.Text = "No follow-ups due today. You're all caught up!";
+                lblLeftEmpty.Text = "✓  No follow-ups due today. You're all caught up!";
                 lblLeftEmpty.Visible = true;
             }
             else
@@ -160,8 +181,8 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 int y = 0;
                 foreach (var item in snapshot.FollowUpsToday)
                 {
-                    Color badgeBg = item.IsOverdue ? Color.FromArgb(254, 226, 226) : Color.FromArgb(241, 245, 249);
-                    Color badgeFg = item.IsOverdue ? Color.FromArgb(185, 28, 28) : Color.FromArgb(71, 85, 105);
+                    Color badgeBg = item.IsOverdue ? BiDisplayConstants.StatusLostBg : BiDisplayConstants.StatusNeutralBg;
+                    Color badgeFg = item.IsOverdue ? BiDisplayConstants.StatusLost : BiDisplayConstants.StatusNeutral;
                     string badgeText = item.IsOverdue ? $"Overdue · {item.DueTimeText}" : item.DueTimeText;
                     string sub = string.IsNullOrWhiteSpace(item.RelatedName) ? $"Priority: {item.Priority}" : $"{item.RelatedName} · {item.Priority}";
 
@@ -202,7 +223,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
             if (snapshot.RecentActivities.Count == 0)
             {
-                lblRightEmpty.Text = "No recent activities logged yet.";
+                lblRightEmpty.Text = "📋  No recent activities logged yet.";
                 lblRightEmpty.Visible = true;
             }
             else
@@ -239,17 +260,17 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
             // Quick Action: "View Full Team Dashboard"
             pnlQuickActions.Controls.Clear();
-            var btnTeamDashboard = CreateQuickActionButton("📊 View Full Team Dashboard", AzureTints.SkylineBlue, Color.White, (_, _) =>
+            var btnTeamDashboard = CreateQuickActionButton("📊 View Full Team Dashboard", BiDisplayConstants.PrimaryAccent, Color.White, (_, _) =>
             {
                 RequestNavigation("Analytics");
             });
             pnlQuickActions.Controls.Add(btnTeamDashboard);
 
             // 4 KPI Cards
-            ConfigureKpiCard(kpi1, "TEAM DEALS (MONTH)", snapshot.TeamDealsThisMonthCount, "Closed this month", Color.FromArgb(16, 185, 129), KpiIconType.Briefcase, () => RequestNavigation("Analytics"));
-            ConfigureKpiCard(kpi2, "TEAM OPEN TICKETS", snapshot.TeamOpenTicketsCount, "Across all agents", Color.FromArgb(220, 38, 38), KpiIconType.Ticket, () => RequestNavigation("SupportTickets"));
-            ConfigureKpiCard(kpi3, "PENDING ASSIGNMENTS", snapshot.PendingAssignmentsCount, "Awaiting manager action", Color.FromArgb(217, 119, 6), KpiIconType.Users, () => RequestNavigation("Approvals"));
-            ConfigureKpiCard(kpi4, "LEAD CONVERSION", $"{snapshot.TeamConversionRate:F1}%", "Team conversion rate", AzureTints.SkylineBlue, KpiIconType.Target, () => RequestNavigation("Analytics"));
+            ConfigureKpiCard(kpi1, "TEAM DEALS (MONTH)", snapshot.TeamDealsThisMonthCount, "Closed this month", BiDisplayConstants.StatusWon, KpiIconType.Briefcase, () => RequestNavigation("Analytics"));
+            ConfigureKpiCard(kpi2, "TEAM OPEN TICKETS", snapshot.TeamOpenTicketsCount, "Across all agents", BiDisplayConstants.StatusLost, KpiIconType.Ticket, () => RequestNavigation("SupportTickets"));
+            ConfigureKpiCard(kpi3, "PENDING ASSIGNMENTS", snapshot.PendingAssignmentsCount, "Awaiting manager action", BiDisplayConstants.StatusPending, KpiIconType.Users, () => RequestNavigation("Approvals"));
+            ConfigureKpiCard(kpi4, "LEAD CONVERSION", $"{snapshot.TeamConversionRate:F1}%", "Team conversion rate", BiDisplayConstants.PrimaryAccent, KpiIconType.Target, () => RequestNavigation("Analytics"));
 
             // Left Card: "Pending Assignments" (max 5, with "Assign" button)
             lblLeftTitle.Text = "Pending Assignments";
@@ -258,7 +279,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
             if (snapshot.PendingAssignments.Count == 0)
             {
-                lblLeftEmpty.Text = "No pending assignments awaiting review.";
+                lblLeftEmpty.Text = "✓  No pending assignments awaiting review.";
                 lblLeftEmpty.Visible = true;
             }
             else
@@ -268,8 +289,8 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 foreach (var item in snapshot.PendingAssignments)
                 {
                     bool isCust = string.Equals(item.Type, "Customer", StringComparison.OrdinalIgnoreCase);
-                    Color typeBadgeBg = isCust ? Color.FromArgb(220, 252, 231) : Color.FromArgb(224, 242, 254);
-                    Color typeBadgeFg = isCust ? Color.FromArgb(22, 101, 52) : Color.FromArgb(2, 132, 199);
+                    Color typeBadgeBg = isCust ? BiDisplayConstants.StatusWonBg : BiDisplayConstants.PrimaryTintBg;
+                    Color typeBadgeFg = isCust ? BiDisplayConstants.StatusWon : BiDisplayConstants.PrimaryAccent;
 
                     var row = CreateItemRow(
                         iconText: isCust ? "👤" : "🎯",
@@ -315,7 +336,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
             if (snapshot.TeamRecentActivity.Count == 0)
             {
-                lblRightEmpty.Text = "No recent team events found.";
+                lblRightEmpty.Text = "📋  No recent team events found.";
                 lblRightEmpty.Visible = true;
             }
             else
@@ -352,7 +373,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
             // Quick Actions: "View Reports", "Manage Users"
             pnlQuickActions.Controls.Clear();
-            var btnReports = CreateQuickActionButton("📊 View Reports", AzureTints.SkylineBlue, Color.White, (_, _) =>
+            var btnReports = CreateQuickActionButton("📊 View Reports", BiDisplayConstants.PrimaryAccent, Color.White, (_, _) =>
             {
                 RequestNavigation("Reports");
             });
@@ -366,10 +387,10 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             pnlQuickActions.Controls.Add(btnManageUsers);
 
             // 4 KPI Cards
-            ConfigureKpiCard(kpi1, "TOTAL ACTIVE USERS", snapshot.TotalActiveUsersCount, "Active personnel", AzureTints.SkylineBlue, KpiIconType.Users, () => RequestNavigation("SalesStaff"));
-            ConfigureKpiCard(kpi2, "AGENCY OPEN TICKETS", snapshot.OpenTicketsCount, "Oversight only", Color.FromArgb(220, 38, 38), KpiIconType.Ticket, () => RequestNavigation("SupportTickets"));
-            ConfigureKpiCard(kpi3, "SUBSCRIPTION", snapshot.SubscriptionStatus, "Multi-tenant status", Color.FromArgb(16, 185, 129), KpiIconType.Building, () => RequestNavigation("Reports"));
-            ConfigureKpiCard(kpi4, "DEALS CLOSED (MONTH)", snapshot.DealsClosedThisMonthCount, "Headline total", Color.FromArgb(139, 92, 246), KpiIconType.Currency, () => RequestNavigation("Reports"));
+            ConfigureKpiCard(kpi1, "TOTAL ACTIVE USERS", snapshot.TotalActiveUsersCount, "Active personnel", BiDisplayConstants.PrimaryAccent, KpiIconType.Users, () => RequestNavigation("SalesStaff"));
+            ConfigureKpiCard(kpi2, "AGENCY OPEN TICKETS", snapshot.OpenTicketsCount, "Oversight only", BiDisplayConstants.StatusLost, KpiIconType.Ticket, () => RequestNavigation("SupportTickets"));
+            ConfigureKpiCard(kpi3, "SUBSCRIPTION", snapshot.SubscriptionStatus, "Multi-tenant status", BiDisplayConstants.StatusWon, KpiIconType.Building, () => RequestNavigation("Reports"));
+            ConfigureKpiCard(kpi4, "DEALS CLOSED (MONTH)", snapshot.DealsClosedThisMonthCount, "Headline total", BiDisplayConstants.HighlightAccent, KpiIconType.Currency, () => RequestNavigation("Reports"));
 
             // Left Card: "Recent System Activity" (omitted if no logs exist)
             pnlLeftList.Controls.Clear();
@@ -406,7 +427,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
                 // Omit section rather than fabricate data per prompt requirement
                 lblLeftTitle.Text = "System Activity";
                 lblLeftSubtitle.Text = "No system logs recorded yet";
-                lblLeftEmpty.Text = "No system logs recorded yet.";
+                lblLeftEmpty.Text = "📋  No system logs recorded yet.";
                 lblLeftEmpty.Visible = true;
             }
 
@@ -419,10 +440,10 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
             int ry = 0;
             var overviewItems = new[]
             {
-                ("🏢 Tenant Status", $"Tenant #{CurrentSession.TenantId} · Multi-Tenant Isolation Active", "ONLINE", Color.FromArgb(220, 252, 231), Color.FromArgb(22, 101, 52)),
-                ("🛡 Security Tier", "Role-Based Access Control (RBAC) & Row-Level Security Enforced", "SECURE", Color.FromArgb(224, 242, 254), Color.FromArgb(2, 132, 199)),
-                ("📄 Subscription Plan", snapshot.SubscriptionStatus, "ACTIVE", Color.FromArgb(220, 252, 231), Color.FromArgb(22, 101, 52)),
-                ("⚡ System Performance", "LocalDb Fast Snapshot Cache Operational", "NOMINAL", Color.FromArgb(241, 245, 249), Color.FromArgb(71, 85, 105))
+                ("🏢 Tenant Status", $"Tenant #{CurrentSession.TenantId} · Multi-Tenant Isolation Active", "ONLINE", BiDisplayConstants.StatusWonBg, BiDisplayConstants.StatusWon),
+                ("🛡 Security Tier", "Role-Based Access Control (RBAC) & Row-Level Security Enforced", "SECURE", BiDisplayConstants.PrimaryTintBg, BiDisplayConstants.PrimaryAccent),
+                ("📄 Subscription Plan", snapshot.SubscriptionStatus, "ACTIVE", BiDisplayConstants.StatusWonBg, BiDisplayConstants.StatusWon),
+                ("⚡ System Performance", "LocalDb Fast Snapshot Cache Operational", "NOMINAL", BiDisplayConstants.StatusNeutralBg, BiDisplayConstants.StatusNeutral)
             };
 
             foreach (var (title, desc, status, bg, fg) in overviewItems)
@@ -682,6 +703,7 @@ namespace CRMS_Peguit.winforms.Views.Dashboard
 
             lblTitle.Location = new Point(leftMargin, 20);
             lblSubtitle.Location = new Point(leftMargin + 2, lblTitle.Bottom + 4);
+            lblLoading.Location = lblSubtitle.Location;
 
             pnlQuickActions.Location = new Point(totalWidth - rightMargin - pnlQuickActions.Width, 22);
 

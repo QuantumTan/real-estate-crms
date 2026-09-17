@@ -66,17 +66,7 @@ namespace CRMS_Peguit.winforms.Views.Analytics
 
         private void ConfigurePlot(ScottPlot.WinForms.FormsPlot plot)
         {
-            if (plot == null) return;
-            try
-            {
-                plot.UserInputProcessor.Disable();
-                plot.Plot.FigureBackground.Color = ScottPlot.Color.FromColor(Color.White);
-                plot.Plot.DataBackground.Color = ScottPlot.Color.FromColor(Color.White);
-                plot.Plot.Axes.Color(ScottPlot.Color.FromColor(Theme.TextSecondary));
-                plot.Plot.Axes.Bottom.MinimumSize = 45;
-                plot.Plot.Axes.Left.MinimumSize = 40;
-            }
-            catch { }
+            BiDisplayConstants.ConfigureStandardPlot(plot);
         }
 
         private void BindEvents()
@@ -138,16 +128,31 @@ namespace CRMS_Peguit.winforms.Views.Analytics
             };
         }
 
-        private void ReloadSnapshot()
+        private async void ReloadSnapshot()
         {
             try
             {
+                lblLoading.Visible = true;
+                lblSubtitle.Visible = false;
+
                 var range = GetSelectedDateRange();
-                _currentSnapshot = _controller.GetSnapshot(range);
+                AnalyticsSnapshot? snapshot = null;
+                await System.Threading.Tasks.Task.Run(() =>
+                {
+                    snapshot = _controller.GetSnapshot(range);
+                });
+
+                if (IsDisposed) return;
+
+                lblLoading.Visible = false;
+                lblSubtitle.Visible = true;
+                _currentSnapshot = snapshot;
                 UpdateView(_currentSnapshot);
             }
             catch (Exception ex)
             {
+                lblLoading.Visible = false;
+                lblSubtitle.Visible = true;
                 System.Diagnostics.Debug.WriteLine($"[AnalyticsView.ReloadSnapshot] Error: {ex.Message}");
             }
         }
@@ -158,16 +163,16 @@ namespace CRMS_Peguit.winforms.Views.Analytics
 
             // 1. Update KPI cards with dual-metric intelligence
             kpiDealsClosed.SetValue(snapshot.TotalDealsClosed);
-            kpiDealsClosed.SetSubtitle(snapshot.TotalSalesVolume > 0 ? $"Vol: ₱{snapshot.TotalSalesVolume:N0}" : "Closed in period");
+            kpiDealsClosed.SetSubtitle(snapshot.TotalSalesVolume > 0 ? $"Vol: {BiDisplayConstants.FormatCompactCurrency(snapshot.TotalSalesVolume)}" : "Closed in period");
 
-            kpiCommission.SetValue(snapshot.TotalCommissionEarned.ToString("C0"));
-            kpiCommission.SetSubtitle(snapshot.AverageDealSize > 0 ? $"Avg: ₱{snapshot.AverageDealSize:N0}" : "Net earned");
+            kpiCommission.SetValue(BiDisplayConstants.FormatCurrency(snapshot.TotalCommissionEarned));
+            kpiCommission.SetSubtitle(snapshot.AverageDealSize > 0 ? $"Avg: {BiDisplayConstants.FormatCompactCurrency(snapshot.AverageDealSize)}" : "Net earned");
 
             kpiActiveLeads.SetValue(snapshot.ActiveLeads);
-            kpiActiveLeads.SetSubtitle(snapshot.ActivePipelineValue > 0 ? $"Pipe: ₱{snapshot.ActivePipelineValue:N0}" : "In pipeline");
+            kpiActiveLeads.SetSubtitle(snapshot.ActivePipelineValue > 0 ? $"Pipe: {BiDisplayConstants.FormatCompactCurrency(snapshot.ActivePipelineValue)}" : "In pipeline");
 
-            kpiConversionRate.SetValue($"{snapshot.LeadConversionRate:F1}%");
-            kpiConversionRate.SetSubtitle(snapshot.WinRate > 0 ? $"Win Rate: {snapshot.WinRate:F1}%" : "Leads to closed");
+            kpiConversionRate.SetValue(BiDisplayConstants.FormatPercent(snapshot.LeadConversionRate));
+            kpiConversionRate.SetSubtitle(snapshot.WinRate > 0 ? $"Win Rate: {BiDisplayConstants.FormatPercent(snapshot.WinRate)}" : "Leads to closed");
 
             kpiOpenTickets.SetValue(snapshot.OpenSupportTickets);
             kpiOpenTickets.SetSubtitle("Support queue");
@@ -175,7 +180,7 @@ namespace CRMS_Peguit.winforms.Views.Analytics
             kpiAvgDays.SetValue($"{snapshot.AverageDaysToClose:F1}d");
             kpiAvgDays.SetSubtitle(snapshot.ActivePropertiesCount > 0 ? $"Active Listings: {snapshot.ActivePropertiesCount}" : "Contract lead time");
 
-            // 2. Chart: Deals Closed Over Time
+            // 2. Chart: Deals Closed Over Time (Trend = Line chart)
             RenderDealsOverTimeChart(snapshot.DealsOverTime);
 
             // 3. Chart: Lead Pipeline Funnel
@@ -334,242 +339,106 @@ namespace CRMS_Peguit.winforms.Views.Analytics
 
         private void RenderDealsOverTimeChart(List<MonthlyMetric>? metrics)
         {
-            plotDealsClosed.Plot.Clear();
-            ConfigurePlot(plotDealsClosed);
-
             if (metrics == null || metrics.Count == 0)
             {
-                ShowPlotEmpty(plotDealsClosed, "No closed deals recorded in range");
+                BiDisplayConstants.ShowPlotEmpty(plotDealsClosed, "No closed deals recorded in range");
                 return;
             }
 
-            var bars = new List<ScottPlot.Bar>();
-            var ticks = new List<ScottPlot.Tick>();
-
-            for (int i = 0; i < metrics.Count; i++)
-            {
-                bars.Add(new ScottPlot.Bar
-                {
-                    Position = i,
-                    Value = metrics[i].Count,
-                    FillColor = ScottPlot.Color.FromColor(Theme.Primary),
-                    LineColor = ScottPlot.Color.FromColor(Theme.PrimaryDark),
-                    LineWidth = 1
-                });
-                ticks.Add(new ScottPlot.Tick(i, metrics[i].Month));
-            }
-
-            plotDealsClosed.Plot.Add.Bars(bars);
-            var tickGen = new ScottPlot.TickGenerators.NumericManual(ticks.ToArray());
-            plotDealsClosed.Plot.Axes.Bottom.TickGenerator = tickGen;
-            plotDealsClosed.Plot.Axes.Bottom.TickLabelStyle.Rotation = -30;
-            plotDealsClosed.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-            plotDealsClosed.Plot.Axes.Bottom.MinimumSize = 60;
-            plotDealsClosed.Plot.Axes.Left.MinimumSize = 45;
-            plotDealsClosed.Plot.Axes.Margins(bottom: 0, left: 0.05);
-            plotDealsClosed.Refresh();
+            var trendData = metrics.Select(m => (m.Month, (double)m.Count)).ToList();
+            BiDisplayConstants.RenderTrendLinePlot(plotDealsClosed, trendData, BiDisplayConstants.PrimaryAccent, BiDisplayConstants.SecondaryAccent);
         }
 
         private void RenderLeadFunnelChart(LeadFunnelData? funnel)
         {
-            plotPipeline.Plot.Clear();
-            ConfigurePlot(plotPipeline);
-
             if (funnel == null)
             {
-                ShowPlotEmpty(plotPipeline, "No pipeline leads recorded");
+                BiDisplayConstants.ShowPlotEmpty(plotPipeline, "No pipeline leads recorded");
                 return;
             }
 
-            var stages = new[] { "New", "Contacted", "Qualified", "Converted", "Lost" };
-            var counts = new[] { funnel.New, funnel.Contacted, funnel.Qualified, funnel.Converted, funnel.Lost };
-            var colors = new[] { Theme.StatusNeutral, Theme.StatusPending, Theme.Primary, Theme.StatusSuccess, Theme.StatusAlert };
-
-            var bars = new List<ScottPlot.Bar>();
-            var ticks = new List<ScottPlot.Tick>();
-
-            for (int i = 0; i < stages.Length; i++)
+            var items = new List<(string label, double value, Color color)>
             {
-                bars.Add(new ScottPlot.Bar
-                {
-                    Position = i,
-                    Value = counts[i],
-                    FillColor = ScottPlot.Color.FromColor(colors[i]),
-                    LineWidth = 1
-                });
-                ticks.Add(new ScottPlot.Tick(i, stages[i]));
-            }
+                ("New", funnel.New, BiDisplayConstants.StatusNeutral),
+                ("Contacted", funnel.Contacted, BiDisplayConstants.StatusPending),
+                ("Qualified", funnel.Qualified, BiDisplayConstants.PrimaryAccent),
+                ("Converted", funnel.Converted, BiDisplayConstants.StatusWon),
+                ("Lost", funnel.Lost, BiDisplayConstants.StatusLost)
+            };
 
-            plotPipeline.Plot.Add.Bars(bars);
-            var tickGen = new ScottPlot.TickGenerators.NumericManual(ticks.ToArray());
-            plotPipeline.Plot.Axes.Bottom.TickGenerator = tickGen;
-            plotPipeline.Plot.Axes.Bottom.MinimumSize = 50;
-            plotPipeline.Plot.Axes.Left.MinimumSize = 45;
-            plotPipeline.Plot.Axes.Margins(bottom: 0);
-            plotPipeline.Refresh();
+            BiDisplayConstants.RenderBarPlot(plotPipeline, items);
         }
 
         private void RenderDealsWonVsLostChart(WonLostData? wonLost)
         {
-            plotWonVsLost.Plot.Clear();
-            ConfigurePlot(plotWonVsLost);
-
             if (wonLost == null || (wonLost.Won == 0 && wonLost.Lost == 0))
             {
-                ShowPlotEmpty(plotWonVsLost, "No closed/lost deals in range");
+                BiDisplayConstants.ShowPlotEmpty(plotWonVsLost, "No closed/lost deals in range");
                 return;
             }
 
-            var slices = new List<ScottPlot.PieSlice>
+            var slices = new List<(string label, double value, Color color)>
             {
-                new ScottPlot.PieSlice
-                {
-                    Value = Math.Max(0.001, wonLost.Won),
-                    FillColor = ScottPlot.Color.FromColor(Theme.StatusSuccess),
-                    Label = $"Won ({wonLost.Won})"
-                },
-                new ScottPlot.PieSlice
-                {
-                    Value = Math.Max(0.001, wonLost.Lost),
-                    FillColor = ScottPlot.Color.FromColor(Theme.StatusAlert),
-                    Label = $"Lost ({wonLost.Lost})"
-                }
+                ("Won", wonLost.Won, BiDisplayConstants.StatusWon),
+                ("Lost", wonLost.Lost, BiDisplayConstants.StatusLost)
             };
 
-            var pie = plotWonVsLost.Plot.Add.Pie(slices);
-            pie.DonutFraction = 0.5;
-            pie.SliceLabelDistance = 1.35;
-            plotWonVsLost.Plot.Axes.Frameless();
-            plotWonVsLost.Plot.HideGrid();
-            plotWonVsLost.Plot.Axes.SetLimits(-1.45, 1.45, -1.45, 1.45);
-            plotWonVsLost.Refresh();
+            BiDisplayConstants.RenderDonutPlot(plotWonVsLost, slices);
         }
 
         private void RenderTicketBreakdownChart(TicketBreakdownData? tickets)
         {
-            plotTickets.Plot.Clear();
-            ConfigurePlot(plotTickets);
-
             if (tickets == null)
             {
-                ShowPlotEmpty(plotTickets, "No support tickets recorded");
+                BiDisplayConstants.ShowPlotEmpty(plotTickets, "No support tickets recorded");
                 return;
             }
 
-            var categories = new[] { "Open", "In Progress", "Resolved", "Overdue" };
-            var counts = new[] { tickets.Open, tickets.InProgress, tickets.Resolved, tickets.Overdue };
-            var colors = new[] { Theme.StatusPending, Theme.Primary, Theme.StatusSuccess, Theme.StatusAlert };
-
-            var bars = new List<ScottPlot.Bar>();
-            var ticks = new List<ScottPlot.Tick>();
-
-            for (int i = 0; i < categories.Length; i++)
+            var items = new List<(string label, double value, Color color)>
             {
-                bars.Add(new ScottPlot.Bar
-                {
-                    Position = i,
-                    Value = counts[i],
-                    FillColor = ScottPlot.Color.FromColor(colors[i]),
-                    LineWidth = 1
-                });
-                ticks.Add(new ScottPlot.Tick(i, categories[i]));
-            }
+                ("Open", tickets.Open, BiDisplayConstants.StatusPending),
+                ("In Progress", tickets.InProgress, BiDisplayConstants.PrimaryAccent),
+                ("Resolved", tickets.Resolved, BiDisplayConstants.StatusWon),
+                ("Overdue", tickets.Overdue, BiDisplayConstants.StatusLost)
+            };
 
-            plotTickets.Plot.Add.Bars(bars);
-            var tickGen = new ScottPlot.TickGenerators.NumericManual(ticks.ToArray());
-            plotTickets.Plot.Axes.Bottom.TickGenerator = tickGen;
-            plotTickets.Plot.Axes.Bottom.MinimumSize = 50;
-            plotTickets.Plot.Axes.Left.MinimumSize = 45;
-            plotTickets.Plot.Axes.Margins(bottom: 0);
-            plotTickets.Refresh();
+            BiDisplayConstants.RenderBarPlot(plotTickets, items);
         }
 
         private void RenderTopAgentsChart(List<AgentPerformance> topAgents)
         {
-            plotAgents.Plot.Clear();
-            ConfigurePlot(plotAgents);
-
             if (topAgents == null || topAgents.Count == 0)
             {
-                ShowPlotEmpty(plotAgents, "No agent performance data in range");
+                BiDisplayConstants.ShowPlotEmpty(plotAgents, "No agent performance data in range");
                 return;
             }
 
             lblChartAgentsTitle.Text = "Top Agents by Sales Volume (₱ Millions)";
+            var items = topAgents
+                .Select(a => (a.AgentName, (double)(a.TotalValue / 1_000_000m), BiDisplayConstants.PrimaryAccent))
+                .ToList();
 
-            var bars = new List<ScottPlot.Bar>();
-            var ticks = new List<ScottPlot.Tick>();
-
-            for (int i = 0; i < topAgents.Count; i++)
-            {
-                bars.Add(new ScottPlot.Bar
-                {
-                    Position = i,
-                    Value = (double)(topAgents[i].TotalValue / 1_000_000m),
-                    FillColor = ScottPlot.Color.FromColor(Theme.Primary),
-                    LineWidth = 1
-                });
-                ticks.Add(new ScottPlot.Tick(i, topAgents[i].AgentName));
-            }
-
-            plotAgents.Plot.Add.Bars(bars);
-            var tickGen = new ScottPlot.TickGenerators.NumericManual(ticks.ToArray());
-            plotAgents.Plot.Axes.Bottom.TickGenerator = tickGen;
-            plotAgents.Plot.Axes.Bottom.TickLabelStyle.Rotation = -30;
-            plotAgents.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-            plotAgents.Plot.Axes.Bottom.MinimumSize = 65;
-            plotAgents.Plot.Axes.Left.MinimumSize = 45;
-            plotAgents.Plot.Axes.Margins(bottom: 0, left: 0.05);
-            plotAgents.Refresh();
+            BiDisplayConstants.RenderBarPlot(plotAgents, items, rotation: -30);
         }
 
         private void RenderLeadSourcesChart(List<SourceMetric> sources)
         {
-            plotSources.Plot.Clear();
-            ConfigurePlot(plotSources);
-
             if (sources == null || sources.Count == 0)
             {
-                ShowPlotEmpty(plotSources, "No lead sources recorded in range");
+                BiDisplayConstants.ShowPlotEmpty(plotSources, "No lead sources recorded in range");
                 return;
             }
 
-            var bars = new List<ScottPlot.Bar>();
-            var ticks = new List<ScottPlot.Tick>();
+            var items = sources
+                .Select(s => (s.Source, (double)s.Count, BiDisplayConstants.SecondaryAccent))
+                .ToList();
 
-            for (int i = 0; i < sources.Count; i++)
-            {
-                bars.Add(new ScottPlot.Bar
-                {
-                    Position = i,
-                    Value = sources[i].Count,
-                    FillColor = ScottPlot.Color.FromColor(Theme.PrimaryLight),
-                    LineColor = ScottPlot.Color.FromColor(Theme.Primary),
-                    LineWidth = 1
-                });
-                ticks.Add(new ScottPlot.Tick(i, sources[i].Source));
-            }
-
-            plotSources.Plot.Add.Bars(bars);
-            var tickGen = new ScottPlot.TickGenerators.NumericManual(ticks.ToArray());
-            plotSources.Plot.Axes.Bottom.TickGenerator = tickGen;
-            plotSources.Plot.Axes.Bottom.TickLabelStyle.Rotation = -30;
-            plotSources.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-            plotSources.Plot.Axes.Bottom.MinimumSize = 60;
-            plotSources.Plot.Axes.Left.MinimumSize = 45;
-            plotSources.Plot.Axes.Margins(bottom: 0, left: 0.05);
-            plotSources.Refresh();
+            BiDisplayConstants.RenderBarPlot(plotSources, items, rotation: -30);
         }
 
         private void ShowPlotEmpty(ScottPlot.WinForms.FormsPlot plot, string message)
         {
-            plot.Plot.Clear();
-            var txt = plot.Plot.Add.Text(message, 0, 0);
-            txt.LabelAlignment = ScottPlot.Alignment.MiddleCenter;
-            txt.LabelFontColor = ScottPlot.Color.FromColor(Theme.TextSecondary);
-            plot.Plot.Axes.Frameless();
-            plot.Plot.HideGrid();
-            plot.Refresh();
+            BiDisplayConstants.ShowPlotEmpty(plot, message);
         }
 
         private void RenderRecentActivity(List<ActivityFeedItem>? feed)
@@ -621,7 +490,7 @@ namespace CRMS_Peguit.winforms.Views.Analytics
 
                 var lblTime = new Label
                 {
-                    Text = item.Timestamp.ToString("MMM dd, h:mm tt"),
+                    Text = BiDisplayConstants.FormatDateTime(item.Timestamp),
                     Font = new Font("Segoe UI", 7.5F),
                     ForeColor = Theme.TextSecondary,
                     Location = new Point(44, 26),

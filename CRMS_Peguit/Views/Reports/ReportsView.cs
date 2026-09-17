@@ -53,12 +53,13 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
         private void SetupUI()
         {
+            this.BackColor = Theme.Background;
             UiGridHelper.ApplyModernGridStyle(gridData, 44);
 
             UiRadiusHelper.StyleCard(pnlChartCard1, 10);
             UiRadiusHelper.StyleCard(pnlChartCard2, 10);
 
-            btnRunReport.BackColor = Theme.Primary;
+            btnRunReport.BackColor = BiDisplayConstants.PrimaryAccent;
             btnRunReport.ForeColor = Theme.Surface;
             btnExportCsv.BackColor = Theme.Surface;
             btnExportCsv.ForeColor = Theme.TextPrimary;
@@ -76,17 +77,7 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
         private void ConfigurePlot(ScottPlot.WinForms.FormsPlot plot)
         {
-            if (plot == null) return;
-            try
-            {
-                plot.UserInputProcessor.Disable();
-                plot.Plot.FigureBackground.Color = ScottPlot.Color.FromColor(Color.White);
-                plot.Plot.DataBackground.Color = ScottPlot.Color.FromColor(Color.White);
-                plot.Plot.Axes.Color(ScottPlot.Color.FromColor(Theme.TextSecondary));
-                plot.Plot.Axes.Bottom.MinimumSize = 45;
-                plot.Plot.Axes.Left.MinimumSize = 40;
-            }
-            catch { }
+            BiDisplayConstants.ConfigureStandardPlot(plot);
         }
 
         private void LoadDropdowns()
@@ -361,6 +352,9 @@ namespace CRMS_Peguit.winforms.Views.Reports
                     btnExportPdf.Text = "Export PDF";
                 }
 
+                // Update dynamic KPI summary cards
+                UpdateReportKpis(rpt, _currentData);
+
                 // Render accompanying charts
                 RenderReportCharts(rpt, _currentData);
             }
@@ -375,18 +369,178 @@ namespace CRMS_Peguit.winforms.Views.Reports
             }
         }
 
+        private void UpdateReportKpis(string rptType, object? data)
+        {
+            if (data == null)
+            {
+                kpi1.SetValue(0);
+                kpi2.SetValue("₱0.00");
+                kpi3.SetValue("₱0.00");
+                kpi4.SetValue("0");
+                return;
+            }
+
+            if (rptType.Contains("Sales") && data is List<SalesReportRow> sales)
+            {
+                int count = sales.Count;
+                decimal totalVolume = sales.Sum(s => s.DealValue);
+                decimal totalComm = sales.Sum(s => s.Commission);
+                decimal avgSize = count == 0 ? 0 : totalVolume / count;
+
+                kpi1.SetValue(count);
+                kpi1.SetSubtitle("Closed & active deals");
+                kpi1.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Briefcase, BiDisplayConstants.PrimaryAccent);
+
+                kpi2.SetValue(BiDisplayConstants.FormatCompactCurrency(totalVolume));
+                kpi2.SetSubtitle($"Gross: {BiDisplayConstants.FormatCurrency(totalVolume)}");
+                kpi2.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Currency, BiDisplayConstants.StatusWon);
+
+                kpi3.SetValue(BiDisplayConstants.FormatCompactCurrency(totalComm));
+                kpi3.SetSubtitle($"Net: {BiDisplayConstants.FormatCurrency(totalComm)}");
+                kpi3.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Currency, BiDisplayConstants.StatusWon);
+
+                kpi4.SetValue(BiDisplayConstants.FormatCompactCurrency(avgSize));
+                kpi4.SetSubtitle("Per deal average");
+                kpi4.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Target, BiDisplayConstants.HighlightAccent);
+            }
+            else if (rptType.Contains("Commission") && data is List<CommissionReportRow> comms)
+            {
+                int count = comms.Count;
+                decimal grossComm = comms.Sum(c => c.GrossCommission);
+                decimal agentPayouts = comms.Sum(c => c.AgentPayoutAmount);
+                decimal brokerageNet = comms.Sum(c => c.BrokerageRetainedAmount);
+
+                kpi1.SetValue(count);
+                kpi1.SetSubtitle("Commission records");
+                kpi1.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Briefcase, BiDisplayConstants.PrimaryAccent);
+
+                kpi2.SetValue(BiDisplayConstants.FormatCompactCurrency(grossComm));
+                kpi2.SetSubtitle($"Total: {BiDisplayConstants.FormatCurrency(grossComm)}");
+                kpi2.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Currency, BiDisplayConstants.StatusWon);
+
+                kpi3.SetValue(BiDisplayConstants.FormatCompactCurrency(agentPayouts));
+                kpi3.SetSubtitle($"Disbursed: {BiDisplayConstants.FormatCurrency(agentPayouts)}");
+                kpi3.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Currency, BiDisplayConstants.StatusPending);
+
+                if (RbacService.CanViewBrokerageMargins)
+                {
+                    kpi4.SetValue(BiDisplayConstants.FormatCompactCurrency(brokerageNet));
+                    kpi4.SetSubtitle($"Retained: {BiDisplayConstants.FormatCurrency(brokerageNet)}");
+                }
+                else
+                {
+                    kpi4.SetValue("Restricted");
+                    kpi4.SetSubtitle("Admin oversight only");
+                }
+                kpi4.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Building, BiDisplayConstants.SkyAccent);
+            }
+            else if (rptType.Contains("Property") && data is List<PropertyInventoryReportRow> props)
+            {
+                int count = props.Count;
+                decimal totalValue = props.Sum(p => p.ListingPrice);
+                double avgDom = count == 0 ? 0 : props.Average(p => p.DaysOnMarket);
+                int activeDeals = props.Sum(p => p.AssociatedDeals);
+
+                kpi1.SetValue(count);
+                kpi1.SetSubtitle("Tracked properties");
+                kpi1.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Building, BiDisplayConstants.PrimaryAccent);
+
+                kpi2.SetValue(BiDisplayConstants.FormatCompactCurrency(totalValue));
+                kpi2.SetSubtitle($"Total: {BiDisplayConstants.FormatCurrency(totalValue)}");
+                kpi2.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Currency, BiDisplayConstants.StatusWon);
+
+                kpi3.SetValue($"{avgDom:F1}d");
+                kpi3.SetSubtitle("Listing absorption speed");
+                kpi3.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Clock, BiDisplayConstants.StatusPending);
+
+                kpi4.SetValue(activeDeals);
+                kpi4.SetSubtitle("Linked under negotiation");
+                kpi4.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Target, BiDisplayConstants.HighlightAccent);
+            }
+            else if (rptType.Contains("Lead") && data is List<LeadProgressRow> leads)
+            {
+                int count = leads.Count;
+                int converted = leads.Count(l => l.ConvertedToCustomer == "Yes");
+                double convRate = count == 0 ? 0 : ((double)converted / count) * 100;
+                decimal estBudget = leads.Sum(l => l.EstimatedBudget);
+
+                kpi1.SetValue(count);
+                kpi1.SetSubtitle("Acquired in period");
+                kpi1.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Target, BiDisplayConstants.PrimaryAccent);
+
+                kpi2.SetValue(converted);
+                kpi2.SetSubtitle("Won to customers");
+                kpi2.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Users, BiDisplayConstants.StatusWon);
+
+                kpi3.SetValue(BiDisplayConstants.FormatPercent(convRate));
+                kpi3.SetSubtitle("Pipeline efficiency");
+                kpi3.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Refresh, BiDisplayConstants.HighlightAccent);
+
+                kpi4.SetValue(BiDisplayConstants.FormatCompactCurrency(estBudget));
+                kpi4.SetSubtitle($"Est: {BiDisplayConstants.FormatCurrency(estBudget)}");
+                kpi4.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Currency, BiDisplayConstants.SkyAccent);
+            }
+            else if (rptType.Contains("Ticket") && data is List<TicketResolutionRow> tickets)
+            {
+                int count = tickets.Count;
+                int resolved = tickets.Count(t => string.Equals(t.Status, "Resolved", StringComparison.OrdinalIgnoreCase) || string.Equals(t.Status, "Closed", StringComparison.OrdinalIgnoreCase));
+                int met = tickets.Count(t => t.SlaMet == "Yes");
+                int missed = tickets.Count(t => t.SlaMet == "No");
+                double slaRate = count == 0 ? 0 : ((double)met / count) * 100;
+
+                kpi1.SetValue(count);
+                kpi1.SetSubtitle("Logged support requests");
+                kpi1.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Ticket, BiDisplayConstants.PrimaryAccent);
+
+                kpi2.SetValue(resolved);
+                kpi2.SetSubtitle("Closed & satisfied");
+                kpi2.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Target, BiDisplayConstants.StatusWon);
+
+                kpi3.SetValue(BiDisplayConstants.FormatPercent(slaRate));
+                kpi3.SetSubtitle($"{met} met SLA target");
+                kpi3.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Clock, slaRate >= 80 ? BiDisplayConstants.StatusWon : BiDisplayConstants.StatusLost);
+
+                kpi4.SetValue(missed);
+                kpi4.SetSubtitle("Missed resolution SLA");
+                kpi4.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.AlertTriangle, BiDisplayConstants.StatusLost);
+            }
+            else if (rptType.Contains("Agent") && data is List<AgentActivityRow> acts)
+            {
+                int count = acts.Count;
+                int totalDeals = acts.Sum(a => a.DealsClosed);
+                decimal totalVolume = acts.Sum(a => a.TotalSalesVolume);
+                int totalTickets = acts.Sum(a => a.TicketsResolved);
+
+                kpi1.SetValue(count);
+                kpi1.SetSubtitle("Frontline personnel");
+                kpi1.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Users, BiDisplayConstants.PrimaryAccent);
+
+                kpi2.SetValue(totalDeals);
+                kpi2.SetSubtitle("Team closed transactions");
+                kpi2.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Briefcase, BiDisplayConstants.StatusWon);
+
+                kpi3.SetValue(BiDisplayConstants.FormatCompactCurrency(totalVolume));
+                kpi3.SetSubtitle($"Gross: {BiDisplayConstants.FormatCurrency(totalVolume)}");
+                kpi3.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Currency, BiDisplayConstants.StatusWon);
+
+                kpi4.SetValue(totalTickets);
+                kpi4.SetSubtitle("Client issues resolved");
+                kpi4.SetIcon(CRMS_Peguit.winforms.Models.Services.KpiIconType.Ticket, BiDisplayConstants.SkyAccent);
+            }
+        }
+
         private void RenderReportCharts(string rptType, object? data)
         {
             plotReport1.Plot.Clear();
             plotReport2.Plot.Clear();
 
-            ConfigurePlot(plotReport1);
-            ConfigurePlot(plotReport2);
+            BiDisplayConstants.ConfigureStandardPlot(plotReport1);
+            BiDisplayConstants.ConfigureStandardPlot(plotReport2);
 
             if (data == null)
             {
-                ShowPlotEmpty(plotReport1, "No data available");
-                ShowPlotEmpty(plotReport2, "No data available");
+                BiDisplayConstants.ShowPlotEmpty(plotReport1, "No data available");
+                BiDisplayConstants.ShowPlotEmpty(plotReport2, "No data available");
                 return;
             }
 
@@ -397,8 +551,8 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
                 if (sales.Count == 0)
                 {
-                    ShowPlotEmpty(plotReport1, "No sales in selected period");
-                    ShowPlotEmpty(plotReport2, "No transactions in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport1, "No sales in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport2, "No transactions in selected period");
                     return;
                 }
 
@@ -410,57 +564,23 @@ namespace CRMS_Peguit.winforms.Views.Reports
                     .Take(7)
                     .ToList();
 
-                var bars1 = new List<ScottPlot.Bar>();
-                var ticks1 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < agentSales.Count; i++)
-                {
-                    bars1.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = agentSales[i].TotalM,
-                        FillColor = ScottPlot.Color.FromColor(Theme.Primary),
-                        LineWidth = 1
-                    });
-                    ticks1.Add(new ScottPlot.Tick(i, agentSales[i].Name));
-                }
-                plotReport1.Plot.Add.Bars(bars1);
-                plotReport1.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks1.ToArray());
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Rotation = -25;
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-                plotReport1.Plot.Axes.Bottom.MinimumSize = 65;
-                plotReport1.Plot.Axes.Left.MinimumSize = 45;
-                plotReport1.Plot.Axes.Margins(bottom: 0, left: 0.05);
-                plotReport1.Refresh();
+                BiDisplayConstants.RenderBarPlot(plotReport1,
+                    agentSales.Select(x => x.Name).ToArray(),
+                    agentSales.Select(x => x.TotalM).ToArray(),
+                    agentSales.Select(_ => BiDisplayConstants.PrimaryAccent).ToArray());
 
                 // Chart 2: Transactions by stage
                 var stageGroups = sales
                     .GroupBy(r => string.IsNullOrWhiteSpace(r.Stage) ? "Unknown" : r.Stage)
-                    .Select(g => new { Stage = g.Key, Count = g.Count() })
+                    .Select(g => new { Stage = g.Key, Count = (double)g.Count() })
                     .OrderByDescending(x => x.Count)
                     .ToList();
 
-                var stageColors = new[] { Theme.StatusSuccess, Theme.Primary, Theme.StatusPending, Theme.PrimaryDark, Theme.StatusAlert, Theme.StatusNeutral };
-                var bars2 = new List<ScottPlot.Bar>();
-                var ticks2 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < stageGroups.Count; i++)
-                {
-                    bars2.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = stageGroups[i].Count,
-                        FillColor = ScottPlot.Color.FromColor(stageColors[i % stageColors.Length]),
-                        LineWidth = 1
-                    });
-                    ticks2.Add(new ScottPlot.Tick(i, stageGroups[i].Stage));
-                }
-                plotReport2.Plot.Add.Bars(bars2);
-                plotReport2.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks2.ToArray());
-                plotReport2.Plot.Axes.Bottom.TickLabelStyle.Rotation = -25;
-                plotReport2.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-                plotReport2.Plot.Axes.Bottom.MinimumSize = 65;
-                plotReport2.Plot.Axes.Left.MinimumSize = 45;
-                plotReport2.Plot.Axes.Margins(bottom: 0, left: 0.05);
-                plotReport2.Refresh();
+                var stageColors = new[] { BiDisplayConstants.StatusWon, BiDisplayConstants.PrimaryAccent, BiDisplayConstants.StatusPending, BiDisplayConstants.SkyAccent, BiDisplayConstants.StatusLost, BiDisplayConstants.StatusNeutral };
+                BiDisplayConstants.RenderBarPlot(plotReport2,
+                    stageGroups.Select(x => x.Stage).ToArray(),
+                    stageGroups.Select(x => x.Count).ToArray(),
+                    stageGroups.Select((_, idx) => stageColors[idx % stageColors.Length]).ToArray());
             }
             else if (rptType.Contains("Commission") && data is List<CommissionReportRow> comms)
             {
@@ -471,8 +591,8 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
                 if (comms.Count == 0)
                 {
-                    ShowPlotEmpty(plotReport1, "No commissions in selected period");
-                    ShowPlotEmpty(plotReport2, "No commissions in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport1, "No commissions in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport2, "No commissions in selected period");
                     return;
                 }
 
@@ -484,27 +604,10 @@ namespace CRMS_Peguit.winforms.Views.Reports
                     .Take(7)
                     .ToList();
 
-                var bars1 = new List<ScottPlot.Bar>();
-                var ticks1 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < agentComms.Count; i++)
-                {
-                    bars1.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = agentComms[i].TotalK,
-                        FillColor = ScottPlot.Color.FromColor(Theme.StatusSuccess),
-                        LineWidth = 1
-                    });
-                    ticks1.Add(new ScottPlot.Tick(i, agentComms[i].Name));
-                }
-                plotReport1.Plot.Add.Bars(bars1);
-                plotReport1.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks1.ToArray());
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Rotation = -25;
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-                plotReport1.Plot.Axes.Bottom.MinimumSize = 65;
-                plotReport1.Plot.Axes.Left.MinimumSize = 45;
-                plotReport1.Plot.Axes.Margins(bottom: 0, left: 0.05);
-                plotReport1.Refresh();
+                BiDisplayConstants.RenderBarPlot(plotReport1,
+                    agentComms.Select(x => x.Name).ToArray(),
+                    agentComms.Select(x => x.TotalK).ToArray(),
+                    agentComms.Select(_ => BiDisplayConstants.StatusWon).ToArray());
 
                 // Chart 2: Payout vs Brokerage Split (Admin) OR Agent Commission Share (Manager)
                 if (RbacService.CanViewBrokerageMargins)
@@ -512,39 +615,18 @@ namespace CRMS_Peguit.winforms.Views.Reports
                     double totalPayoutK = (double)(comms.Sum(c => c.AgentPayoutAmount) / 1_000m);
                     double totalBrokerageK = (double)(comms.Sum(c => c.BrokerageRetainedAmount) / 1_000m);
 
-                    var slices = new List<ScottPlot.PieSlice>
+                    var slices = new (string Label, double Value, Color Color)[]
                     {
-                        new ScottPlot.PieSlice { Value = Math.Max(0.01, totalPayoutK), FillColor = ScottPlot.Color.FromColor(Theme.StatusSuccess), Label = $"Agent Payouts ({totalPayoutK:N0}k)" },
-                        new ScottPlot.PieSlice { Value = Math.Max(0.01, totalBrokerageK), FillColor = ScottPlot.Color.FromColor(Theme.Primary), Label = $"Brokerage Net ({totalBrokerageK:N0}k)" }
+                        ($"Agent Payouts ({totalPayoutK:N0}k)", Math.Max(0.01, totalPayoutK), BiDisplayConstants.StatusWon),
+                        ($"Brokerage Net ({totalBrokerageK:N0}k)", Math.Max(0.01, totalBrokerageK), BiDisplayConstants.PrimaryAccent)
                     };
-                    var pie = plotReport2.Plot.Add.Pie(slices);
-                    pie.DonutFraction = 0.5;
-                    pie.SliceLabelDistance = 1.35;
-                    plotReport2.Plot.Axes.Frameless();
-                    plotReport2.Plot.HideGrid();
-                    plotReport2.Plot.Axes.SetLimits(-1.45, 1.45, -1.45, 1.45);
-                    plotReport2.Refresh();
+                    BiDisplayConstants.RenderDonutPlot(plotReport2, slices);
                 }
                 else
                 {
-                    var palette = new[] { Theme.Primary, Theme.StatusSuccess, Theme.StatusPending, Theme.PrimaryDark, Theme.StatusAlert };
-                    var slices = new List<ScottPlot.PieSlice>();
-                    for (int i = 0; i < agentComms.Count; i++)
-                    {
-                        slices.Add(new ScottPlot.PieSlice
-                        {
-                            Value = Math.Max(0.01, agentComms[i].TotalK),
-                            FillColor = ScottPlot.Color.FromColor(palette[i % palette.Length]),
-                            Label = $"{agentComms[i].Name} ({agentComms[i].TotalK:N0}k)"
-                        });
-                    }
-                    var pie = plotReport2.Plot.Add.Pie(slices);
-                    pie.DonutFraction = 0.5;
-                    pie.SliceLabelDistance = 1.35;
-                    plotReport2.Plot.Axes.Frameless();
-                    plotReport2.Plot.HideGrid();
-                    plotReport2.Plot.Axes.SetLimits(-1.45, 1.45, -1.45, 1.45);
-                    plotReport2.Refresh();
+                    var palette = new[] { BiDisplayConstants.PrimaryAccent, BiDisplayConstants.StatusWon, BiDisplayConstants.StatusPending, BiDisplayConstants.SkyAccent, BiDisplayConstants.HighlightAccent };
+                    var slices = agentComms.Select((x, idx) => (x.Name, Math.Max(0.01, x.TotalK), palette[idx % palette.Length])).ToList();
+                    BiDisplayConstants.RenderDonutPlot(plotReport2, slices);
                 }
             }
             else if (rptType.Contains("Property") && data is List<PropertyInventoryReportRow> props)
@@ -554,58 +636,28 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
                 if (props.Count == 0)
                 {
-                    ShowPlotEmpty(plotReport1, "No properties in selected period");
-                    ShowPlotEmpty(plotReport2, "No properties in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport1, "No properties in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport2, "No properties in selected period");
                     return;
                 }
 
                 // Chart 1: Inventory by Property Type
                 var typeGroups = props
                     .GroupBy(p => string.IsNullOrWhiteSpace(p.PropertyType) ? "General" : p.PropertyType)
-                    .Select(g => new { Type = g.Key, Count = g.Count(), AvgDom = g.Average(p => p.DaysOnMarket) })
+                    .Select(g => new { Type = g.Key, Count = (double)g.Count(), AvgDom = g.Average(p => p.DaysOnMarket) })
                     .OrderByDescending(x => x.Count)
                     .ToList();
 
-                var bars1 = new List<ScottPlot.Bar>();
-                var ticks1 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < typeGroups.Count; i++)
-                {
-                    bars1.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = typeGroups[i].Count,
-                        FillColor = ScottPlot.Color.FromColor(Theme.Primary),
-                        LineWidth = 1
-                    });
-                    ticks1.Add(new ScottPlot.Tick(i, typeGroups[i].Type));
-                }
-                plotReport1.Plot.Add.Bars(bars1);
-                plotReport1.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks1.ToArray());
-                plotReport1.Plot.Axes.Bottom.MinimumSize = 50;
-                plotReport1.Plot.Axes.Left.MinimumSize = 45;
-                plotReport1.Plot.Axes.Margins(bottom: 0);
-                plotReport1.Refresh();
+                BiDisplayConstants.RenderBarPlot(plotReport1,
+                    typeGroups.Select(x => x.Type).ToArray(),
+                    typeGroups.Select(x => x.Count).ToArray(),
+                    typeGroups.Select(_ => BiDisplayConstants.PrimaryAccent).ToArray());
 
                 // Chart 2: Average Days on Market
-                var bars2 = new List<ScottPlot.Bar>();
-                var ticks2 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < typeGroups.Count; i++)
-                {
-                    bars2.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = Math.Round(typeGroups[i].AvgDom, 1),
-                        FillColor = ScottPlot.Color.FromColor(Theme.StatusPending),
-                        LineWidth = 1
-                    });
-                    ticks2.Add(new ScottPlot.Tick(i, typeGroups[i].Type));
-                }
-                plotReport2.Plot.Add.Bars(bars2);
-                plotReport2.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks2.ToArray());
-                plotReport2.Plot.Axes.Bottom.MinimumSize = 50;
-                plotReport2.Plot.Axes.Left.MinimumSize = 45;
-                plotReport2.Plot.Axes.Margins(bottom: 0);
-                plotReport2.Refresh();
+                BiDisplayConstants.RenderBarPlot(plotReport2,
+                    typeGroups.Select(x => x.Type).ToArray(),
+                    typeGroups.Select(x => Math.Round(x.AvgDom, 1)).ToArray(),
+                    typeGroups.Select(_ => BiDisplayConstants.StatusPending).ToArray());
             }
             else if (rptType.Contains("Lead") && data is List<LeadProgressRow> leads)
             {
@@ -614,69 +666,36 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
                 if (leads.Count == 0)
                 {
-                    ShowPlotEmpty(plotReport1, "No leads in selected period");
-                    ShowPlotEmpty(plotReport2, "No leads in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport1, "No leads in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport2, "No leads in selected period");
                     return;
                 }
 
                 // Chart 1: Source
                 var sources = leads
                     .GroupBy(r => string.IsNullOrWhiteSpace(r.Source) ? "Unknown" : r.Source)
-                    .Select(g => new { Source = g.Key, Count = g.Count() })
+                    .Select(g => new { Source = g.Key, Count = (double)g.Count() })
                     .OrderByDescending(x => x.Count)
                     .Take(7)
                     .ToList();
 
-                var bars1 = new List<ScottPlot.Bar>();
-                var ticks1 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < sources.Count; i++)
-                {
-                    bars1.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = sources[i].Count,
-                        FillColor = ScottPlot.Color.FromColor(Theme.PrimaryLight),
-                        LineColor = ScottPlot.Color.FromColor(Theme.Primary),
-                        LineWidth = 1
-                    });
-                    ticks1.Add(new ScottPlot.Tick(i, sources[i].Source));
-                }
-                plotReport1.Plot.Add.Bars(bars1);
-                plotReport1.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks1.ToArray());
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Rotation = -25;
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-                plotReport1.Plot.Axes.Bottom.MinimumSize = 65;
-                plotReport1.Plot.Axes.Left.MinimumSize = 45;
-                plotReport1.Plot.Axes.Margins(bottom: 0, left: 0.05);
-                plotReport1.Refresh();
+                BiDisplayConstants.RenderBarPlot(plotReport1,
+                    sources.Select(x => x.Source).ToArray(),
+                    sources.Select(x => x.Count).ToArray(),
+                    sources.Select(_ => BiDisplayConstants.PrimaryAccent).ToArray());
 
                 // Chart 2: Pipeline Stages
                 var stages = leads
                     .GroupBy(r => string.IsNullOrWhiteSpace(r.Stage) ? "Unknown" : r.Stage)
-                    .Select(g => new { Stage = g.Key, Count = g.Count() })
+                    .Select(g => new { Stage = g.Key, Count = (double)g.Count() })
                     .OrderByDescending(x => x.Count)
                     .ToList();
 
-                var stageColors = new[] { Theme.StatusNeutral, Theme.StatusPending, Theme.Primary, Theme.StatusSuccess, Theme.StatusAlert };
-                var bars2 = new List<ScottPlot.Bar>();
-                var ticks2 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < stages.Count; i++)
-                {
-                    bars2.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = stages[i].Count,
-                        FillColor = ScottPlot.Color.FromColor(stageColors[i % stageColors.Length]),
-                        LineWidth = 1
-                    });
-                    ticks2.Add(new ScottPlot.Tick(i, stages[i].Stage));
-                }
-                plotReport2.Plot.Add.Bars(bars2);
-                plotReport2.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks2.ToArray());
-                plotReport2.Plot.Axes.Bottom.MinimumSize = 65;
-                plotReport2.Plot.Axes.Left.MinimumSize = 45;
-                plotReport2.Plot.Axes.Margins(bottom: 0, left: 0.05);
-                plotReport2.Refresh();
+                var stageColors = new[] { BiDisplayConstants.StatusNeutral, BiDisplayConstants.StatusPending, BiDisplayConstants.PrimaryAccent, BiDisplayConstants.StatusWon, BiDisplayConstants.StatusLost };
+                BiDisplayConstants.RenderBarPlot(plotReport2,
+                    stages.Select(x => x.Stage).ToArray(),
+                    stages.Select(x => x.Count).ToArray(),
+                    stages.Select((_, idx) => stageColors[idx % stageColors.Length]).ToArray());
             }
             else if (rptType.Contains("Ticket") && data is List<TicketResolutionRow> tickets)
             {
@@ -685,55 +704,41 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
                 if (tickets.Count == 0)
                 {
-                    ShowPlotEmpty(plotReport1, "No tickets in selected period");
-                    ShowPlotEmpty(plotReport2, "No tickets in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport1, "No tickets in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport2, "No tickets in selected period");
                     return;
                 }
 
                 // Chart 1: Priority
                 var priorities = tickets
                     .GroupBy(r => string.IsNullOrWhiteSpace(r.Priority) ? "Normal" : r.Priority)
-                    .Select(g => new { Priority = g.Key, Count = g.Count() })
+                    .Select(g => new { Priority = g.Key, Count = (double)g.Count() })
                     .OrderByDescending(x => x.Count)
                     .ToList();
 
-                var bars1 = new List<ScottPlot.Bar>();
-                var ticks1 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < priorities.Count; i++)
+                var prioColors = priorities.Select(p => p.Priority.ToLowerInvariant() switch
                 {
-                    bars1.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = priorities[i].Count,
-                        FillColor = ScottPlot.Color.FromColor(Theme.StatusAlert),
-                        LineWidth = 1
-                    });
-                    ticks1.Add(new ScottPlot.Tick(i, priorities[i].Priority));
-                }
-                plotReport1.Plot.Add.Bars(bars1);
-                plotReport1.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks1.ToArray());
-                plotReport1.Plot.Axes.Bottom.MinimumSize = 50;
-                plotReport1.Plot.Axes.Left.MinimumSize = 45;
-                plotReport1.Plot.Axes.Margins(bottom: 0);
-                plotReport1.Refresh();
+                    "urgent" or "critical" or "high" => BiDisplayConstants.StatusLost,
+                    "medium" or "normal" => BiDisplayConstants.StatusPending,
+                    _ => BiDisplayConstants.StatusNeutral
+                }).ToArray();
 
-                // Chart 2: SLA Met vs Missed
+                BiDisplayConstants.RenderBarPlot(plotReport1,
+                    priorities.Select(x => x.Priority).ToArray(),
+                    priorities.Select(x => x.Count).ToArray(),
+                    prioColors);
+
+                // Chart 2: SLA Met vs Missed (Donut)
                 int met = tickets.Count(t => t.SlaMet == "Yes");
                 int missed = tickets.Count(t => t.SlaMet == "No");
                 int pending = tickets.Count(t => t.SlaMet != "Yes" && t.SlaMet != "No");
 
-                var slices = new List<ScottPlot.PieSlice>();
-                if (met > 0) slices.Add(new ScottPlot.PieSlice { Value = met, FillColor = ScottPlot.Color.FromColor(Theme.StatusSuccess), Label = $"Met SLA ({met})" });
-                if (missed > 0) slices.Add(new ScottPlot.PieSlice { Value = missed, FillColor = ScottPlot.Color.FromColor(Theme.StatusAlert), Label = $"Breached ({missed})" });
-                if (pending > 0) slices.Add(new ScottPlot.PieSlice { Value = pending, FillColor = ScottPlot.Color.FromColor(Theme.StatusNeutral), Label = $"In Progress ({pending})" });
+                var slices = new List<(string Label, double Value, Color Color)>();
+                if (met > 0) slices.Add(($"Met SLA ({met})", (double)met, BiDisplayConstants.StatusWon));
+                if (missed > 0) slices.Add(($"Breached ({missed})", (double)missed, BiDisplayConstants.StatusLost));
+                if (pending > 0) slices.Add(($"In Progress ({pending})", (double)pending, BiDisplayConstants.StatusNeutral));
 
-                var pie = plotReport2.Plot.Add.Pie(slices);
-                pie.DonutFraction = 0.5;
-                pie.SliceLabelDistance = 1.35;
-                plotReport2.Plot.Axes.Frameless();
-                plotReport2.Plot.HideGrid();
-                plotReport2.Plot.Axes.SetLimits(-1.45, 1.45, -1.45, 1.45);
-                plotReport2.Refresh();
+                BiDisplayConstants.RenderDonutPlot(plotReport2, slices);
             }
             else if (rptType.Contains("Agent") && data is List<AgentActivityRow> acts)
             {
@@ -742,34 +747,17 @@ namespace CRMS_Peguit.winforms.Views.Reports
 
                 if (acts.Count == 0)
                 {
-                    ShowPlotEmpty(plotReport1, "No activities recorded in selected period");
-                    ShowPlotEmpty(plotReport2, "No deals recorded in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport1, "No activities recorded in selected period");
+                    BiDisplayConstants.ShowPlotEmpty(plotReport2, "No deals recorded in selected period");
                     return;
                 }
 
                 // Chart 1: Sales volume by agent
                 var topVol = acts.OrderByDescending(a => a.TotalSalesVolume).Take(7).ToList();
-                var bars1 = new List<ScottPlot.Bar>();
-                var ticks1 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < topVol.Count; i++)
-                {
-                    bars1.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = (double)(topVol[i].TotalSalesVolume / 1_000_000m),
-                        FillColor = ScottPlot.Color.FromColor(Theme.Primary),
-                        LineWidth = 1
-                    });
-                    ticks1.Add(new ScottPlot.Tick(i, topVol[i].AgentName));
-                }
-                plotReport1.Plot.Add.Bars(bars1);
-                plotReport1.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks1.ToArray());
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Rotation = -25;
-                plotReport1.Plot.Axes.Bottom.TickLabelStyle.Alignment = ScottPlot.Alignment.MiddleRight;
-                plotReport1.Plot.Axes.Bottom.MinimumSize = 65;
-                plotReport1.Plot.Axes.Left.MinimumSize = 45;
-                plotReport1.Plot.Axes.Margins(bottom: 0, left: 0.05);
-                plotReport1.Refresh();
+                BiDisplayConstants.RenderBarPlot(plotReport1,
+                    topVol.Select(x => x.AgentName).ToArray(),
+                    topVol.Select(x => (double)(x.TotalSalesVolume / 1_000_000m)).ToArray(),
+                    topVol.Select(_ => BiDisplayConstants.PrimaryAccent).ToArray());
 
                 // Chart 2: Operations breakdown
                 int totalLeads = acts.Sum(a => a.ActiveLeads);
@@ -777,39 +765,28 @@ namespace CRMS_Peguit.winforms.Views.Reports
                 int totalFollowUps = acts.Sum(a => a.FollowUpsCompleted);
                 int totalTickets = acts.Sum(a => a.TicketsResolved);
 
-                var labels = new[] { "Leads", "Deals", "Follow-Ups", "Tickets" };
-                var vals = new[] { totalLeads, totalDeals, totalFollowUps, totalTickets };
-                var colors = new[] { Theme.Primary, Theme.StatusSuccess, Theme.StatusPending, Theme.PrimaryDark };
+                List<string> labels = new();
+                List<double> vals = new();
+                List<Color> colors = new();
 
-                var bars2 = new List<ScottPlot.Bar>();
-                var ticks2 = new List<ScottPlot.Tick>();
-                for (int i = 0; i < labels.Length; i++)
+                labels.Add("Leads"); vals.Add(totalLeads); colors.Add(BiDisplayConstants.PrimaryAccent);
+                labels.Add("Deals"); vals.Add(totalDeals); colors.Add(BiDisplayConstants.StatusWon);
+
+                // Strictly enforce Manager RBAC boundary: NO individual Agent Follow-Ups visibility
+                if (!RbacService.IsManager)
                 {
-                    bars2.Add(new ScottPlot.Bar
-                    {
-                        Position = i,
-                        Value = vals[i],
-                        FillColor = ScottPlot.Color.FromColor(colors[i]),
-                        LineWidth = 1
-                    });
-                    ticks2.Add(new ScottPlot.Tick(i, labels[i]));
+                    labels.Add("Follow-Ups"); vals.Add(totalFollowUps); colors.Add(BiDisplayConstants.StatusPending);
                 }
-                plotReport2.Plot.Add.Bars(bars2);
-                plotReport2.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(ticks2.ToArray());
-                plotReport2.Plot.Axes.Margins(bottom: 0);
-                plotReport2.Refresh();
+
+                labels.Add("Tickets"); vals.Add(totalTickets); colors.Add(BiDisplayConstants.SkyAccent);
+
+                BiDisplayConstants.RenderBarPlot(plotReport2, labels.ToArray(), vals.ToArray(), colors.ToArray());
             }
         }
 
         private void ShowPlotEmpty(ScottPlot.WinForms.FormsPlot plot, string message)
         {
-            plot.Plot.Clear();
-            var txt = plot.Plot.Add.Text(message, 0, 0);
-            txt.LabelAlignment = ScottPlot.Alignment.MiddleCenter;
-            txt.LabelFontColor = ScottPlot.Color.FromColor(Theme.TextSecondary);
-            plot.Plot.Axes.Frameless();
-            plot.Plot.HideGrid();
-            plot.Refresh();
+            BiDisplayConstants.ShowPlotEmpty(plot, message);
         }
 
         private DateRangeFilter GetDateRange()
@@ -839,6 +816,12 @@ namespace CRMS_Peguit.winforms.Views.Reports
             if (!RbacService.CanViewBrokerageMargins && gridData.Columns.Contains("BrokerageRetainedAmount") && gridData.Columns["BrokerageRetainedAmount"] != null)
             {
                 gridData.Columns["BrokerageRetainedAmount"]!.Visible = false;
+            }
+
+            // Strictly hide Agent Follow-Ups from Managers (personal snapshot only)
+            if (RbacService.IsManager && gridData.Columns.Contains("FollowUpsCompleted") && gridData.Columns["FollowUpsCompleted"] != null)
+            {
+                gridData.Columns["FollowUpsCompleted"]!.Visible = false;
             }
 
             foreach (DataGridViewColumn col in gridData.Columns)

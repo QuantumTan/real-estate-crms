@@ -44,6 +44,12 @@ namespace CRMS_Peguit.winforms.Views.Reports
             this.btnViewCharts = new System.Windows.Forms.Button();
             this.btnViewTable = new System.Windows.Forms.Button();
 
+            this.pnlKpiContainer = new System.Windows.Forms.TableLayoutPanel();
+            this.kpi1 = new CRMS_Peguit.winforms.Controls.KpiCard();
+            this.kpi2 = new CRMS_Peguit.winforms.Controls.KpiCard();
+            this.kpi3 = new CRMS_Peguit.winforms.Controls.KpiCard();
+            this.kpi4 = new CRMS_Peguit.winforms.Controls.KpiCard();
+
             this.pnlCharts = new System.Windows.Forms.Panel();
             this.pnlChartCard1 = new System.Windows.Forms.Panel();
             this.lblChart1Title = new System.Windows.Forms.Label();
@@ -82,18 +88,18 @@ namespace CRMS_Peguit.winforms.Views.Reports
             this.pnlTop.Location = new System.Drawing.Point(0, 0);
             this.pnlTop.Name = "pnlTop";
             this.pnlTop.Padding = new System.Windows.Forms.Padding(20, 14, 20, 14);
-            this.pnlTop.Size = new System.Drawing.Size(1100, 72);
+            this.pnlTop.Size = new System.Drawing.Size(1100, 80);
             this.pnlTop.TabIndex = 0;
 
             // 
             // lblTitle
             // 
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
+            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
+            this.lblTitle.ForeColor = CRMS_Peguit.winforms.Models.Services.Theme.TextPrimary;
             this.lblTitle.Location = new System.Drawing.Point(20, 12);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(205, 30);
+            this.lblTitle.Size = new System.Drawing.Size(240, 32);
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "Analytics & Reports";
 
@@ -101,11 +107,11 @@ namespace CRMS_Peguit.winforms.Views.Reports
             // lblSubtitle
             // 
             this.lblSubtitle.AutoSize = true;
-            this.lblSubtitle.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblSubtitle.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblSubtitle.Location = new System.Drawing.Point(22, 44);
+            this.lblSubtitle.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.lblSubtitle.ForeColor = CRMS_Peguit.winforms.Models.Services.Theme.TextSecondary;
+            this.lblSubtitle.Location = new System.Drawing.Point(22, 48);
             this.lblSubtitle.Name = "lblSubtitle";
-            this.lblSubtitle.Size = new System.Drawing.Size(380, 15);
+            this.lblSubtitle.Size = new System.Drawing.Size(420, 17);
             this.lblSubtitle.TabIndex = 1;
             this.lblSubtitle.Text = "Interactive data graphs, detailed tabular audits, and PDF/CSV export engine";
 
@@ -522,6 +528,56 @@ namespace CRMS_Peguit.winforms.Views.Reports
             this.lblAccessDenied.Visible = false;
 
             // 
+            // pnlKpiContainer
+            // 
+            this.pnlKpiContainer.BackColor = System.Drawing.Color.FromArgb(243, 247, 250);
+            this.pnlKpiContainer.ColumnCount = 4;
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
+            this.pnlKpiContainer.Controls.Add(this.kpi1, 0, 0);
+            this.pnlKpiContainer.Controls.Add(this.kpi2, 1, 0);
+            this.pnlKpiContainer.Controls.Add(this.kpi3, 2, 0);
+            this.pnlKpiContainer.Controls.Add(this.kpi4, 3, 0);
+            this.pnlKpiContainer.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlKpiContainer.Height = 114;
+            this.pnlKpiContainer.Location = new System.Drawing.Point(0, 187);
+            this.pnlKpiContainer.Name = "pnlKpiContainer";
+            this.pnlKpiContainer.Padding = new System.Windows.Forms.Padding(20, 6, 20, 4);
+            this.pnlKpiContainer.RowCount = 1;
+            this.pnlKpiContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.pnlKpiContainer.TabIndex = 5;
+
+            // 
+            // kpi1
+            // 
+            this.kpi1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpi1.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            this.kpi1.Name = "kpi1";
+
+            // 
+            // kpi2
+            // 
+            this.kpi2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpi2.Margin = new System.Windows.Forms.Padding(4, 0, 6, 0);
+            this.kpi2.Name = "kpi2";
+
+            // 
+            // kpi3
+            // 
+            this.kpi3.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpi3.Margin = new System.Windows.Forms.Padding(6, 0, 4, 0);
+            this.kpi3.Name = "kpi3";
+
+            // 
+            // kpi4
+            // 
+            this.kpi4.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kpi4.Margin = new System.Windows.Forms.Padding(8, 0, 0, 0);
+            this.kpi4.Name = "kpi4";
+
+            // 
             // pnlScrollableContent
             // 
             this.pnlScrollableContent.AutoScroll = true;
@@ -529,9 +585,9 @@ namespace CRMS_Peguit.winforms.Views.Reports
             this.pnlScrollableContent.Controls.Add(this.pnlGrid);
             this.pnlScrollableContent.Controls.Add(this.pnlCharts);
             this.pnlScrollableContent.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlScrollableContent.Location = new System.Drawing.Point(0, 187);
+            this.pnlScrollableContent.Location = new System.Drawing.Point(0, 301);
             this.pnlScrollableContent.Name = "pnlScrollableContent";
-            this.pnlScrollableContent.Size = new System.Drawing.Size(1100, 613);
+            this.pnlScrollableContent.Size = new System.Drawing.Size(1100, 499);
             this.pnlScrollableContent.TabIndex = 2;
 
             // 
@@ -541,6 +597,7 @@ namespace CRMS_Peguit.winforms.Views.Reports
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(243, 247, 250);
             this.Controls.Add(this.pnlScrollableContent);
+            this.Controls.Add(this.pnlKpiContainer);
             this.Controls.Add(this.pnlFilters);
             this.Controls.Add(this.pnlTop);
             this.Controls.Add(this.lblAccessDenied);
@@ -604,5 +661,11 @@ namespace CRMS_Peguit.winforms.Views.Reports
         private System.Windows.Forms.DataGridView gridData;
         private System.Windows.Forms.Label lblLoading;
         private System.Windows.Forms.Label lblAccessDenied;
+
+        private System.Windows.Forms.TableLayoutPanel pnlKpiContainer;
+        private CRMS_Peguit.winforms.Controls.KpiCard kpi1;
+        private CRMS_Peguit.winforms.Controls.KpiCard kpi2;
+        private CRMS_Peguit.winforms.Controls.KpiCard kpi3;
+        private CRMS_Peguit.winforms.Controls.KpiCard kpi4;
     }
 }

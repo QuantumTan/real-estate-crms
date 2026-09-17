@@ -71,7 +71,8 @@ namespace CRMS_Peguit.winforms
             _navButtonInfo[btnActivities] = ("📈", "Activities");
             _navButtonInfo[btnFollowUps] = ("⏱", "Follow-Ups");
             _navButtonInfo[btnSupportTickets] = ("🎟", "Support Tickets");
-            _navButtonInfo[btnReports] = ("📊", "Reports");
+            _navButtonInfo[btnAnalytics] = ("📊", "Analytics");
+            _navButtonInfo[btnReports] = ("📋", "Reports & Exports");
             _navButtonInfo[btnApprovals] = ("✓", "Approvals & Review");
             _navButtonInfo[btnManageManagers] = ("🛡", "Manage Managers");
             _navButtonInfo[btnManageAgents] = ("👥", "Manage Agents");
@@ -154,6 +155,7 @@ namespace CRMS_Peguit.winforms
             btnCampaigns.Click += (s, e) => { SetActiveNavButton(btnCampaigns); BtnCampaignsClick(s, e); };
             btnActivities.Click += (s, e) => { SetActiveNavButton(btnActivities); BtnActivitiesClick(s, e); };
             btnFollowUps.Click += (s, e) => { SetActiveNavButton(btnFollowUps); BtnFollowUpsClick(s, e); };
+            btnAnalytics.Click += (s, e) => { SetActiveNavButton(btnAnalytics); BtnAnalyticsClick(s, e); };
             btnReports.Click += (s, e) => { SetActiveNavButton(btnReports); BtnReportsClick(s, e); };
             btnApprovals.Click += (s, e) => { SetActiveNavButton(btnApprovals); BtnApprovalsClick(s, e); };
             btnSupportTickets.Click += (s, e) => { SetActiveNavButton(btnSupportTickets); BtnSupportTicketsClick(s, e); };
@@ -270,7 +272,7 @@ namespace CRMS_Peguit.winforms
                 pnlUserContainer.Visible = true;
                 lblSalesSection.Visible = true;
                 lblSupportSection.Visible = true;
-                lblInsightsSection.Visible = true;
+                lblInsightsSection.Visible = btnAnalytics.Visible || btnReports.Visible;
                 lblAdminSection.Visible = btnManageManagers.Visible || btnManageAgents.Visible || btnApprovals.Visible;
                 foreach (var btn in _navButtons)
                 {
@@ -631,22 +633,24 @@ namespace CRMS_Peguit.winforms
             btnCampaigns.Visible = CurrentSession.CanAccess("Campaigns");
             btnActivities.Visible = CurrentSession.CanAccess("Activities");
             btnFollowUps.Visible = CurrentSession.CanAccess("TasksReminders") && RbacService.IsAgent;
-            btnReports.Visible = CurrentSession.CanAccess("Reports") || CurrentSession.CanAccess("Analytics");
+            btnAnalytics.Visible = CurrentSession.CanAccess("Analytics") || CurrentSession.CanAccess("Reports");
             if (RbacService.IsAgent)
             {
-                _navButtonInfo[btnReports] = ("📊", "My Performance");
-                btnReports.Text = "  📊  My Performance";
-            }
-            else if (RbacService.IsManager)
-            {
-                _navButtonInfo[btnReports] = ("📊", "Analytics");
-                btnReports.Text = "  📊  Analytics";
+                _navButtonInfo[btnAnalytics] = ("📊", "My Performance");
+                btnAnalytics.Text = "  📊  My Performance";
             }
             else
             {
-                _navButtonInfo[btnReports] = ("📊", "Reports");
-                btnReports.Text = "  📊  Reports";
+                _navButtonInfo[btnAnalytics] = ("📊", "Analytics");
+                btnAnalytics.Text = "  📊  Analytics";
             }
+
+            // Reports & Exports: restricted to Admin and Manager only
+            btnReports.Visible = CurrentSession.CanAccess("Reports") && !RbacService.IsAgent;
+            _navButtonInfo[btnReports] = ("📋", "Reports & Exports");
+            btnReports.Text = "  📋  Reports & Exports";
+
+            lblInsightsSection.Visible = btnAnalytics.Visible || btnReports.Visible;
             btnSupportTickets.Visible = CurrentSession.CanAccess("SupportTickets");
 
             Text = $"NEXA CRM SYSTEM — {user.FullName} ({roleDisplay})";
@@ -755,7 +759,7 @@ namespace CRMS_Peguit.winforms
                     BtnFollowUpsClick(btnFollowUps, EventArgs.Empty);
                     break;
                 case "reports":
-                    if (!CurrentSession.CanAccess("Reports")) return;
+                    if (!CurrentSession.CanAccess("Reports") || RbacService.IsAgent) return;
                     SetActiveNavButton(btnReports);
                     ShowViewCached("Reports", () =>
                     {
@@ -769,7 +773,7 @@ namespace CRMS_Peguit.winforms
                 case "performance":
                 case "insights":
                     if (!CurrentSession.CanAccess("Analytics") && !CurrentSession.CanAccess("Reports")) return;
-                    SetActiveNavButton(btnReports);
+                    SetActiveNavButton(btnAnalytics);
                     ShowViewCached("Analytics", () =>
                     {
                         var ana = new CRMS_Peguit.winforms.Views.Analytics.AnalyticsView();
@@ -850,28 +854,28 @@ namespace CRMS_Peguit.winforms
             ShowViewCached("FollowUps", () => new FollowUpsView());
         }
 
+        private void BtnAnalyticsClick(object? sender, EventArgs e)
+        {
+            if (!CurrentSession.CanAccess("Analytics") && !CurrentSession.CanAccess("Reports")) return;
+
+            ShowViewCached("Analytics", () =>
+            {
+                var ana = new CRMS_Peguit.winforms.Views.Analytics.AnalyticsView();
+                ana.NavigationRequested += m => NavigateTo(m);
+                return ana;
+            });
+        }
+
         private void BtnReportsClick(object? sender, EventArgs e)
         {
-            if (!CurrentSession.CanAccess("Reports") && !CurrentSession.CanAccess("Analytics")) return;
+            if (!CurrentSession.CanAccess("Reports") || RbacService.IsAgent) return;
 
-            if (RbacService.IsAdmin || RbacService.IsSuperAdmin)
+            ShowViewCached("Reports", () =>
             {
-                ShowViewCached("Reports", () =>
-                {
-                    var rpt = new CRMS_Peguit.winforms.Views.Reports.ReportsView();
-                    rpt.NavigationRequested += m => NavigateTo(m);
-                    return rpt;
-                });
-            }
-            else
-            {
-                ShowViewCached("Analytics", () =>
-                {
-                    var ana = new CRMS_Peguit.winforms.Views.Analytics.AnalyticsView();
-                    ana.NavigationRequested += m => NavigateTo(m);
-                    return ana;
-                });
-            }
+                var rpt = new CRMS_Peguit.winforms.Views.Reports.ReportsView();
+                rpt.NavigationRequested += m => NavigateTo(m);
+                return rpt;
+            });
         }
 
         private void BtnSupportTicketsClick(object? sender, EventArgs e)
