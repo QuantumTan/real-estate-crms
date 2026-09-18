@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -48,14 +49,22 @@ namespace CRMS_Peguit.domain.entities
             set => IsSatisfied = string.Equals(value, "Satisfied", StringComparison.OrdinalIgnoreCase);
         }
 
+        [JsonIgnore]
         public virtual Deal? Deal { get; set; }
+
+        private static readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            ReferenceHandler = ReferenceHandler.IgnoreCycles,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
 
         public static List<DealContingency> DeserializeList(string? json)
         {
             if (string.IsNullOrWhiteSpace(json)) return new List<DealContingency>();
             try
             {
-                return JsonSerializer.Deserialize<List<DealContingency>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<DealContingency>();
+                return JsonSerializer.Deserialize<List<DealContingency>>(json, _jsonOptions) ?? new List<DealContingency>();
             }
             catch
             {
@@ -65,7 +74,9 @@ namespace CRMS_Peguit.domain.entities
 
         public static string SerializeList(IEnumerable<DealContingency> list)
         {
-            return JsonSerializer.Serialize(list);
+            if (list == null) return "[]";
+            return JsonSerializer.Serialize(list, _jsonOptions);
         }
     }
 }
+

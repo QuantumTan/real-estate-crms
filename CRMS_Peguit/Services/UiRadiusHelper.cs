@@ -157,7 +157,8 @@ namespace CRMS_Peguit.winforms.Models.Services
                     e.Graphics.FillRectangle(bgBrush, label.ClientRectangle);
                 }
 
-                int size = Math.Min(label.Width, label.Height) - 2;
+                // Keep 4px padding so circle stroke is never clipped at outer bounds
+                int size = Math.Max(10, Math.Min(label.Width, label.Height) - 4);
                 int x = (label.Width - size) / 2;
                 int y = (label.Height - size) / 2;
 
@@ -183,6 +184,33 @@ namespace CRMS_Peguit.winforms.Models.Services
                 }
             };
             label.Invalidate();
+        }
+
+        /// <summary>
+        /// Standardizes filter pill buttons: 32px height, 16px horizontal padding,
+        /// pill shape, and unified active/inactive brush states.
+        /// </summary>
+        public static void StyleFilterPill(Button btn, bool isSelected)
+        {
+            if (btn is null) return;
+            btn.Height = 32;
+            btn.Padding = new Padding(16, 0, 16, 0);
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Cursor = Cursors.Hand;
+            if (isSelected)
+            {
+                btn.BackColor = Theme.Primary;
+                btn.ForeColor = Color.White;
+                btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            }
+            else
+            {
+                btn.BackColor = Color.FromArgb(241, 245, 249);
+                btn.ForeColor = Color.FromArgb(71, 85, 105);
+                btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
+            }
+            ApplyPillShape(btn);
         }
 
         public static void MakeStatusDot(Label label, Color? dotColor = null)

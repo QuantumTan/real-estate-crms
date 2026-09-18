@@ -80,7 +80,7 @@ namespace CRMS_Peguit.winforms.Views.Activities
             grid.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "Notes",
-                HeaderText = "DETAILS & NOTES",
+                HeaderText = "DETAILS / NOTES",
                 Width = 260,
                 MinimumWidth = 180,
                 FillWeight = 30,
@@ -107,7 +107,7 @@ namespace CRMS_Peguit.winforms.Views.Activities
                 ReadOnly = true
             });
 
-            UiGridHelper.ApplyModernGridStyle(grid, 48);
+            UiGridHelper.ApplyModernGridStyle(grid, 52);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         }
 
@@ -243,9 +243,7 @@ namespace CRMS_Peguit.winforms.Views.Activities
             foreach (var (btn, key) in mapping)
             {
                 bool active = string.Equals(_filterCategory, key, StringComparison.OrdinalIgnoreCase);
-                btn.BackColor = active ? Theme.Primary : Color.FromArgb(241, 245, 249);
-                btn.ForeColor = active ? Color.White : Color.FromArgb(71, 85, 105);
-                btn.Font = new Font("Segoe UI", 9f, active ? FontStyle.Bold : FontStyle.Regular);
+                UiRadiusHelper.StyleFilterPill(btn, active);
             }
         }
 
@@ -373,7 +371,7 @@ namespace CRMS_Peguit.winforms.Views.Activities
         {
             if (e.RowIndex < 0 || e.Graphics == null) return;
 
-            // Render type column with icons and badges
+            // Render type column with crisp, portable emoji glyphs and clean text
             if (grid.Columns[e.ColumnIndex].Name == "Type" && e.Value != null)
             {
                 e.Handled = true;
@@ -385,15 +383,32 @@ namespace CRMS_Peguit.winforms.Views.Activities
                     "Call" => "📞",
                     "Email" => "✉️",
                     "Meeting" => "📅",
-                    _ => "⚙️"
+                    "Lead Created" => "👤",
+                    "Lead Updated" => "✏️",
+                    "Deal Created" => "💼",
+                    "Follow-Up Scheduled" => "⏱",
+                    "Status Change" => "🔄",
+                    _ => "📋"
                 };
 
-                string display = $"{icon} {type}";
-                using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                using var brush = new SolidBrush(Color.FromArgb(15, 23, 42));
+                using var iconFont = new Font("Segoe UI Emoji", 9.5f);
+                using var textFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+                using var iconBrush = new SolidBrush(Color.FromArgb(71, 85, 105));
+                using var textBrush = new SolidBrush(Color.FromArgb(15, 23, 42));
+
+                int startX = e.CellBounds.X + 12;
+                var iconSize = TextRenderer.MeasureText(e.Graphics, icon, iconFont);
+                var iconRect = new Rectangle(startX, e.CellBounds.Y, iconSize.Width, e.CellBounds.Height);
                 var sf = new StringFormat { LineAlignment = StringAlignment.Center, Alignment = StringAlignment.Near };
-                var textRect = new Rectangle(e.CellBounds.X + 8, e.CellBounds.Y, e.CellBounds.Width - 16, e.CellBounds.Height);
-                e.Graphics.DrawString(display, font, brush, textRect, sf);
+                e.Graphics.DrawString(icon, iconFont, iconBrush, iconRect, sf);
+
+                var textRect = new Rectangle(startX + iconSize.Width + 6, e.CellBounds.Y, e.CellBounds.Width - (iconSize.Width + 18), e.CellBounds.Height);
+                e.Graphics.DrawString(type, textFont, textBrush, textRect, sf);
+
+                using (var pen = new Pen(UiGridHelper.GridBorder, 1f))
+                {
+                    e.Graphics.DrawLine(pen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                }
             }
         }
     }

@@ -49,14 +49,14 @@ namespace CRMS_Peguit.winforms.Models.Services
         }
 
         /// <summary>
-        /// Adds a child control to a card panel docked to Top and calls SendToBack()
+        /// Adds a child control to a card panel docked to Top and calls BringToFront()
         /// so that Top-docked controls stack in natural top-to-bottom order.
         /// </summary>
         public static void AddControl(Panel card, Control control)
         {
             if (card is null || control is null) return;
             card.Controls.Add(control);
-            control.SendToBack();
+            control.BringToFront();
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                 Height = 32,
                 Dock = DockStyle.Top,
                 BackColor = Color.Transparent,
-                Margin = new Padding(0, 0, 0, 8)
+                Margin = new Padding(0, 0, 0, 12)
             };
 
             var lblTitle = new Label
@@ -168,54 +168,72 @@ namespace CRMS_Peguit.winforms.Models.Services
         }
 
         /// <summary>
-        /// Creates an accessible, modern rounded pill badge.
+        /// Creates a clean, modern status indicator with semantic dot and colored typography (no heavy pill badge).
         /// </summary>
         public static Label CreatePillBadge(string text, Color bg, Color fg, Color? border = null)
         {
+            return CreateStatusIndicator(text, fg);
+        }
+
+        /// <summary>
+        /// Creates an inline semantic status dot + colored typography without pill borders or heavy backgrounds.
+        /// </summary>
+        public static Label CreateStatusIndicator(string text, Color color)
+        {
+            string formattedText = ToTitleCase(text);
             var badge = new Label
             {
-                Text = text.ToUpperInvariant(),
-                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-                ForeColor = fg,
-                BackColor = bg,
-                TextAlign = ContentAlignment.MiddleCenter,
-                AutoSize = false,
+                Text = "    " + formattedText,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                ForeColor = color,
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = true,
                 Height = 24,
                 Cursor = Cursors.Default
             };
 
-            // Compute ideal width based on text
-            using (var g = badge.CreateGraphics())
-            {
-                var sz = g.MeasureString(badge.Text, badge.Font);
-                badge.Width = Math.Max(54, (int)sz.Width + 18);
-            }
-
             badge.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-                var rect = new Rectangle(0, 0, badge.Width - 1, badge.Height - 1);
-                int radius = badge.Height / 2;
-                using var path = UiRadiusHelper.CreateRoundedPath(rect, radius);
-                using var fill = new SolidBrush(bg);
-                e.Graphics.FillPath(fill, path);
-
-                var stroke = border ?? Color.FromArgb(40, fg.R, fg.G, fg.B);
-                using var pen = new Pen(stroke, 1f);
-                e.Graphics.DrawPath(pen, path);
-
-                using var textBrush = new SolidBrush(fg);
-                using var sf = new StringFormat
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
-                e.Graphics.DrawString(badge.Text, badge.Font, textBrush, rect, sf);
+                int dotSize = 6;
+                int dotY = (badge.Height - dotSize) / 2;
+                using var dotBrush = new SolidBrush(color);
+                e.Graphics.FillEllipse(dotBrush, 2, dotY, dotSize, dotSize);
             };
 
             return badge;
+        }
+
+        /// <summary>
+        /// Properly capitalizes names and enum values to Title Case (e.g., "john sin" -> "John Sin").
+        /// </summary>
+        public static string ToTitleCase(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            var words = text.Trim().Replace('_', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < words.Length; i++)
+            {
+                string w = words[i];
+                if (w.Length == 1)
+                {
+                    words[i] = char.ToUpperInvariant(w[0]).ToString();
+                }
+                else
+                {
+                    words[i] = char.ToUpperInvariant(w[0]) + w.Substring(1).ToLowerInvariant();
+                }
+            }
+            return string.Join(" ", words);
+        }
+
+        /// <summary>
+        /// Cleans raw string keys in section headings (replaces underscores with spaces).
+        /// </summary>
+        public static string FormatHeaderString(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            return text.Replace('_', ' ').Trim();
         }
 
         /// <summary>
@@ -232,7 +250,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                 case "approved":
                     return (
                         Color.FromArgb(220, 252, 231), // #DCFCE7
-                        Color.FromArgb(22, 101, 52),    // #166534
+                        Color.FromArgb(22, 163, 74),    // Green #16A34A
                         Color.FromArgb(134, 239, 172)   // #86EFAC
                     );
 
@@ -243,7 +261,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                 case "in_progress":
                     return (
                         Color.FromArgb(254, 243, 199), // #FEF3C7
-                        Color.FromArgb(180, 83, 9),     // #B45309
+                        Color.FromArgb(217, 119, 6),    // Amber #D97706
                         Color.FromArgb(253, 230, 138)   // #FDE68A
                     );
 
@@ -254,15 +272,15 @@ namespace CRMS_Peguit.winforms.Models.Services
                 case "archived":
                     return (
                         Color.FromArgb(254, 226, 226), // #FEE2E2
-                        Color.FromArgb(153, 27, 27),    // #991B1B
+                        Color.FromArgb(220, 38, 38),    // Red #DC2626
                         Color.FromArgb(252, 165, 165)   // #FCA5A5
                     );
 
                 default: // "new", neutral, unassigned
                     return (
-                        Color.FromArgb(239, 246, 255), // #EFF6FF
-                        Color.FromArgb(29, 78, 216),    // #1D4ED8
-                        Color.FromArgb(191, 219, 254)   // #BFDBFE
+                        Color.FromArgb(241, 245, 249), // #F1F5F9
+                        Color.FromArgb(107, 114, 128),  // Muted Gray #6B7280
+                        Color.FromArgb(226, 232, 240)   // #E2E8F0
                     );
             }
         }
@@ -277,12 +295,12 @@ namespace CRMS_Peguit.winforms.Models.Services
             {
                 case "high":
                 case "urgent":
-                    return (Color.FromArgb(254, 226, 226), Color.FromArgb(185, 28, 28), Color.FromArgb(252, 165, 165));
+                    return (Color.FromArgb(254, 226, 226), Color.FromArgb(220, 38, 38), Color.FromArgb(252, 165, 165));
                 case "medium":
-                    return (Color.FromArgb(254, 243, 199), Color.FromArgb(180, 83, 9), Color.FromArgb(253, 230, 138));
+                    return (Color.FromArgb(254, 243, 199), Color.FromArgb(217, 119, 6), Color.FromArgb(253, 230, 138));
                 case "low":
                 default:
-                    return (Color.FromArgb(241, 245, 249), Color.FromArgb(71, 85, 105), Color.FromArgb(203, 213, 225));
+                    return (Color.FromArgb(241, 245, 249), Color.FromArgb(107, 114, 128), Color.FromArgb(203, 213, 225));
             }
         }
 

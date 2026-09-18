@@ -26,13 +26,12 @@ namespace CRMS_Peguit.winforms.Views.Deals
         {
             _deal = deal ?? throw new ArgumentNullException(nameof(deal));
 
-            var customers = controller.GetCustomerNames();
-            var properties = controller.GetPropertyAddresses();
-            var agents = controller.GetAgentNames();
-
-            string buyer = customers.TryGetValue(_deal.CustomerId, out string? b) ? b : $"Customer #{_deal.CustomerId}";
-            string prop = properties.TryGetValue(_deal.PropertyId, out string? p) ? p : $"Property #{_deal.PropertyId}";
-            string agent = _deal.AgentId.HasValue && agents.TryGetValue(_deal.AgentId.Value, out string? a) ? a : "Unassigned";
+            string buyer = _deal.Customer?.FullName
+                ?? (controller.GetCustomerNames().TryGetValue(_deal.CustomerId, out string? b) ? b : $"Customer #{_deal.CustomerId}");
+            string prop = _deal.Property?.Address
+                ?? (controller.GetPropertyAddresses().TryGetValue(_deal.PropertyId, out string? p) ? p : $"Property #{_deal.PropertyId}");
+            string agent = _deal.Agent?.FullName
+                ?? (_deal.AgentId.HasValue && controller.GetAgentNames().TryGetValue(_deal.AgentId.Value, out string? a) ? a : "Unassigned");
 
             _documentText = DealClauseLibrary.FormatTermSheetText(_deal, buyer, prop, agent);
 

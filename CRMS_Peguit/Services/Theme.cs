@@ -43,10 +43,11 @@ namespace CRMS_Peguit.winforms.Models.Services
         public static Color FocusBorder = Color.FromArgb(14, 165, 233);
 
         // Minimalist Status Palette (Strictly No Badges/Pills)
-        public static Color StatusSuccess = Color.FromArgb(5, 150, 105);      // Emerald (#059669) - Converted, Active, Available, Closed, Resolved
+        public static Color StatusSuccess = Color.FromArgb(22, 163, 74);      // Green (#16A34A) - Converted, Active, Available, Closed, Resolved, Sold, Won
         public static Color StatusPending = Color.FromArgb(217, 119, 6);      // Amber (#D97706) - Contacted, Pending Review, Offer, Contract, In Progress
-        public static Color StatusAlert = Color.FromArgb(220, 38, 38);        // Rose (#DC2626) - Inactive, Overdue, Lost, Urgent, Critical, High
-        public static Color StatusNeutral = Color.FromArgb(71, 85, 105);      // Slate (#475569) - New, Unassigned, Low, Medium, Prospect
+        public static Color StatusAlert = Color.FromArgb(220, 38, 38);        // Red (#DC2626) - Inactive, Overdue, Lost, Urgent, Critical, High, Rejected
+        public static Color StatusInfo = Color.FromArgb(37, 99, 235);         // Blue (#2563EB) - New, Open, Prospect, Upcoming
+        public static Color StatusNeutral = Color.FromArgb(107, 114, 128);    // Muted Gray (#6B7280) - Unassigned, Low, Draft, Archived, None
 
         // Legacy Status Badge Palette (retained for backward compatibility)
         public static Color StatusActiveBg = Color.FromArgb(220, 252, 231);

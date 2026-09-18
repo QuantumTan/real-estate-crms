@@ -43,6 +43,8 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Theme.Background;
             DoubleBuffered = true;
+            AppBrand.ApplyDarkTitleBar(this);
+            AppBrand.ApplyAppIcon(this);
         }
 
         private void BuildUi()
@@ -117,13 +119,13 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
 
             // Status Badge
             var (sBg, sFg, sStroke) = UiDetailCardHelper.GetStatusColors(_ticket.Status);
-            var statusBadge = UiDetailCardHelper.CreatePillBadge(_ticket.Status, sBg, sFg, sStroke);
+            var statusBadge = UiDetailCardHelper.CreateStatusIndicator(UiDetailCardHelper.ToTitleCase(_ticket.Status), sFg);
             statusBadge.Name = "headerStatusBadge";
             _pnlHeader.Controls.Add(statusBadge);
 
             // Priority Badge
             var (pBg, pFg, pStroke) = UiDetailCardHelper.GetPriorityColors(_ticket.Priority);
-            var priorityBadge = UiDetailCardHelper.CreatePillBadge(_ticket.Priority, pBg, pFg, pStroke);
+            var priorityBadge = UiDetailCardHelper.CreateStatusIndicator(UiDetailCardHelper.ToTitleCase(_ticket.Priority), pFg);
             priorityBadge.Name = "headerPriorityBadge";
             _pnlHeader.Controls.Add(priorityBadge);
 
@@ -160,19 +162,20 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             _btnClose.FlatAppearance.BorderColor = Theme.Border;
             _pnlFooter.Controls.Add(_btnClose);
 
-            // Reassign (Manager / Admin ONLY)
+            // Reassign (Manager / Admin ONLY) - standard secondary action button
             if (RbacService.CanAssignRecords)
             {
                 _btnReassign = new Button
                 {
                     Text = "Reassign Agent",
                     Size = new Size(136, 36),
-                    BackColor = Theme.Surface,
-                    ForeColor = Theme.Primary,
+                    BackColor = Color.White,
+                    ForeColor = Theme.TextPrimary,
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
                 };
                 UiRadiusHelper.StyleButton(_btnReassign, 8);
-                _btnReassign.FlatAppearance.BorderColor = Theme.Primary;
+                _btnReassign.FlatAppearance.BorderColor = UiDetailCardHelper.BorderColor;
+                UiRadiusHelper.AttachHoverFeedback(_btnReassign, Color.White, Color.FromArgb(241, 245, 249));
                 _btnReassign.Click += BtnReassignClick;
                 _pnlFooter.Controls.Add(_btnReassign);
             }
@@ -225,7 +228,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Theme.Background,
-                Padding = new Padding(24, 18, 24, 18)
+                Padding = new Padding(24, 18, 24, 80)
             };
 
             int currentY = 16;
@@ -265,7 +268,7 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
 
             // --- Card 1: Ticket Overview & SLA Details ---
             var cardSla = CreateCardPanel(ref currentY);
-            UiDetailCardHelper.AddControl(cardSla, UiDetailCardHelper.CreateCardHeader("Ticket & SLA Target Details"));
+            UiDetailCardHelper.AddControl(cardSla, UiDetailCardHelper.CreateCardHeader("🕒  Ticket SLA Target Details"));
             UiDetailCardHelper.AddControl(cardSla, UiDetailCardHelper.CreateDivider());
 
             string dueText = _ticket.DueDate.HasValue
@@ -281,12 +284,12 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 : "Not resolved yet";
 
             UiDetailCardHelper.AddControl(cardSla, UiDetailCardHelper.CreateKeyValueRow(
-                "Category", _ticket.Category,
-                "Priority (SLA)", $"{_ticket.Priority} ({GetSlaWindowDescription(_ticket.Priority)})"));
+                "Category", UiDetailCardHelper.ToTitleCase(_ticket.Category),
+                "Priority (SLA)", $"{UiDetailCardHelper.ToTitleCase(_ticket.Priority)} ({GetSlaWindowDescription(_ticket.Priority)})"));
 
             UiDetailCardHelper.AddControl(cardSla, UiDetailCardHelper.CreateKeyValueRow(
                 "SLA Resolution Deadline", dueText,
-                "Ticket Status", _ticket.Status));
+                "Ticket Status", UiDetailCardHelper.ToTitleCase(_ticket.Status)));
 
             UiDetailCardHelper.AddControl(cardSla, UiDetailCardHelper.CreateKeyValueRow(
                 "First Responded At", firstResp,
@@ -295,16 +298,17 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             FinalizeCardHeight(cardSla, ref currentY);
             _pnlContent.Controls.Add(cardSla);
 
-            // --- Card 2: Requester & Ownership ---
+            // --- Card 2: Requester Ownership ---
             var cardOwner = CreateCardPanel(ref currentY);
-            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("Requester & Ownership"));
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👤  Requester Ownership"));
             UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateDivider());
 
-            string custName = _ticket.Customer?.FullName ?? "Unknown";
+            string custName = _ticket.Customer?.FullName != null ? UiDetailCardHelper.ToTitleCase(_ticket.Customer.FullName) : "Unknown";
             string custEmail = _ticket.Customer?.Email ?? "No email";
             string custPhone = _ticket.Customer?.Phone ?? "No phone";
-            string raisedBy = _ticket.RaisedByUser?.FullName ?? $"User #{_ticket.RaisedByUserId}";
-            string assignedAgent = _controller.GetAssignedAgentName(_ticket.AssignedToUserId) ?? "Unassigned (Pending)";
+            string raisedBy = _ticket.RaisedByUser?.FullName != null ? UiDetailCardHelper.ToTitleCase(_ticket.RaisedByUser.FullName) : $"User #{_ticket.RaisedByUserId}";
+            string? assignedAgent = _controller.GetAssignedAgentName(_ticket.AssignedToUserId);
+            string assignedAgentDisplay = assignedAgent != null ? UiDetailCardHelper.ToTitleCase(assignedAgent) : "Unassigned (Pending)";
 
             UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                 "Client / Requester", $"{custName} ({custEmail})",
@@ -312,14 +316,14 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
 
             UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                 "Logged By", raisedBy,
-                "Assigned Agent", assignedAgent));
+                "Assigned Agent", assignedAgentDisplay));
 
             FinalizeCardHeight(cardOwner, ref currentY);
             _pnlContent.Controls.Add(cardOwner);
 
             // --- Card 3: Ticket Description ---
             var cardDesc = CreateCardPanel(ref currentY);
-            UiDetailCardHelper.AddControl(cardDesc, UiDetailCardHelper.CreateCardHeader("Initial Issue Description"));
+            UiDetailCardHelper.AddControl(cardDesc, UiDetailCardHelper.CreateCardHeader("⚠️  Initial Issue Description"));
             UiDetailCardHelper.AddControl(cardDesc, UiDetailCardHelper.CreateDivider());
 
             var lblDesc = new Label
@@ -340,17 +344,40 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             // --- Card 4: Comments & Internal Notes Thread ---
             var comments = _controller.GetComments(_ticket.TicketId);
             var cardComments = CreateCardPanel(ref currentY);
-            UiDetailCardHelper.AddControl(cardComments, UiDetailCardHelper.CreateCardHeader("Comment & Reply Thread", comments.Count(c => c.CommentType == "Comment").ToString()));
+            UiDetailCardHelper.AddControl(cardComments, UiDetailCardHelper.CreateCardHeader("💬  Comment & Reply Thread", comments.Count(c => c.CommentType == "Comment").ToString()));
             UiDetailCardHelper.AddControl(cardComments, UiDetailCardHelper.CreateDivider());
 
-            // Reply input panel
+            var userComments = comments.Where(c => c.CommentType == "Comment").ToList();
+            if (userComments.Count == 0)
+            {
+                var lblEmpty = new Label
+                {
+                    Text = "No comments or replies posted yet. Use the box below to add notes.",
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
+                    ForeColor = Theme.TextSecondary,
+                    Dock = DockStyle.Top,
+                    Height = 36,
+                    TextAlign = ContentAlignment.MiddleLeft
+                };
+                UiDetailCardHelper.AddControl(cardComments, lblEmpty);
+            }
+            else
+            {
+                foreach (var c in userComments)
+                {
+                    var commentBubble = CreateCommentTile(c);
+                    UiDetailCardHelper.AddControl(cardComments, commentBubble);
+                }
+            }
+
+            // Reply input panel positioned below comments/empty notice
             var replyPanel = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 84,
                 BackColor = Theme.Background,
                 Padding = new Padding(10, 8, 10, 8),
-                Margin = new Padding(0, 0, 0, 14)
+                Margin = new Padding(0, 10, 0, 8)
             };
             UiRadiusHelper.ApplyRoundedCorners(replyPanel, 8);
 
@@ -381,29 +408,6 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             replyPanel.Controls.Add(_txtNewComment);
             replyPanel.Controls.Add(btnPostComment);
             UiDetailCardHelper.AddControl(cardComments, replyPanel);
-
-            var userComments = comments.Where(c => c.CommentType == "Comment").ToList();
-            if (userComments.Count == 0)
-            {
-                var lblEmpty = new Label
-                {
-                    Text = "No comments or replies posted yet. Use the box above to add notes.",
-                    Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
-                    ForeColor = Theme.TextSecondary,
-                    Dock = DockStyle.Top,
-                    Height = 36,
-                    TextAlign = ContentAlignment.MiddleLeft
-                };
-                UiDetailCardHelper.AddControl(cardComments, lblEmpty);
-            }
-            else
-            {
-                foreach (var c in userComments)
-                {
-                    var commentBubble = CreateCommentTile(c);
-                    UiDetailCardHelper.AddControl(cardComments, commentBubble);
-                }
-            }
 
             FinalizeCardHeight(cardComments, ref currentY);
             _pnlContent.Controls.Add(cardComments);
@@ -612,17 +616,17 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 if (_btnClose is not null)
                 {
                     _btnClose.Location = new Point(rightEdge - _btnClose.Width, 14);
-                    rightEdge = _btnClose.Left - 10;
+                    rightEdge = _btnClose.Left - 8;
                 }
                 if (_btnUpdateStatus is not null && _btnUpdateStatus.Visible)
                 {
                     _btnUpdateStatus.Location = new Point(rightEdge - _btnUpdateStatus.Width, 14);
-                    rightEdge = _btnUpdateStatus.Left - 10;
+                    rightEdge = _btnUpdateStatus.Left - 8;
                 }
                 if (_btnReopen is not null && _btnReopen.Visible)
                 {
                     _btnReopen.Location = new Point(rightEdge - _btnReopen.Width, 14);
-                    rightEdge = _btnReopen.Left - 10;
+                    rightEdge = _btnReopen.Left - 8;
                 }
                 if (_btnReassign is not null && _btnReassign.Visible)
                 {

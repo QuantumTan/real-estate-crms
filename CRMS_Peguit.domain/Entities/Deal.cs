@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -47,13 +48,15 @@ namespace CRMS_Peguit.domain.entities
         public string? RegistrationFeePayer { get; set; } = "Buyer";
 
         // --- 1NF Normalized Navigation Collections ---
+        [JsonIgnore]
         public virtual ICollection<DealContingency> Contingencies { get; set; } = new List<DealContingency>();
+        [JsonIgnore]
         public virtual ICollection<DealClause> DealClauses { get; set; } = new List<DealClause>();
 
         [NotMapped]
         public string? ContingenciesJson
         {
-            get => Contingencies.Count > 0 ? JsonSerializer.Serialize(Contingencies) : null;
+            get => (Contingencies != null && Contingencies.Count > 0) ? DealContingency.SerializeList(Contingencies) : null;
             set { }
         }
 
@@ -68,9 +71,13 @@ namespace CRMS_Peguit.domain.entities
         public DateTime? ContractSignedDate { get; set; }
 
         // --- Navigation Properties ---
+        [JsonIgnore]
         public virtual Customer? Customer { get; set; }
+        [JsonIgnore]
         public virtual Property? Property { get; set; }
+        [JsonIgnore]
         public virtual User? Agent { get; set; }
+        [JsonIgnore]
         public virtual User? CreatedByUser { get; set; }
     }
 }

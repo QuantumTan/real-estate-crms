@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -56,6 +56,57 @@ namespace CRMS_Peguit.winforms.Models.Services
             catch
             {
                 // Silently ignore if OS icon creation is not supported
+            }
+
+            ApplyDarkTitleBar(form);
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_CAPTION_COLOR = 35;
+        private const int DWMWA_TEXT_COLOR = 36;
+
+        /// <summary>
+        /// Applies custom dark chrome title bar (#0F172A) with white caption text via DWM API,
+        /// matching the left navigation sidebar and eliminating OS purple/magenta title bars.
+        /// </summary>
+        public static void ApplyDarkTitleBar(Form form, Color? captionColor = null, Color? textColor = null)
+        {
+            if (form is null) return;
+
+            void Apply()
+            {
+                try
+                {
+                    if (Environment.OSVersion.Version.Major >= 10 && form.IsHandleCreated)
+                    {
+                        int trueValue = 1;
+                        DwmSetWindowAttribute(form.Handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref trueValue, sizeof(int));
+
+                        Color cap = captionColor ?? Color.FromArgb(15, 23, 42); // Slate 900 (#0F172A)
+                        int colorRef = (cap.B << 16) | (cap.G << 8) | cap.R;
+                        DwmSetWindowAttribute(form.Handle, DWMWA_CAPTION_COLOR, ref colorRef, sizeof(int));
+
+                        Color txt = textColor ?? Color.White;
+                        int textColorRef = (txt.B << 16) | (txt.G << 8) | txt.R;
+                        DwmSetWindowAttribute(form.Handle, DWMWA_TEXT_COLOR, ref textColorRef, sizeof(int));
+                    }
+                }
+                catch
+                {
+                    // Ignore on non-Windows 11 or if unsupported by OS
+                }
+            }
+
+            if (form.IsHandleCreated)
+            {
+                Apply();
+            }
+            else
+            {
+                form.HandleCreated += (_, _) => Apply();
             }
         }
 

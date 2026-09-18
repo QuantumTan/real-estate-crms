@@ -54,7 +54,7 @@ namespace CRMS_Peguit.winforms.Views.Reports
         private void SetupUI()
         {
             this.BackColor = Theme.Background;
-            UiGridHelper.ApplyModernGridStyle(gridData, 44);
+            UiGridHelper.ApplyModernGridStyle(gridData, 48);
 
             UiRadiusHelper.StyleCard(pnlChartCard1, 10);
             UiRadiusHelper.StyleCard(pnlChartCard2, 10);

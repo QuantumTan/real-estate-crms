@@ -60,6 +60,7 @@ namespace CRMS_Peguit.winforms.Views.Users
             UiGridHelper.ApplyModernGridStyle(grid, 52);
             UiRadiusHelper.SetPadding(txtSearch, 10, 10);
 
+            grid.CellPainting += Grid_CellPainting;
             grid.CellContentClick += GridCellContentClick;
         }
 
@@ -188,8 +189,10 @@ namespace CRMS_Peguit.winforms.Views.Users
                 if (grid.Columns["Status"] is DataGridViewColumn statusCol)
                 {
                     statusCol.HeaderText = "STATUS";
-                    statusCol.FillWeight = 80;
-                    statusCol.MinimumWidth = 80;
+                    statusCol.FillWeight = 90;
+                    statusCol.MinimumWidth = 85;
+                    statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
                 }
                 
                 if (grid.Columns["Actions"] == null)
@@ -203,6 +206,18 @@ namespace CRMS_Peguit.winforms.Views.Users
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error Loading Users", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.Graphics is null) return;
+            string colName = grid.Columns[e.ColumnIndex].Name;
+
+            if (colName == "Status" && e.Value != null)
+            {
+                string status = e.Value.ToString() ?? "";
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: false);
             }
         }
 

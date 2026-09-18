@@ -48,6 +48,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Color.FromArgb(244, 247, 251);
             DoubleBuffered = true;
+            AppBrand.ApplyDarkTitleBar(this);
+            AppBrand.ApplyAppIcon(this);
         }
 
         private void BuildUi()
@@ -236,7 +238,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(244, 247, 251),
-                Padding = new Padding(24, 18, 24, 18)
+                Padding = new Padding(24, 18, 24, 80)
             };
 
             int currentY = 16;
@@ -325,7 +327,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
             _pnlContent.Controls.Add(cardTaxes);
 
             // --- Card 4: Closing Contingencies Tracker ---
-            var contingencies = DealContingency.DeserializeList(_deal.ContingenciesJson);
+            var contingencies = (_deal.Contingencies != null && _deal.Contingencies.Count > 0)
+                ? _deal.Contingencies.OrderBy(c => c.DealContingencyId).ToList()
+                : DealContingency.DeserializeList(_deal.ContingenciesJson);
             var cardContingencies = CreateCardPanel(ref currentY);
             UiDetailCardHelper.AddControl(cardContingencies, UiDetailCardHelper.CreateCardHeader("✅  Closing Contingencies & Conditions Precedent", contingencies.Count.ToString()));
             UiDetailCardHelper.AddControl(cardContingencies, UiDetailCardHelper.CreateDivider());
@@ -708,7 +712,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 if (_btnClose != null)
                 {
                     _btnClose.Location = new Point(right - _btnClose.Width, 13);
-                    right -= (_btnClose.Width + 10);
+                    right -= (_btnClose.Width + 8);
                 }
                 if (_btnEdit != null && _btnEdit.Visible)
                 {

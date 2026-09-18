@@ -270,21 +270,7 @@ namespace CRMS_Peguit.winforms.Views.FollowUps
             foreach (var (btn, name) in filterButtons)
             {
                 bool active = string.Equals(_filterCategory, name, StringComparison.OrdinalIgnoreCase);
-                if (active)
-                {
-                    btn.BackColor = Theme.Primary;
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                    btn.FlatAppearance.BorderSize = 0;
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                    btn.FlatAppearance.BorderColor = Color.FromArgb(226, 232, 240);
-                    btn.FlatAppearance.BorderSize = 1;
-                }
+                UiRadiusHelper.StyleFilterPill(btn, active);
             }
         }
 
@@ -434,6 +420,11 @@ namespace CRMS_Peguit.winforms.Views.FollowUps
                 {
                     UiGridHelper.PaintStatusIndicator(grid, e, reminder.Status, center: false);
                 }
+            }
+            else if (colName == "Priority" && e.Value != null)
+            {
+                string prio = e.Value.ToString() ?? "";
+                UiGridHelper.PaintStatusIndicator(grid, e, prio, center: false);
             }
         }
 

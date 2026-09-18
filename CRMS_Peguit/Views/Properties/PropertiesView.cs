@@ -103,6 +103,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
             // Modern Grid Styling & Search Padding
             UiGridHelper.ApplyModernGridStyle(grid, 52);
+            grid.ShowCellErrors = false;
+            grid.ShowRowErrors = false;
             UiRadiusHelper.SetPadding(txtSearch, 10, 10);
 
             grid.CellPainting += Grid_CellPainting;
@@ -135,18 +137,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             foreach (var (btn, name) in pills)
             {
                 bool isSelected = string.Equals(_filterStatus, name, StringComparison.OrdinalIgnoreCase);
-                if (isSelected)
-                {
-                    btn.BackColor = Color.FromArgb(15, 91, 158);
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                }
+                UiRadiusHelper.StyleFilterPill(btn, isSelected);
             }
         }
 
@@ -257,8 +248,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 statusCol.HeaderText = "STATUS";
                 statusCol.FillWeight = 90;
                 statusCol.MinimumWidth = 80;
-                statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
 
             if (grid.Columns["Assignment"] is DataGridViewColumn assignCol)
@@ -291,29 +282,28 @@ namespace CRMS_Peguit.winforms.Views.Properties
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Minimalist Status Indicator (Strictly No Badges/Pills)
+            // Minimalist Status Indicator (Left-aligned at 12px, Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
                 string status = e.Value.ToString() ?? "";
-                UiGridHelper.PaintStatusIndicator(grid, e, status, center: true);
-                return;
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: false);
             }
-            // Style address with primary bold text
+            // Style address with primary bold text at uniform 12px inset
             else if (grid.Columns[e.ColumnIndex].Name == "Address" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string address = e.Value.ToString() ?? "";
-
-                var textRect = new Rectangle(e.CellBounds.X + 12, e.CellBounds.Y,
-                    e.CellBounds.Width - 20, e.CellBounds.Height);
-
-                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, address, font, textRect, Color.FromArgb(15, 23, 42),
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(grid, e, address, font, Color.FromArgb(15, 23, 42),
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, leftPadding: 12);
+            }
+            // Clean right-aligned Price column painting at uniform right margin
+            else if (grid.Columns[e.ColumnIndex].Name == "Price" && e.Value != null)
+            {
+                string priceText = e.Value.ToString() ?? "";
+                priceText = priceText.TrimStart('!', '|', ' ');
+                using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(grid, e, priceText, font, Color.FromArgb(15, 23, 42),
+                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter, leftPadding: 8, rightPadding: 12);
             }
         }
 

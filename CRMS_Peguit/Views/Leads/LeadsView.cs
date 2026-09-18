@@ -170,8 +170,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
             btnFilterQualified.Click += (_, _) => SetFilter("Qualified");
             btnFilterConverted.Click += (_, _) => SetFilter("Converted");
 
-            // Modern Grid Styling (56px row height for optimal readability and touch targets)
-            UiGridHelper.ApplyModernGridStyle(grid, 56);
+            // Modern Grid Styling (52px row height for uniform CRM table presentation)
+            UiGridHelper.ApplyModernGridStyle(grid, 52);
             UiRadiusHelper.SetPadding(txtSearch, 12, 12);
 
             grid.CellPainting += Grid_CellPainting;
@@ -239,20 +239,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
             {
                 bool isSelected = string.Equals(_filterStage, name, StringComparison.OrdinalIgnoreCase);
                 btn.Text = $"{name}  {count}";
-                if (isSelected)
-                {
-                    btn.BackColor = Color.FromArgb(15, 91, 158);
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                }
-                btn.Width = TextRenderer.MeasureText(btn.Text, btn.Font).Width + 24;
-                UiRadiusHelper.ApplyPillShape(btn);
+                UiRadiusHelper.StyleFilterPill(btn, isSelected);
+                btn.Width = TextRenderer.MeasureText(btn.Text, btn.Font).Width + 32;
             }
 
             LayoutToolbar();
@@ -417,8 +405,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 stageCol.FillWeight = 95;
                 stageCol.MinimumWidth = 85;
                 stageCol.SortMode = DataGridViewColumnSortMode.Programmatic;
-                stageCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                stageCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                stageCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                stageCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
             if (grid.Columns["Assignment"] is DataGridViewColumn assignCol)
             {
@@ -426,8 +414,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 assignCol.FillWeight = 110;
                 assignCol.MinimumWidth = 95;
                 assignCol.SortMode = DataGridViewColumnSortMode.Programmatic;
-                assignCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                assignCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                assignCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                assignCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
 
             UiGridHelper.AddActionsColumn(grid, 64);
@@ -523,14 +511,13 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             string columnName = grid.Columns[e.ColumnIndex].Name;
 
-            // ── STAGE INDICATOR (Minimalist 6px dot + text, NO pills) ──
+            // ── STAGE INDICATOR (Minimalist 6px dot + text, NO pills, Left-aligned at 12px) ──
             if (columnName == "Stage" && e.Value != null)
             {
                 string stage = e.Value.ToString() ?? "";
-                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: true);
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: false);
             }
-            // ── ASSIGNMENT STATUS INDICATOR (Minimalist 6px dot + text, NO pills) ──
+            // ── ASSIGNMENT STATUS INDICATOR (Minimalist 6px dot + text, NO pills, Left-aligned at 12px) ──
             else if (columnName == "Assignment" && e.Value != null)
             {
                 string rawAssign = e.Value.ToString() ?? "";
@@ -540,121 +527,38 @@ namespace CRMS_Peguit.winforms.Views.Leads
                         ? "APPROVED"
                         : (string.IsNullOrWhiteSpace(rawAssign) ? "UNASSIGNED" : rawAssign));
 
-                UiGridHelper.PaintStatusIndicator(grid, e, displayLabel, center: true);
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, displayLabel, center: false);
             }
-            // ── NAME COLUMN (Initial avatar + text) ──
+            // ── NAME COLUMN (Initial avatar + text at uniform 12px inset) ──
             else if (columnName == "Name" && e.Value != null)
             {
-                using (var bgBrush = new SolidBrush(rowBg))
-                {
-                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
-                }
-
                 string name = e.Value.ToString() ?? "";
                 string initials = GetInitials(name);
-
-                int avatarSize = 30;
-                int avatarX = e.CellBounds.X + 10;
-                int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
-                var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
-
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using (var brush = new SolidBrush(Color.FromArgb(27, 80, 136))) // Brand Navy
-                {
-                    e.Graphics.FillEllipse(brush, avatarRect);
-                }
-
-                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, Color.White,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                var textRect = new Rectangle(avatarX + avatarSize + 10, e.CellBounds.Y,
-                    e.CellBounds.Width - avatarSize - 20, e.CellBounds.Height);
-
-                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, name, font, textRect, Theme.TextPrimary,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
-                {
-                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintAvatarCell(grid, e, name, initials, Color.FromArgb(27, 80, 136), Color.White);
             }
-            // ── EMAIL COLUMN ──
+            // ── EMAIL COLUMN (Uniform 12px inset) ──
             else if (columnName == "Email" && e.Value != null)
             {
-                using (var bgBrush = new SolidBrush(rowBg))
-                {
-                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
-                }
-
                 string email = e.Value.ToString() ?? "";
-                using (var font = new Font("Segoe UI", 9.5f))
-                {
-                    var textRect = new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y, e.CellBounds.Width - 16, e.CellBounds.Height);
-                    TextRenderer.DrawText(e.Graphics, email, font, textRect, Color.FromArgb(15, 91, 158),
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
-                {
-                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
-                }
-
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9.5f);
+                UiGridHelper.PaintTextCell(grid, e, email, font, Color.FromArgb(15, 91, 158),
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, leftPadding: 12);
             }
-            // ── EXPECTED VALUE COLUMN (Right-aligned currency) ──
+            // ── EXPECTED VALUE COLUMN (Right-aligned currency at uniform right margin) ──
             else if (columnName == "ExpectedValue" && e.Value != null)
             {
-                using (var bgBrush = new SolidBrush(rowBg))
-                {
-                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
-                }
-
                 string valStr = e.Value.ToString() ?? "-";
-                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-                {
-                    var textRect = new Rectangle(e.CellBounds.X + 8, e.CellBounds.Y, e.CellBounds.Width - 22, e.CellBounds.Height);
-                    TextRenderer.DrawText(e.Graphics, valStr, font, textRect, Theme.TextPrimary,
-                        TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
-                }
-
-                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
-                {
-                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
-                }
-
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(grid, e, valStr, font, Theme.TextPrimary,
+                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter, leftPadding: 8, rightPadding: 12);
             }
             // ── STANDARD COLUMNS (Phone, Source) ──
             else if (columnName != "Actions")
             {
-                using (var bgBrush = new SolidBrush(rowBg))
-                {
-                    e.Graphics.FillRectangle(bgBrush, e.CellBounds);
-                }
-
                 string text = e.Value?.ToString() ?? "";
-                using (var font = new Font("Segoe UI", 9.5f))
-                {
-                    var textRect = new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y, e.CellBounds.Width - 16, e.CellBounds.Height);
-                    TextRenderer.DrawText(e.Graphics, text, font, textRect, Theme.TextPrimary,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                using (var dividerPen = new Pen(UiGridHelper.GridBorder, 1f))
-                {
-                    e.Graphics.DrawLine(dividerPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
-                }
-
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9.5f);
+                UiGridHelper.PaintTextCell(grid, e, text, font, Theme.TextPrimary,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, leftPadding: 12);
             }
         }
 

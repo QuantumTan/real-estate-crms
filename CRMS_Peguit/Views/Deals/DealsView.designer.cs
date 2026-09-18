@@ -72,7 +72,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             this.txtSearch.ForeColor = System.Drawing.Color.FromArgb(15, 23, 42);
             this.txtSearch.Location = new System.Drawing.Point(30, 90);
             this.txtSearch.Name = "txtSearch";
-            this.txtSearch.PlaceholderText = "🔍 Search customer, property, agent, or stage...";
+            this.txtSearch.PlaceholderText = "Search deals by buyer, property, or agent...";
             this.txtSearch.Size = new System.Drawing.Size(360, 24);
             this.txtSearch.TabIndex = 2;
             // 

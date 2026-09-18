@@ -41,12 +41,15 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
         private void SetupFormProperties()
         {
-            Text = _customer is not null ? $"Customer Details - {_customer.FullName}" : "Customer Details";
+            string displayName = _customer is not null ? UiDetailCardHelper.ToTitleCase(_customer.FullName) : "Customer Details";
+            Text = _customer is not null ? $"Customer Details - {displayName}" : "Customer Details";
             Size = new Size(760, 680);
             MinimumSize = new Size(620, 500);
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Color.FromArgb(244, 247, 251);
             DoubleBuffered = true;
+            AppBrand.ApplyDarkTitleBar(this);
+            AppBrand.ApplyAppIcon(this);
         }
 
         private void BuildUi()
@@ -83,16 +86,19 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 e.Graphics.DrawLine(pen, 0, _pnlHeader.Height - 1, _pnlHeader.Width, _pnlHeader.Height - 1);
             };
 
-            // Avatar circle
+            string formattedName = UiDetailCardHelper.ToTitleCase(_customer!.FullName);
+
+            // Avatar circle (centered with ample margins)
             var lblAvatar = new Label
             {
-                Text = UiDetailCardHelper.GetInitials(_customer!.FullName),
+                Text = UiDetailCardHelper.GetInitials(formattedName),
                 Font = new Font("Segoe UI", 15f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(29, 78, 216),      // #1D4ED8
                 BackColor = Color.FromArgb(239, 246, 255),    // #EFF6FF
-                Size = new Size(52, 52),
-                Location = new Point(24, 18),
-                TextAlign = ContentAlignment.MiddleCenter
+                Size = new Size(54, 54),
+                Location = new Point(24, 17),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0)
             };
             UiRadiusHelper.MakeCircularAvatar(lblAvatar);
             _pnlHeader.Controls.Add(lblAvatar);
@@ -100,7 +106,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             // Title & Subtitle block
             var lblName = new Label
             {
-                Text = _customer.FullName,
+                Text = formattedName,
                 Font = new Font("Segoe UI", 15.5f, FontStyle.Bold),
                 ForeColor = Theme.TextPrimary,
                 Location = new Point(88, 18),
@@ -121,15 +127,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             // Badges in Header
             var (sBg, sFg, sStroke) = UiDetailCardHelper.GetStatusColors(_customer.Status);
-            var statusBadge = UiDetailCardHelper.CreatePillBadge(_customer.Status, sBg, sFg, sStroke);
+            var statusBadge = UiDetailCardHelper.CreateStatusIndicator(UiDetailCardHelper.ToTitleCase(_customer.Status), sFg);
             statusBadge.Name = "headerStatusBadge";
             _pnlHeader.Controls.Add(statusBadge);
 
-            var typeBadge = UiDetailCardHelper.CreatePillBadge(
-                _customer.Type,
-                Color.FromArgb(241, 245, 249),
-                Color.FromArgb(51, 65, 85),
-                Color.FromArgb(203, 213, 225));
+            string typeStr = UiDetailCardHelper.ToTitleCase(_customer.Type);
+            var typeBadge = UiDetailCardHelper.CreateStatusIndicator(typeStr, Color.FromArgb(51, 65, 85));
             typeBadge.Name = "headerTypeBadge";
             _pnlHeader.Controls.Add(typeBadge);
 
@@ -221,7 +224,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(244, 247, 251),
-                Padding = new Padding(24, 18, 24, 18)
+                Padding = new Padding(24, 18, 24, 80)
             };
 
             int currentY = 16;
@@ -234,19 +237,19 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 "Email Address", string.IsNullOrWhiteSpace(_customer!.Email) ? "Not Provided" : _customer.Email,
                 "Phone Number", string.IsNullOrWhiteSpace(_customer.Phone) ? "Not Provided" : _customer.Phone));
             UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateKeyValueRow(
-                "Customer Type", _customer.Type,
-                "Account Status", _customer.Status));
+                "Customer Type", UiDetailCardHelper.ToTitleCase(_customer.Type),
+                "Account Status", UiDetailCardHelper.ToTitleCase(_customer.Status)));
             FinalizeCardHeight(cardContact, ref currentY);
             _pnlContent.Controls.Add(cardContact);
 
             // --- Card 2: Ownership & Assignment ---
             var cardOwner = CreateCardPanel(ref currentY);
-            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👥  Ownership & Assignment"));
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👥  Ownership Assignment"));
             UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateDivider());
             var agentName = _controller!.GetAssignedAgentName(_customer.AssignedAgentId);
             UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                 "Assigned Agent", agentName ?? "Unassigned",
-                "Assignment Review", _customer.AssignmentStatus));
+                "Assignment Review", UiDetailCardHelper.ToTitleCase(_customer.AssignmentStatus)));
             if (!string.IsNullOrWhiteSpace(_customer.AssignmentReviewNotes))
             {
                 UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
@@ -706,12 +709,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
                     _btnMessage.Location = new Point(24, 13);
                 }
 
-                // Right-aligned dialog actions
+                // Right-aligned dialog actions (8px spacing)
                 int right = _pnlFooter.ClientSize.Width - 24;
                 if (_btnClose != null)
                 {
                     _btnClose.Location = new Point(right - _btnClose.Width, 13);
-                    right -= (_btnClose.Width + 10);
+                    right -= (_btnClose.Width + 8);
                 }
                 if (_btnEdit != null && _btnEdit.Visible)
                 {

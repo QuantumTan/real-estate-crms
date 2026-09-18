@@ -159,8 +159,10 @@ namespace CRMS_Peguit.winforms.Models.Services
             sb.AppendLine($"• Local Transfer Tax                 : Shouldered by {deal.TransferTaxPayer}");
             sb.AppendLine($"• Title Registration & Notarial Fees : Shouldered by {deal.RegistrationFeePayer}");
             sb.AppendLine();
-            sb.AppendLine("--- 4. CONDITIONS PRECEDENT & CONTINGENCIES ---");
-            var contingencies = DealContingency.DeserializeList(deal.ContingenciesJson);
+            // --- 4. CONDITIONS PRECEDENT & CONTINGENCIES ---
+            var contingencies = (deal.Contingencies != null && deal.Contingencies.Count > 0)
+                ? deal.Contingencies.OrderBy(c => c.DealContingencyId).ToList()
+                : DealContingency.DeserializeList(deal.ContingenciesJson);
             if (contingencies.Count == 0)
             {
                 sb.AppendLine("Standard due diligence conditions apply.");

@@ -365,16 +365,16 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
                 priCol.HeaderText = "PRIORITY";
                 priCol.FillWeight = 90;
                 priCol.MinimumWidth = 80;
-                priCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                priCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                priCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                priCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
             if (grid.Columns["Status"] is DataGridViewColumn statCol)
             {
                 statCol.HeaderText = "STATUS";
                 statCol.FillWeight = 95;
                 statCol.MinimumWidth = 85;
-                statCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                statCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                statCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                statCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
             if (grid.Columns["DueDate"] is DataGridViewColumn dueCol)
             {
@@ -405,79 +405,43 @@ namespace CRMS_Peguit.winforms.Views.SupportTickets
             if (e.RowIndex < 0 || e.Graphics is null) return;
             string colName = grid.Columns[e.ColumnIndex].Name;
 
-            // Custom render Ticket Number (bold navy)
+            // Custom render Ticket Number with uniform 12px inset
             if (colName == "TicketNumber" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string num = e.Value.ToString() ?? "";
                 using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-                TextRenderer.DrawText(e.Graphics, num, font, e.CellBounds, Theme.PrimaryDark,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-                e.Handled = true;
+                UiGridHelper.PaintTextCell(grid, e, num, font, Theme.PrimaryDark,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter, leftPadding: 12);
             }
-            // Custom render Status (minimalist 6px dot + text, NO pills)
+            // Custom render Status (minimalist 6px dot + text, Left-aligned at 12px)
             else if (colName == "Status" && e.Value != null)
             {
                 string status = e.Value.ToString() ?? "";
-                UiGridHelper.PaintStatusIndicator(grid, e, status, center: true);
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: false);
             }
-            // Custom render Priority (minimalist 6px dot + text, NO pills)
+            // Custom render Priority (minimalist 6px dot + text, Left-aligned at 12px)
             else if (colName == "Priority" && e.Value != null)
             {
                 string priority = e.Value.ToString() ?? "";
-                UiGridHelper.PaintStatusIndicator(grid, e, priority, center: true);
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, priority, center: false);
             }
-            // Custom render DueDate with red warning highlighting if overdue
+            // Custom render DueDate with red warning highlighting if overdue (uniform 12px inset)
             else if (colName == "DueDate" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string text = e.Value.ToString() ?? "";
                 bool isOverdue = text.StartsWith("[OVERDUE]") || text.Contains("OVERDUE");
 
                 Color textColor = isOverdue ? Theme.Danger : Theme.TextPrimary;
                 using var font = new Font("Segoe UI", 9f, isOverdue ? FontStyle.Bold : FontStyle.Regular);
-
-                TextRenderer.DrawText(e.Graphics, text, font, e.CellBounds, textColor,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-
-                e.Handled = true;
+                UiGridHelper.PaintTextCell(grid, e, text, font, textColor,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter, leftPadding: 12);
             }
-            // Custom render Customer with initial badge
+            // Custom render Customer with initial badge at exact 12px inset
             else if (colName == "Customer" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string name = e.Value.ToString() ?? "";
                 string initials = UiDetailCardHelper.GetInitials(name);
-
-                int avatarSize = 26;
-                int avatarX = e.CellBounds.X + 6;
-                int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
-                var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
-
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (var brush = new SolidBrush(Theme.PrimaryLight))
-                {
-                    e.Graphics.FillEllipse(brush, avatarRect);
-                }
-
-                using (var font = new Font("Segoe UI", 7.5f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, Theme.PrimaryDark,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                var textRect = new Rectangle(avatarX + avatarSize + 8, e.CellBounds.Y,
-                    e.CellBounds.Width - avatarSize - 16, e.CellBounds.Height);
-
-                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Regular))
-                {
-                    TextRenderer.DrawText(e.Graphics, name, font, textRect, Theme.TextPrimary,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintAvatarCell(grid, e, name, initials, Theme.PrimaryLight, Theme.PrimaryDark);
             }
         }
 

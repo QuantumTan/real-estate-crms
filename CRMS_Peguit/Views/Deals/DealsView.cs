@@ -170,18 +170,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             foreach (var (btn, name) in pills)
             {
                 bool isSelected = string.Equals(_filterStage, name, StringComparison.OrdinalIgnoreCase);
-                if (isSelected)
-                {
-                    btn.BackColor = Color.FromArgb(15, 91, 158);
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                }
+                UiRadiusHelper.StyleFilterPill(btn, isSelected);
             }
         }
 
@@ -190,9 +179,12 @@ namespace CRMS_Peguit.winforms.Views.Deals
             if (reloadFromDb || _allDeals.Count == 0)
             {
                 _allDeals = _controller.GetAll();
-                _customers = _controller.GetCustomerNames();
-                _properties = _controller.GetPropertyAddresses();
-                _agents = _controller.GetAgentNames();
+                if (_allDeals.Any(d => d.Customer == null))
+                    _customers = _controller.GetCustomerNames();
+                if (_allDeals.Any(d => d.Property == null))
+                    _properties = _controller.GetPropertyAddresses();
+                if (_allDeals.Any(d => d.Agent == null && d.AgentId.HasValue))
+                    _agents = _controller.GetAgentNames();
             }
 
             int total = _allDeals.Count;
@@ -237,26 +229,29 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
         private void BindCurrentPage()
         {
-            grid.Columns.Clear();
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            grid.SuspendLayout();
+            try
+            {
+                grid.Columns.Clear();
+                grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
 
-            var pageItems = _filteredDeals
-                .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
-                .Take(_pagination.PageSize)
-                .Select(d => new
-                {
-                    d.DealId,
-                    Customer = d.Customer?.FullName ?? GetName(_customers, d.CustomerId),
-                    Property = d.Property?.Address ?? GetName(_properties, d.PropertyId),
-                    Agent = d.Agent?.FullName ?? GetName(_agents, d.AgentId),
-                    Value = $"₱{d.Value:N2}",
-                    Commission = $"{d.CommissionRate:P1}",
-                    Stage = string.IsNullOrWhiteSpace(d.Stage) ? "OFFER" : d.Stage.ToUpper(),
-                    CloseDate = d.ExpectedCloseDate.HasValue ? d.ExpectedCloseDate.Value.ToString("MMM dd, yyyy") : "-"
-                })
-                .ToList();
+                var pageItems = _filteredDeals
+                    .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
+                    .Take(_pagination.PageSize)
+                    .Select(d => new
+                    {
+                        d.DealId,
+                        Customer = d.Customer?.FullName ?? GetName(_customers, d.CustomerId),
+                        Property = d.Property?.Address ?? GetName(_properties, d.PropertyId),
+                        Agent = d.Agent?.FullName ?? GetName(_agents, d.AgentId),
+                        Value = $"₱{d.Value:N2}",
+                        Commission = $"{d.CommissionRate:P1}",
+                        Stage = string.IsNullOrWhiteSpace(d.Stage) ? "OFFER" : d.Stage.ToUpper(),
+                        CloseDate = d.ExpectedCloseDate.HasValue ? d.ExpectedCloseDate.Value.ToString("MMM dd, yyyy") : "-"
+                    })
+                    .ToList();
 
-            grid.DataSource = pageItems;
+                grid.DataSource = pageItems;
 
             var dealIdCol = grid.Columns["DealId"];
             if (dealIdCol is not null) dealIdCol.Visible = false;
@@ -305,8 +300,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 stgCol.HeaderText = "STAGE";
                 stgCol.FillWeight = 95;
                 stgCol.MinimumWidth = 95;
-                stgCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                stgCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                stgCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                stgCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
 
             if (grid.Columns["CloseDate"] is DataGridViewColumn dtCol)
@@ -319,6 +314,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             _lblEmptyState.Visible = (_filteredDeals.Count == 0);
+            }
+            finally
+            {
+                grid.ResumeLayout();
+            }
         }
 
         private void GridCellContentClick(object? sender, DataGridViewCellEventArgs e)
@@ -401,12 +401,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Minimalist Status Indicator (Strictly No Badges/Pills)
+            // Minimalist Status Indicator (Left-aligned at 12px, Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Stage" && e.Value != null)
             {
                 string stage = e.Value.ToString() ?? "";
-                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: true);
-                return;
+                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: false);
             }
         }
 

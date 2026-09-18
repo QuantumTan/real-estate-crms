@@ -133,18 +133,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             foreach (var (btn, name) in pills)
             {
                 bool isSelected = string.Equals(_filterStatus, name, StringComparison.OrdinalIgnoreCase);
-                if (isSelected)
-                {
-                    btn.BackColor = Color.FromArgb(15, 91, 158);
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                }
+                UiRadiusHelper.StyleFilterPill(btn, isSelected);
             }
         }
 
@@ -257,14 +246,14 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 statusCol.HeaderText = "STATUS";
                 statusCol.FillWeight = 90;
                 statusCol.MinimumWidth = 80;
-                statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
             if (grid.Columns["LastContacted"] is DataGridViewColumn lastCol)
             {
-                lastCol.HeaderText = "LAST CONTACTED";
-                lastCol.FillWeight = 100;
-                lastCol.MinimumWidth = 90;
+                lastCol.HeaderText = "LAST CONTACT";
+                lastCol.FillWeight = 130;
+                lastCol.MinimumWidth = 120;
             }
 
             UiGridHelper.AddActionsColumn(grid, 64);
@@ -276,59 +265,26 @@ namespace CRMS_Peguit.winforms.Views.Customers
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Minimalist Status Indicator (Strictly No Badges/Pills)
+            // Minimalist Status Indicator (Left-aligned at 12px, Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
                 string status = e.Value.ToString() ?? "";
-                UiGridHelper.PaintStatusIndicator(grid, e, status, center: true);
-                return;
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: false);
             }
-            // Custom render Name with circular initials badge
+            // Custom render Name with circular initials badge at exact 12px inset
             else if (grid.Columns[e.ColumnIndex].Name == "Name" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string name = e.Value.ToString() ?? "";
                 string initials = GetInitials(name);
-
-                int avatarSize = 28;
-                int avatarX = e.CellBounds.X + 8;
-                int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
-                var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
-
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using (var brush = new SolidBrush(Color.FromArgb(71, 118, 153)))
-                {
-                    e.Graphics.FillEllipse(brush, avatarRect);
-                }
-
-                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, Color.White,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                var textRect = new Rectangle(avatarX + avatarSize + 10, e.CellBounds.Y,
-                    e.CellBounds.Width - avatarSize - 18, e.CellBounds.Height);
-
-                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, name, font, textRect, Theme.TextPrimary,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintAvatarCell(grid, e, name, initials, Color.FromArgb(71, 118, 153), Color.White);
             }
-            // Custom render Email as clickable blue
+            // Custom render Email with uniform 12px inset
             else if (grid.Columns[e.ColumnIndex].Name == "Email" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string email = e.Value.ToString() ?? "";
-                using (var font = new Font("Segoe UI", 9.5f))
-                {
-                    TextRenderer.DrawText(e.Graphics, email, font, e.CellBounds, Theme.Primary,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9.5f);
+                UiGridHelper.PaintTextCell(grid, e, email, font, Theme.Primary,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, leftPadding: 12);
             }
         }
 

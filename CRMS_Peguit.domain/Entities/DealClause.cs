@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -13,6 +14,7 @@ namespace CRMS_Peguit.domain.entities
         public DateTime? ApprovedAt { get; set; } = DateTime.UtcNow;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [JsonIgnore]
         public virtual Deal? Deal { get; set; }
     }
 }

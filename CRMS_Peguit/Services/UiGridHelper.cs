@@ -21,7 +21,7 @@ namespace CRMS_Peguit.winforms.Models.Services
         public static readonly Color HeaderText = Color.FromArgb(100, 116, 139);   // #64748B
         public static readonly Color GridBorder = Color.FromArgb(241, 245, 249);   // #F1F5F9
 
-        public static void ApplyModernGridStyle(DataGridView grid, int rowHeight = 50)
+        public static void ApplyModernGridStyle(DataGridView grid, int rowHeight = 52)
         {
             if (grid is null) return;
 
@@ -36,7 +36,7 @@ namespace CRMS_Peguit.winforms.Models.Services
             grid.MultiSelect = false;
             grid.ShowCellToolTips = true;
             grid.RowTemplate.Height = rowHeight;
-            grid.ColumnHeadersHeight = 48;
+            grid.ColumnHeadersHeight = 46;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
 
             // Column Header Styling (Uniform Subtle Surface #F8FAFC, 1px bottom border, zero blue highlight)
@@ -188,9 +188,21 @@ namespace CRMS_Peguit.winforms.Models.Services
 
             return key switch
             {
-                "CONVERTED" or "ACTIVE" or "AVAILABLE" or "CLOSED" or "RESOLVED" or "APPROVED" => Theme.StatusSuccess,
-                "CONTACTED" or "PENDING REVIEW" or "PENDING_REVIEW" or "OFFER" or "CONTRACT" or "UNDER CONTRACT" or "PENDING" or "IN PROGRESS" or "IN_PROGRESS" or "FOLLOW UP" or "FOLLOW_UP" or "QUALIFIED" => Theme.StatusPending,
-                "INACTIVE" or "OVERDUE" or "LOST" or "URGENT" or "CRITICAL" or "HIGH" or "REJECTED" or "SOLD" => Theme.StatusAlert,
+                // Green (#16A34A) - Success, positive completion, active, converted, won, sold
+                "CONVERTED" or "ACTIVE" or "AVAILABLE" or "CLOSED" or "RESOLVED" or "APPROVED" or "COMPLETED" or "WON" or "SOLD" => Theme.StatusSuccess,
+
+                // Amber (#D97706) - Pending, in-progress, awaiting action, triage
+                "CONTACTED" or "PENDING REVIEW" or "PENDING_REVIEW" or "OFFER" or "CONTRACT" or "UNDER CONTRACT" or "PENDING" or "IN PROGRESS" or "IN_PROGRESS" or "FOLLOW UP" or "FOLLOW_UP" or "QUALIFIED" or "RESERVATION" or "UNDER REVIEW" or "TODAY" or "MEDIUM" => Theme.StatusPending,
+
+                // Red (#DC2626) - Alert, critical, negative outcome, overdue, cancelled
+                "INACTIVE" or "OVERDUE" or "LOST" or "URGENT" or "CRITICAL" or "HIGH" or "REJECTED" or "CANCELLED" or "CANCELED" or "FAILED" => Theme.StatusAlert,
+
+                // Blue (#2563EB) - New, initial, prospect, open, upcoming
+                "NEW" or "OPEN" or "PROSPECT" or "UPCOMING" => Theme.StatusInfo,
+
+                // Muted Gray (#6B7280) - Neutral, unassigned, low, draft, archived
+                "UNASSIGNED" or "LOW" or "DRAFT" or "ARCHIVED" or "UNKNOWN" or "-" => Theme.StatusNeutral,
+
                 _ => Theme.StatusNeutral
             };
         }
@@ -198,8 +210,9 @@ namespace CRMS_Peguit.winforms.Models.Services
         /// <summary>
         /// Renders minimalist status indicator: 6px circular dot + clean colored text.
         /// Strictly NO rounded badge pills, NO background pill fills, NO outer stroke boxes.
+        /// Defaults to left-aligned (center: false) with uniform 12px margin for perfect vertical column alignment.
         /// </summary>
-        public static void PaintStatusIndicator(DataGridView grid, DataGridViewCellPaintingEventArgs e, string status, bool center = true)
+        public static void PaintStatusIndicator(DataGridView grid, DataGridViewCellPaintingEventArgs e, string status, bool center = false)
         {
             if (e.Graphics == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
 
@@ -220,7 +233,7 @@ namespace CRMS_Peguit.winforms.Models.Services
             var textSize = TextRenderer.MeasureText(displayText, font);
 
             int dotSize = 6;
-            int spacing = 6;
+            int spacing = 8;
             int totalWidth = dotSize + spacing + textSize.Width;
 
             int startX = center
@@ -237,11 +250,95 @@ namespace CRMS_Peguit.winforms.Models.Services
             }
 
             // Clean colored text
-            var textRect = new Rectangle(startX + dotSize + spacing, e.CellBounds.Y, textSize.Width + 4, e.CellBounds.Height);
+            int textX = startX + dotSize + spacing;
+            var textRect = new Rectangle(textX, e.CellBounds.Y, Math.Max(10, e.CellBounds.Right - textX - 8), e.CellBounds.Height);
             TextRenderer.DrawText(e.Graphics, displayText, font, textRect, statusColor,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
 
             // Bottom grid line
+            using (var linePen = new Pen(GridBorder, 1f))
+            {
+                e.Graphics.DrawLine(linePen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Paints cell text with uniform padding and 1px bottom border, preventing 0px margin jumps.
+        /// </summary>
+        public static void PaintTextCell(DataGridView grid, DataGridViewCellPaintingEventArgs e, string text, Font font, Color textColor, TextFormatFlags flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, int leftPadding = 12, int rightPadding = 12)
+        {
+            if (e.Graphics == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            Color rowBg = grid.Rows[e.RowIndex].Selected
+                ? SelectionBg
+                : (e.RowIndex % 2 == 1 ? RowAlternate : RowNormal);
+
+            using (var bgBrush = new SolidBrush(rowBg))
+            {
+                e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+            }
+
+            var textRect = new Rectangle(
+                e.CellBounds.X + leftPadding,
+                e.CellBounds.Y,
+                Math.Max(10, e.CellBounds.Width - leftPadding - rightPadding),
+                e.CellBounds.Height);
+
+            TextRenderer.DrawText(e.Graphics, text, font, textRect, textColor, flags);
+
+            using (var linePen = new Pen(GridBorder, 1f))
+            {
+                e.Graphics.DrawLine(linePen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Paints an avatar with initials at exact 12px inset followed by bold primary text.
+        /// </summary>
+        public static void PaintAvatarCell(DataGridView grid, DataGridViewCellPaintingEventArgs e, string name, string initials, Color avatarBg, Color avatarText)
+        {
+            if (e.Graphics == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            Color rowBg = grid.Rows[e.RowIndex].Selected
+                ? SelectionBg
+                : (e.RowIndex % 2 == 1 ? RowAlternate : RowNormal);
+
+            using (var bgBrush = new SolidBrush(rowBg))
+            {
+                e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+            }
+
+            int avatarSize = 28;
+            int avatarX = e.CellBounds.X + 12;
+            int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
+            var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
+
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using (var brush = new SolidBrush(avatarBg))
+            {
+                e.Graphics.FillEllipse(brush, avatarRect);
+            }
+
+            using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
+            {
+                TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, avatarText,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            }
+
+            int textX = avatarX + avatarSize + 10;
+            var textRect = new Rectangle(textX, e.CellBounds.Y,
+                Math.Max(10, e.CellBounds.Width - (textX - e.CellBounds.X) - 12), e.CellBounds.Height);
+
+            using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+            {
+                TextRenderer.DrawText(e.Graphics, name, font, textRect, Theme.TextPrimary,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+
             using (var linePen = new Pen(GridBorder, 1f))
             {
                 e.Graphics.DrawLine(linePen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);

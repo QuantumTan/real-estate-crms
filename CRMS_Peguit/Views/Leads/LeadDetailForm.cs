@@ -50,12 +50,15 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
         private void SetupFormProperties()
         {
-            Text = _lead is not null ? $"Lead Details - {_lead.FullName}" : "Lead Details";
+            string displayName = _lead is not null ? UiDetailCardHelper.ToTitleCase(_lead.FullName) : "Lead Details";
+            Text = _lead is not null ? $"Lead Details - {displayName}" : "Lead Details";
             Size = new Size(760, 700);
             MinimumSize = new Size(620, 520);
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Color.FromArgb(244, 247, 251);
             DoubleBuffered = true;
+            AppBrand.ApplyDarkTitleBar(this);
+            AppBrand.ApplyAppIcon(this);
         }
 
         private void BuildUi()
@@ -92,16 +95,19 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 e.Graphics.DrawLine(pen, 0, _pnlHeader.Height - 1, _pnlHeader.Width, _pnlHeader.Height - 1);
             };
 
-            // Avatar circle
+            string formattedName = UiDetailCardHelper.ToTitleCase(_lead!.FullName);
+
+            // Avatar circle (centered with ample margins)
             var lblAvatar = new Label
             {
-                Text = UiDetailCardHelper.GetInitials(_lead!.FullName),
+                Text = UiDetailCardHelper.GetInitials(formattedName),
                 Font = new Font("Segoe UI", 15f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(180, 83, 9),       // #B45309 Amber
                 BackColor = Color.FromArgb(254, 243, 199),     // #FEF3C7
-                Size = new Size(52, 52),
-                Location = new Point(24, 18),
-                TextAlign = ContentAlignment.MiddleCenter
+                Size = new Size(54, 54),
+                Location = new Point(24, 17),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0)
             };
             UiRadiusHelper.MakeCircularAvatar(lblAvatar);
             _pnlHeader.Controls.Add(lblAvatar);
@@ -109,7 +115,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
             // Title & Subtitle block
             var lblName = new Label
             {
-                Text = _lead.FullName,
+                Text = formattedName,
                 Font = new Font("Segoe UI", 15.5f, FontStyle.Bold),
                 ForeColor = Theme.TextPrimary,
                 Location = new Point(88, 18),
@@ -130,14 +136,13 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             // Badges in Header
             var (sBg, sFg, sStroke) = UiDetailCardHelper.GetStatusColors(_lead.Stage);
-            var stageBadge = UiDetailCardHelper.CreatePillBadge(_lead.Stage, sBg, sFg, sStroke);
+            var stageBadge = UiDetailCardHelper.CreateStatusIndicator(UiDetailCardHelper.ToTitleCase(_lead.Stage), sFg);
             stageBadge.Name = "headerStageBadge";
             _pnlHeader.Controls.Add(stageBadge);
 
-            var (pBg, pFg, pStroke) = UiDetailCardHelper.GetPriorityColors(_lead.Priority);
-            var priorityBadge = UiDetailCardHelper.CreatePillBadge(
-                string.IsNullOrWhiteSpace(_lead.Priority) ? "Normal" : _lead.Priority,
-                pBg, pFg, pStroke);
+            string priorityStr = string.IsNullOrWhiteSpace(_lead.Priority) ? "Normal" : UiDetailCardHelper.ToTitleCase(_lead.Priority);
+            var (pBg, pFg, pStroke) = UiDetailCardHelper.GetPriorityColors(priorityStr);
+            var priorityBadge = UiDetailCardHelper.CreateStatusIndicator(priorityStr, pFg);
             priorityBadge.Name = "headerPriorityBadge";
             _pnlHeader.Controls.Add(priorityBadge);
 
@@ -256,7 +261,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(244, 247, 251),
-                Padding = new Padding(24, 18, 24, 18)
+                Padding = new Padding(24, 18, 24, 80)
             };
 
             int currentY = 16;
@@ -305,39 +310,40 @@ namespace CRMS_Peguit.winforms.Views.Leads
             UiDetailCardHelper.AddControl(cardLeadInfo, UiDetailCardHelper.CreateCardHeader("👤  Lead Information"));
             UiDetailCardHelper.AddControl(cardLeadInfo, UiDetailCardHelper.CreateDivider());
 
-            // Expected Value Highlight Tile (if present)
+            // Expected Value Highlight Tile (clean floating metric card)
             if (_lead.ExpectedValue.HasValue && _lead.ExpectedValue.Value > 0)
             {
                 var valBanner = new Panel
                 {
-                    Height = 48,
+                    Height = 56,
                     Dock = DockStyle.Top,
-                    BackColor = Color.FromArgb(240, 253, 244),
-                    Margin = new Padding(0, 0, 0, 10),
+                    BackColor = Color.FromArgb(248, 250, 252), // Subtle #F8FAFC
+                    Margin = new Padding(0, 0, 0, 12),
                     Padding = new Padding(14, 8, 14, 8)
                 };
                 valBanner.Paint += (s, e) =>
                 {
-                    using var pen = new Pen(Color.FromArgb(187, 247, 208), 1f);
-                    using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, valBanner.Width - 1, valBanner.Height - 1), 6);
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using var pen = new Pen(Color.FromArgb(226, 232, 240), 1f); // Subtle #E2E8F0
+                    using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, valBanner.Width - 1, valBanner.Height - 1), 8);
                     e.Graphics.DrawPath(pen, path);
                 };
-                UiRadiusHelper.ApplyRoundedCorners(valBanner, 6);
+                UiRadiusHelper.ApplyRoundedCorners(valBanner, 8);
 
                 var lblValCap = new Label
                 {
                     Text = "EXPECTED VALUE",
                     Font = new Font("Segoe UI", 8f, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(22, 101, 52),
-                    Location = new Point(12, 14),
+                    ForeColor = Color.FromArgb(100, 116, 139), // Muted #64748B
+                    Location = new Point(12, 8),
                     AutoSize = true
                 };
                 var lblValAmt = new Label
                 {
                     Text = $"₱{_lead.ExpectedValue.Value:N2}",
-                    Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(21, 128, 61),
-                    Location = new Point(130, 10),
+                    Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(15, 23, 42), // High-contrast #0F172A
+                    Location = new Point(12, 26),
                     AutoSize = true
                 };
                 valBanner.Controls.Add(lblValCap);
@@ -350,18 +356,18 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 "Phone Number", string.IsNullOrWhiteSpace(_lead.Phone) ? "Not Provided" : _lead.Phone));
             UiDetailCardHelper.AddControl(cardLeadInfo, UiDetailCardHelper.CreateKeyValueRow(
                 "Lead Source", string.IsNullOrWhiteSpace(_lead.Source) ? "Direct / Other" : _lead.Source,
-                "Priority Level", string.IsNullOrWhiteSpace(_lead.Priority) ? "Normal" : _lead.Priority));
+                "Priority Level", string.IsNullOrWhiteSpace(_lead.Priority) ? "Normal" : UiDetailCardHelper.ToTitleCase(_lead.Priority)));
             FinalizeCardHeight(cardLeadInfo, ref currentY);
             _pnlContent.Controls.Add(cardLeadInfo);
 
             // --- Card 3: Ownership & Assignment ---
             var cardOwner = CreateCardPanel(ref currentY);
-            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👥  Assignment & Review"));
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👥  Assignment Review"));
             UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateDivider());
             var agentName = _controller!.GetAssignedAgentName(_lead.AssignedAgentId);
             UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                 "Assigned Agent", agentName ?? "Unassigned",
-                "Assignment Review", _lead.AssignmentStatus));
+                "Assignment Review", UiDetailCardHelper.ToTitleCase(_lead.AssignmentStatus)));
             if (!string.IsNullOrWhiteSpace(_lead.AssignmentReviewNotes))
             {
                 UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
@@ -626,17 +632,36 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     }
                     else if (isCurrent)
                     {
-                        // Current: Primary blue circle with step number and outer ring
-                        using var ringPen = new Pen(Color.FromArgb(191, 219, 254), 3f);
-                        e.Graphics.DrawEllipse(ringPen, cx - 2, cy - 2, circleSize + 4, circleSize + 4);
+                        bool isConverted = (i == count - 1) && string.Equals(_lead?.Stage, "converted", StringComparison.OrdinalIgnoreCase);
 
-                        using var brush = new SolidBrush(Theme.Primary);
-                        e.Graphics.FillEllipse(brush, circleRect);
+                        if (isConverted)
+                        {
+                            // Step 4 Converted: Completed emerald circle with checkmark rather than number 4
+                            using var ringPen = new Pen(Color.FromArgb(187, 247, 208), 3f);
+                            e.Graphics.DrawEllipse(ringPen, cx - 2, cy - 2, circleSize + 4, circleSize + 4);
 
-                        using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                        using var tBrush = new SolidBrush(Color.White);
-                        using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                        e.Graphics.DrawString((i + 1).ToString(), font, tBrush, circleRect, sf);
+                            using var brush = new SolidBrush(Color.FromArgb(34, 197, 94));
+                            e.Graphics.FillEllipse(brush, circleRect);
+
+                            using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
+                            using var tBrush = new SolidBrush(Color.White);
+                            using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                            e.Graphics.DrawString("✓", font, tBrush, circleRect, sf);
+                        }
+                        else
+                        {
+                            // Current: Primary blue circle with step number and outer ring
+                            using var ringPen = new Pen(Color.FromArgb(191, 219, 254), 3f);
+                            e.Graphics.DrawEllipse(ringPen, cx - 2, cy - 2, circleSize + 4, circleSize + 4);
+
+                            using var brush = new SolidBrush(Theme.Primary);
+                            e.Graphics.FillEllipse(brush, circleRect);
+
+                            using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
+                            using var tBrush = new SolidBrush(Color.White);
+                            using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                            e.Graphics.DrawString((i + 1).ToString(), font, tBrush, circleRect, sf);
+                        }
                     }
                     else
                     {
@@ -867,24 +892,24 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
             if (_pnlFooter != null)
             {
-                // Left-aligned contextual actions
+                // Left-aligned contextual actions (8px spacing)
                 int left = 24;
                 if (_btnMessage != null)
                 {
                     _btnMessage.Location = new Point(left, 13);
-                    left += _btnMessage.Width + 10;
+                    left += _btnMessage.Width + 8;
                 }
                 if (_btnConvert != null && _btnConvert.Visible)
                 {
                     _btnConvert.Location = new Point(left, 13);
                 }
 
-                // Right-aligned dialog actions
+                // Right-aligned dialog actions (8px spacing)
                 int right = _pnlFooter.ClientSize.Width - 24;
                 if (_btnClose != null)
                 {
                     _btnClose.Location = new Point(right - _btnClose.Width, 13);
-                    right -= (_btnClose.Width + 10);
+                    right -= (_btnClose.Width + 8);
                 }
                 if (_btnEdit != null && _btnEdit.Visible)
                 {

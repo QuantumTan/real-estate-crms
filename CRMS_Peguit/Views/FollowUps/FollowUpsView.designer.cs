@@ -69,7 +69,8 @@ namespace CRMS_Peguit.winforms.Views.FollowUps
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(320, 37);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "Follow-Ups & Reminders";
+            this.lblTitle.Text = "Follow-Up Reminders";
+            this.lblTitle.UseMnemonic = false;
             // 
             // lblSubtitle
             // 

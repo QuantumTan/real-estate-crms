@@ -34,13 +34,14 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             UiRadiusHelper.StyleCard(pnlStats, 10);
             UiRadiusHelper.StyleCard(pnlGridCard, 12);
 
-            UiGridHelper.ApplyModernGridStyle(gridLeads, 48);
+            UiGridHelper.ApplyModernGridStyle(gridLeads, 52);
         }
 
         private void BindEvents()
         {
             btnAddCampaign.Click += BtnAddCampaign_Click;
             btnRefresh.Click += (_, _) => LoadData();
+            gridLeads.CellPainting += GridLeads_CellPainting;
         }
 
         private void LoadData()
@@ -136,11 +137,15 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             {
                 stageCol.HeaderText = "STAGE";
                 stageCol.FillWeight = 90;
+                stageCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                stageCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
             if (gridLeads.Columns["Value"] is DataGridViewColumn valCol)
             {
                 valCol.HeaderText = "EXPECTED VALUE";
                 valCol.FillWeight = 100;
+                valCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                valCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
             if (gridLeads.Columns["Contact"] is DataGridViewColumn conCol)
             {
@@ -156,6 +161,25 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             {
                 dateCol.HeaderText = "DATE CAPTURED";
                 dateCol.FillWeight = 100;
+            }
+        }
+
+        private void GridLeads_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.Graphics is null) return;
+            string colName = gridLeads.Columns[e.ColumnIndex].Name;
+
+            if (colName == "Stage" && e.Value != null)
+            {
+                string stage = e.Value.ToString() ?? "";
+                UiGridHelper.PaintStatusIndicator(gridLeads, e, stage, center: false);
+            }
+            else if (colName == "Value" && e.Value != null)
+            {
+                string valStr = e.Value.ToString() ?? "-";
+                using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(gridLeads, e, valStr, font, Theme.TextPrimary,
+                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter, leftPadding: 8, rightPadding: 12);
             }
         }
 
