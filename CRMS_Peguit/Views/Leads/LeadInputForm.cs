@@ -1,4 +1,5 @@
 using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Leads
@@ -19,6 +20,8 @@ namespace CRMS_Peguit.winforms.Views.Leads
             InitializeComponent();
             UiRadiusHelper.StyleButton(btnSave, 8);
             UiRadiusHelper.StyleButton(btnCancel, 8);
+            UiRadiusHelper.AttachHoverFeedback(btnCancel, Color.White, Color.FromArgb(241, 245, 249));
+            UiRadiusHelper.AttachHoverFeedback(btnSave, Theme.Primary, Theme.PrimaryDark);
             btnSave.Click += BtnSaveClick;
             LoadData();
         }
@@ -29,29 +32,128 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 ? "Add New Lead"
                 : $"Edit Lead - {_existingLead.FullName}";
 
+            PopulateSources();
+
+            bool isPendingReview = _existingLead is not null &&
+                                  string.Equals(_existingLead.AssignmentStatus, "pending_review", StringComparison.OrdinalIgnoreCase) &&
+                                  !CRMS_Peguit.winforms.Auth.RbacService.HasFullOversight;
+
+            if (isPendingReview)
+            {
+                btnSave.Enabled = false;
+                btnSave.Text = "Pending Review";
+                btnSave.BackColor = Color.FromArgb(148, 163, 184);
+                Text += " (Under Managerial Review - Read Only)";
+            }
+
             if (_existingLead is not null)
             {
                 txtFirstName.Text = _existingLead.FirstName;
                 txtMiddleName.Text = _existingLead.MiddleName ?? string.Empty;
                 txtLastName.Text = _existingLead.LastName;
-                txtSuffix.Text = _existingLead.Suffix ?? string.Empty;
+                
+                string sfx = _existingLead.Suffix ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(sfx) && !cmbSuffix.Items.Contains(sfx))
+                {
+                    cmbSuffix.Items.Add(sfx);
+                }
+                cmbSuffix.Text = sfx;
 
                 txtEmail.Text = _existingLead.Email ?? string.Empty;
                 txtPhone.Text = _existingLead.Phone ?? string.Empty;
-                txtSource.Text = _existingLead.Source ?? string.Empty;
-                txtNotes.Text = _existingLead.Notes ?? string.Empty;
 
+                if (!string.IsNullOrWhiteSpace(_existingLead.Source))
+                {
+                    if (!cmbSource.Items.Contains(_existingLead.Source))
+                    {
+                        cmbSource.Items.Add(_existingLead.Source);
+                    }
+                    cmbSource.Text = _existingLead.Source;
+                }
+                else
+                {
+                    cmbSource.SelectedIndex = -1;
+                    cmbSource.Text = string.Empty;
+                }
+
+                txtNotes.Text = _existingLead.Notes ?? string.Empty;
                 txtExpectedValue.Text = _existingLead.ExpectedValue.HasValue
-                    ? _existingLead.ExpectedValue.Value.ToString("F0")
+                    ? _existingLead.ExpectedValue.Value.ToString("F2")
                     : string.Empty;
 
-                SelectComboValue(cmbStage, _existingLead.Stage, "new");
+                // Configure available stages: prevent regressing from contacted/qualified back to 'new'
+                cmbStage.Items.Clear();
+                string currentStage = (_existingLead.Stage ?? "new").ToLowerInvariant();
+
+                if (currentStage == "converted")
+                {
+                    cmbStage.Items.Add("converted");
+                    cmbStage.SelectedItem = "converted";
+                    cmbStage.Enabled = false;
+                }
+                else if (currentStage == "new")
+                {
+                    cmbStage.Items.AddRange(new object[] { "new", "contacted", "qualified", "proposal", "negotiation", "lost" });
+                    SelectComboValue(cmbStage, _existingLead.Stage, "new");
+                }
+                else
+                {
+                    // Lead has been contacted or progressed: 'new' is permanently locked out
+                    cmbStage.Items.AddRange(new object[] { "contacted", "qualified", "proposal", "negotiation", "lost" });
+                    SelectComboValue(cmbStage, _existingLead.Stage, "contacted");
+                }
+
                 SelectComboValue(cmbPriority, _existingLead.Priority, "medium");
+
+                if (isPendingReview)
+                {
+                    txtFirstName.ReadOnly = true;
+                    txtMiddleName.ReadOnly = true;
+                    txtLastName.ReadOnly = true;
+                    cmbSuffix.Enabled = false;
+                    txtEmail.ReadOnly = true;
+                    txtPhone.ReadOnly = true;
+                    cmbSource.Enabled = false;
+                    cmbStage.Enabled = false;
+                    cmbPriority.Enabled = false;
+                    txtExpectedValue.ReadOnly = true;
+                    txtNotes.ReadOnly = true;
+                }
             }
             else
             {
+                cmbSuffix.SelectedIndex = -1;
+                cmbSuffix.Text = string.Empty;
+                cmbSource.SelectedIndex = -1;
+                cmbSource.Text = string.Empty;
+
+                cmbStage.Items.Clear();
+                cmbStage.Items.AddRange(new object[] { "new", "contacted", "qualified", "proposal", "negotiation", "lost" });
                 cmbStage.SelectedItem = "new";
                 cmbPriority.SelectedItem = "medium";
+            }
+        }
+
+        private void PopulateSources()
+        {
+            try
+            {
+                using var campaignController = new CampaignController();
+                var sources = campaignController.GetActiveCampaignSources();
+                cmbSource.Items.Clear();
+                foreach (var s in sources)
+                {
+                    cmbSource.Items.Add(s);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[LeadInputForm.PopulateSources] Error: {ex.Message}");
+                cmbSource.Items.Clear();
+                cmbSource.Items.AddRange(new object[]
+                {
+                    "Facebook Ad", "Referral", "Walk-in", "Website", "Property Portal", "Google Ads", "Billboard / Outdoor", "Open House / Event"
+                });
             }
         }
 
@@ -60,37 +162,25 @@ namespace CRMS_Peguit.winforms.Views.Leads
             string firstName = txtFirstName.Text.Trim();
             string lastName = txtLastName.Text.Trim();
 
-            if (string.IsNullOrWhiteSpace(firstName))
+            if (!LeadController.ValidateLeadInput(
+                firstName,
+                lastName,
+                txtEmail.Text,
+                txtExpectedValue.Text,
+                out decimal? expectedValue,
+                out string? errorMessage,
+                out string? errorField))
             {
-                ShowValidationError("First name is required.", txtFirstName);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(lastName))
-            {
-                ShowValidationError("Last name is required.", txtLastName);
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(txtEmail.Text) &&
-                !ContactEmailService.IsValidEmail(txtEmail.Text))
-            {
-                ShowValidationError("Enter a valid email address.", txtEmail);
-                return;
-            }
-
-            decimal? expectedValue = null;
-            if (!string.IsNullOrWhiteSpace(txtExpectedValue.Text))
-            {
-                if (decimal.TryParse(txtExpectedValue.Text.Trim(), out decimal parsedVal) && parsedVal >= 0)
+                Control target = errorField switch
                 {
-                    expectedValue = parsedVal;
-                }
-                else
-                {
-                    ShowValidationError("Enter a valid expected value amount.", txtExpectedValue);
-                    return;
-                }
+                    "FirstName" => txtFirstName,
+                    "LastName" => txtLastName,
+                    "Email" => txtEmail,
+                    "ExpectedValue" => txtExpectedValue,
+                    _ => txtFirstName
+                };
+                ShowValidationError(errorMessage ?? "Validation error.", target);
+                return;
             }
 
             if (_existingLead is not null)
@@ -98,10 +188,10 @@ namespace CRMS_Peguit.winforms.Views.Leads
                 _existingLead.FirstName = firstName;
                 _existingLead.MiddleName = NullIfEmpty(txtMiddleName.Text);
                 _existingLead.LastName = lastName;
-                _existingLead.Suffix = NullIfEmpty(txtSuffix.Text);
+                _existingLead.Suffix = NullIfEmpty(cmbSuffix.Text);
                 _existingLead.Email = NullIfEmpty(txtEmail.Text);
                 _existingLead.Phone = NullIfEmpty(txtPhone.Text);
-                _existingLead.Source = NullIfEmpty(txtSource.Text);
+                _existingLead.Source = NullIfEmpty(cmbSource.Text);
                 _existingLead.Stage = cmbStage.SelectedItem?.ToString() ?? "new";
                 _existingLead.Priority = cmbPriority.SelectedItem?.ToString() ?? "medium";
                 _existingLead.ExpectedValue = expectedValue;
@@ -116,10 +206,10 @@ namespace CRMS_Peguit.winforms.Views.Leads
                     FirstName = firstName,
                     MiddleName = NullIfEmpty(txtMiddleName.Text),
                     LastName = lastName,
-                    Suffix = NullIfEmpty(txtSuffix.Text),
+                    Suffix = NullIfEmpty(cmbSuffix.Text),
                     Email = NullIfEmpty(txtEmail.Text),
                     Phone = NullIfEmpty(txtPhone.Text),
-                    Source = NullIfEmpty(txtSource.Text),
+                    Source = NullIfEmpty(cmbSource.Text),
                     Stage = cmbStage.SelectedItem?.ToString() ?? "new",
                     Priority = cmbPriority.SelectedItem?.ToString() ?? "medium",
                     ExpectedValue = expectedValue,
@@ -149,11 +239,6 @@ namespace CRMS_Peguit.winforms.Views.Leads
         {
             MessageBox.Show(message, "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             control.Focus();
-        }
-
-        private void txtSuffix_TextChanged(object sender, EventArgs e)
-        {
-
         }
     }
 }

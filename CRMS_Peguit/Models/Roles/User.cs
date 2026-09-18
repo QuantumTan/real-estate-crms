@@ -23,7 +23,7 @@ namespace CRMS_Peguit.winforms.Models.Roles
         public string Email;
 
         // PRIVATE - hidden (Encapsulation)
-        private string _passwordHash;
+        private string _passwordHash = string.Empty;
         private UserRole _role;
 
         protected User(string fullName, string email, UserRole role) : base()

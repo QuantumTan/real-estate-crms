@@ -14,20 +14,36 @@ namespace CRMS_Peguit.winforms.Views.Properties
         private string _filterStatus = "All";
         private Button? _btnExport;
         private Label _lblEmptyState = null!;
+        private PaginationControl _pagination = null!;
+        private List<Property> _allProperties = new();
+        private List<Property> _filteredProperties = new();
+        private Dictionary<int, string> _owners = new();
+        private Dictionary<int, string> _agents = new();
 
         public PropertiesView()
         {
             InitializeComponent();
             _controller = new PropertyController();
 
+            InitPagination();
             InitEmptyState();
             ApplyStyling();
             BindEvents();
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(reloadFromDb: true);
 
             this.Load += (_, _) => LayoutToolbar();
             this.Resize += (_, _) => LayoutToolbar();
+        }
+
+        private void InitPagination()
+        {
+            _pagination = new PaginationControl();
+            _pagination.SetItemLabel("properties");
+            _pagination.PageChanged += (_, _) => BindCurrentPage();
+            _pagination.PageSizeChanged += (_, _) => BindCurrentPage();
+            pnlCard.Controls.Add(_pagination);
+            _pagination.BringToFront();
         }
 
         private void InitEmptyState()
@@ -59,7 +75,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
         {
             btnAdd.Visible = RbacService.CanCreateSalesRecord;
             btnAdd.Click += BtnAddClick;
-            txtSearch.TextChanged += (_, _) => RefreshGrid();
+            txtSearch.TextChanged += (_, _) => RefreshGrid(reloadFromDb: false);
 
             if (RbacService.CanExportData)
             {
@@ -87,6 +103,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
             // Modern Grid Styling & Search Padding
             UiGridHelper.ApplyModernGridStyle(grid, 52);
+            grid.ShowCellErrors = false;
+            grid.ShowRowErrors = false;
             UiRadiusHelper.SetPadding(txtSearch, 10, 10);
 
             grid.CellPainting += Grid_CellPainting;
@@ -103,7 +121,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
         {
             _filterStatus = filter;
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(reloadFromDb: false);
         }
 
         private void UpdateFilterPillStyles()
@@ -119,38 +137,26 @@ namespace CRMS_Peguit.winforms.Views.Properties
             foreach (var (btn, name) in pills)
             {
                 bool isSelected = string.Equals(_filterStatus, name, StringComparison.OrdinalIgnoreCase);
-                if (isSelected)
-                {
-                    btn.BackColor = Color.FromArgb(15, 91, 158);
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                }
+                UiRadiusHelper.StyleFilterPill(btn, isSelected);
             }
         }
 
-        private void RefreshGrid()
+        private void RefreshGrid(bool reloadFromDb = true)
         {
-            grid.Columns.Clear();
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            if (reloadFromDb || _allProperties.Count == 0)
+            {
+                _allProperties = _controller.GetAll().ToList();
+                _owners = _controller.GetOwnerCustomers()
+                    .ToDictionary(x => x.CustomerId, x => x.FullName);
+                _agents = _controller.GetAgents()
+                    .ToDictionary(x => x.UserId, x => x.FullName);
+            }
 
-            var allList = _controller.GetAll().ToList();
-            int total = allList.Count;
-            int available = allList.Count(p => string.Equals(p.Status, "available", StringComparison.OrdinalIgnoreCase));
+            int total = _allProperties.Count;
+            int available = _allProperties.Count(p => string.Equals(p.Status, "available", StringComparison.OrdinalIgnoreCase));
             lblSubtitle.Text = $"{total} total · {available} available";
 
-            var owners = _controller.GetOwnerCustomers()
-                .ToDictionary(x => x.CustomerId, x => x.FullName);
-
-            var agents = _controller.GetAgents()
-                .ToDictionary(x => x.UserId, x => x.FullName);
-
-            IEnumerable<Property> query = allList;
+            IEnumerable<Property> query = _allProperties;
 
             if (string.Equals(_filterStatus, "Available", StringComparison.OrdinalIgnoreCase))
             {
@@ -174,23 +180,37 @@ namespace CRMS_Peguit.winforms.Views.Properties
                     ContainsText(property.Address, search) ||
                     ContainsText(property.PropertyType, search) ||
                     ContainsText(property.Status, search) ||
-                    ContainsText(GetName(owners, property.OwnerCustomerId), search) ||
-                    ContainsText(GetName(agents, property.ListedByAgentId), search));
+                    ContainsText(GetName(_owners, property.OwnerCustomerId), search) ||
+                    ContainsText(GetName(_agents, property.ListedByAgentId), search));
             }
 
-            grid.DataSource = query
+            _filteredProperties = query.ToList();
+            _pagination.UpdatePagination(_filteredProperties.Count, 1, _pagination.PageSize);
+            BindCurrentPage();
+        }
+
+        private void BindCurrentPage()
+        {
+            grid.Columns.Clear();
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            var pageItems = _filteredProperties
+                .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
+                .Take(_pagination.PageSize)
                 .Select(property => new
                 {
                     property.PropertyId,
                     Address = property.Address,
                     Type = string.IsNullOrWhiteSpace(property.PropertyType) ? "-" : property.PropertyType,
-                    Price = $"₱{property.Price:N0}",
+                    Price = $"₱{property.Price:N2}",
                     Status = property.Status.ToUpper(),
                     Assignment = string.IsNullOrWhiteSpace(property.AssignmentStatus) ? "-" : property.AssignmentStatus,
-                    Owner = GetName(owners, property.OwnerCustomerId),
-                    ListedBy = GetName(agents, property.ListedByAgentId)
+                    Owner = GetName(_owners, property.OwnerCustomerId),
+                    ListedBy = GetName(_agents, property.ListedByAgentId)
                 })
                 .ToList();
+
+            grid.DataSource = pageItems;
 
             var propertyIdColumn = grid.Columns["PropertyId"];
             if (propertyIdColumn is not null)
@@ -219,6 +239,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 priceCol.HeaderText = "PRICE";
                 priceCol.FillWeight = 100;
                 priceCol.MinimumWidth = 90;
+                priceCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                priceCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
 
             if (grid.Columns["Status"] is DataGridViewColumn statusCol)
@@ -226,6 +248,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 statusCol.HeaderText = "STATUS";
                 statusCol.FillWeight = 90;
                 statusCol.MinimumWidth = 80;
+                statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
 
             if (grid.Columns["Assignment"] is DataGridViewColumn assignCol)
@@ -251,81 +275,35 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _lblEmptyState.Visible = (grid.Rows.Count == 0);
+            _lblEmptyState.Visible = (_filteredProperties.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Custom render Status pill badge
+            // Minimalist Status Indicator (Left-aligned at 12px, Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string status = e.Value.ToString() ?? "";
-                Color bgColor;
-                Color textColor;
-
-                if (status.Equals("AVAILABLE", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(220, 252, 231);
-                    textColor = Color.FromArgb(22, 101, 52);
-                }
-                else if (status.Equals("PENDING", StringComparison.OrdinalIgnoreCase) ||
-                         status.Equals("RESERVED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(254, 243, 199);
-                    textColor = Color.FromArgb(180, 83, 9);
-                }
-                else if (status.Equals("SOLD", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(219, 234, 254);
-                    textColor = Color.FromArgb(30, 64, 175);
-                }
-                else
-                {
-                    bgColor = Color.FromArgb(254, 226, 226);
-                    textColor = Color.FromArgb(153, 27, 27);
-                }
-
-                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(status, font);
-                    int pillWidth = size.Width + 16;
-                    int pillHeight = 22;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, status, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: false);
             }
-            // Style address with primary bold text
+            // Style address with primary bold text at uniform 12px inset
             else if (grid.Columns[e.ColumnIndex].Name == "Address" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string address = e.Value.ToString() ?? "";
-
-                var textRect = new Rectangle(e.CellBounds.X + 12, e.CellBounds.Y,
-                    e.CellBounds.Width - 20, e.CellBounds.Height);
-
-                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, address, font, textRect, Color.FromArgb(15, 23, 42),
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(grid, e, address, font, Color.FromArgb(15, 23, 42),
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, leftPadding: 12);
+            }
+            // Clean right-aligned Price column painting at uniform right margin
+            else if (grid.Columns[e.ColumnIndex].Name == "Price" && e.Value != null)
+            {
+                string priceText = e.Value.ToString() ?? "";
+                priceText = priceText.TrimStart('!', '|', ' ');
+                using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(grid, e, priceText, font, Color.FromArgb(15, 23, 42),
+                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter, leftPadding: 8, rightPadding: 12);
             }
         }
 
@@ -348,13 +326,14 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
         private Property? GetPropertyAtRow(int rowIndex)
         {
+            if (rowIndex < 0 || rowIndex >= grid.Rows.Count) return null;
             object? idValue = grid.Rows[rowIndex].Cells["PropertyId"].Value;
             if (idValue is null || !int.TryParse(idValue.ToString(), out int propertyId))
             {
                 return null;
             }
 
-            return _controller.GetAll().FirstOrDefault(property => property.PropertyId == propertyId);
+            return _allProperties.FirstOrDefault(property => property.PropertyId == propertyId) ?? _controller.GetById(propertyId);
         }
 
         private Property? GetSelectedProperty()
@@ -385,7 +364,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             viewItem.Click += (_, _) => ViewProperty(property);
             menu.Items.Add(viewItem);
 
-            if (RbacService.CanEditRecord(property.ListedByAgentId, property.CreatedByUserId))
+            if (RbacService.CanEditRecord(property.ListedByAgentId, property.CreatedByUserId, property.AssignmentStatus))
             {
                 var editItem = new ToolStripMenuItem("Edit");
                 editItem.Click += (_, _) => EditProperty(property);
@@ -566,7 +545,11 @@ namespace CRMS_Peguit.winforms.Views.Properties
             int rightPadding = 30;
             int leftMargin = 30;
             int totalWidth = ClientSize.Width;
-            int y = 88;
+
+            // Explicit header positioning with clear separation
+            lblTitle.Location = new Point(leftMargin, 20);
+            lblSubtitle.Location = new Point(leftMargin + 2, lblTitle.Bottom + 4);
+            int y = Math.Max(96, lblSubtitle.Bottom + 16);
 
             // Position header action buttons
             int rightEdge = totalWidth - rightPadding;
@@ -604,8 +587,9 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 txtSearch.Left = leftMargin;
                 txtSearch.Width = Math.Min(360, availableForSearch);
 
-                pnlCard.Top = 126;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+                int cardTop = y + txtSearch.Height + 14;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 24);
             }
             else
             {
@@ -615,7 +599,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
 
                 int filterX = leftMargin;
-                int pillY = y + 36;
+                int pillY = y + txtSearch.Height + 10;
                 var forwardPills = new[] { btnFilterAll, btnFilterAvailable, btnFilterPending, btnFilterSold };
                 foreach (var p in forwardPills)
                 {
@@ -624,8 +608,9 @@ namespace CRMS_Peguit.winforms.Views.Properties
                     filterX += p.Width + 6;
                 }
 
-                pnlCard.Top = pillY + 38;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+                int cardTop = pillY + 34;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 20);
             }
 
             pnlCard.Left = leftMargin;

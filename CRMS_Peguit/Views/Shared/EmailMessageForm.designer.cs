@@ -99,25 +99,9 @@ namespace CRMS_Peguit.winforms.Views.Shared
             this.txtBody.Size = new System.Drawing.Size(500, 185);
             this.txtBody.TabIndex = 5;
             // 
-            // btnSend
-            // 
-            this.btnSend.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSend.BackColor = System.Drawing.Color.FromArgb(37, 103, 156);
-            this.btnSend.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSend.FlatAppearance.BorderSize = 0;
-            this.btnSend.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSend.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.btnSend.ForeColor = System.Drawing.Color.White;
-            this.btnSend.Location = new System.Drawing.Point(330, 410);
-            this.btnSend.Name = "btnSend";
-            this.btnSend.Size = new System.Drawing.Size(90, 38);
-            this.btnSend.TabIndex = 6;
-            this.btnSend.Text = "Send";
-            this.btnSend.UseVisualStyleBackColor = false;
             // 
             // btnCancel
             // 
-            this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnCancel.BackColor = System.Drawing.Color.White;
             this.btnCancel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
@@ -125,19 +109,33 @@ namespace CRMS_Peguit.winforms.Views.Shared
             this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCancel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnCancel.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
-            this.btnCancel.Location = new System.Drawing.Point(430, 410);
+            this.btnCancel.Location = new System.Drawing.Point(330, 410);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(90, 38);
-            this.btnCancel.TabIndex = 7;
+            this.btnCancel.TabIndex = 6;
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = false;
+            // 
+            // btnSend
+            // 
+            this.btnSend.BackColor = System.Drawing.Color.FromArgb(37, 103, 156);
+            this.btnSend.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnSend.FlatAppearance.BorderSize = 0;
+            this.btnSend.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSend.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnSend.ForeColor = System.Drawing.Color.White;
+            this.btnSend.Location = new System.Drawing.Point(430, 410);
+            this.btnSend.Name = "btnSend";
+            this.btnSend.Size = new System.Drawing.Size(90, 38);
+            this.btnSend.TabIndex = 7;
+            this.btnSend.Text = "Send";
+            this.btnSend.UseVisualStyleBackColor = false;
             // 
             // EmailMessageForm
             // 
             this.AcceptButton = this.btnSend;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.AutoScroll = true;
             this.BackColor = System.Drawing.Color.FromArgb(243, 247, 250);
             this.CancelButton = this.btnCancel;
             this.ClientSize = new System.Drawing.Size(544, 481);
@@ -147,13 +145,12 @@ namespace CRMS_Peguit.winforms.Views.Shared
             this.Controls.Add(this.txtSubject);
             this.Controls.Add(this.lblBody);
             this.Controls.Add(this.txtBody);
-            this.Controls.Add(this.btnSend);
             this.Controls.Add(this.btnCancel);
+            this.Controls.Add(this.btnSend);
             this.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(544, 450);
             this.Name = "EmailMessageForm";
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;

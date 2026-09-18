@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -8,10 +6,11 @@ namespace CRMS_Peguit.domain.entities
     {
         public int SettingId { get; set; }
 
-        public int TenantId { get; set; }
         public string SettingKey { get; set; } = string.Empty;
         public string SettingValue { get; set; } = string.Empty;
         public int UpdatedByUserId { get; set; }
         public DateTime UpdatedAt { get; set; }
+
+        public virtual User UpdatedByUser { get; set; } = null!;
     }
 }

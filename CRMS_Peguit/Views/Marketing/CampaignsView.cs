@@ -13,12 +13,13 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 {
     public partial class CampaignsView : UserControl
     {
+        private readonly CampaignController _campaignController;
         private readonly LeadController _leadController;
-        private List<string> _activeSources = new();
         private string _selectedSource = "All";
 
         public CampaignsView()
         {
+            _campaignController = new CampaignController();
             _leadController = new LeadController();
             InitializeComponent();
             ApplyModernStyling();
@@ -33,71 +34,38 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             UiRadiusHelper.StyleCard(pnlStats, 10);
             UiRadiusHelper.StyleCard(pnlGridCard, 12);
 
-            UiGridHelper.ApplyModernGridStyle(gridLeads, 48);
+            UiGridHelper.ApplyModernGridStyle(gridLeads, 52);
         }
 
         private void BindEvents()
         {
             btnAddCampaign.Click += BtnAddCampaign_Click;
             btnRefresh.Click += (_, _) => LoadData();
+            gridLeads.CellPainting += GridLeads_CellPainting;
         }
 
         private void LoadData()
         {
-            var leads = _leadController.GetAll();
+            var summary = _campaignController.GetCampaignSummary(_selectedSource);
 
-            var sources = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "Facebook Ad",
-                "Referral",
-                "Walk-in",
-                "Website",
-                "Property Portal"
-            };
+            lblStatChannels.Text = $"{summary.ActiveChannelCount} Active Lead Channels";
+            lblStatTotalLeads.Text = $"{summary.TotalLeads} Total Leads Attributed";
+            lblStatConversion.Text = summary.TopChannelText;
 
-            foreach (var l in leads)
-            {
-                if (!string.IsNullOrWhiteSpace(l.Source))
-                {
-                    sources.Add(l.Source.Trim());
-                }
-            }
-
-            foreach (var s in _activeSources)
-            {
-                sources.Add(s);
-            }
-
-            _activeSources = sources.OrderBy(s => s).ToList();
-
-            int totalLeads = leads.Count;
-            lblStatChannels.Text = $"{_activeSources.Count} Active Lead Channels";
-            lblStatTotalLeads.Text = $"{totalLeads} Total Leads Attributed";
-
-            var topSource = leads
-                .Where(l => !string.IsNullOrWhiteSpace(l.Source))
-                .GroupBy(l => l.Source!.Trim(), StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(g => g.Count())
-                .FirstOrDefault();
-
-            lblStatConversion.Text = topSource != null
-                ? $"Top Channel: {topSource.Key} ({topSource.Count()} leads)"
-                : "Top Channel: None";
-
-            BuildFilterPills(leads);
-            DisplayLeads(leads);
+            BuildFilterPills(summary);
+            DisplayLeads(summary.FilteredLeads);
         }
 
-        private void BuildFilterPills(List<Lead> leads)
+        private void BuildFilterPills(CRMS_Peguit.winforms.Models.ViewModels.CampaignSummaryViewModel summary)
         {
             pnlSourcePills.Controls.Clear();
 
-            var btnAll = CreatePillButton($"All ({leads.Count})", "All");
+            var btnAll = CreatePillButton($"All ({summary.TotalLeads})", "All");
             pnlSourcePills.Controls.Add(btnAll);
 
-            foreach (var source in _activeSources)
+            foreach (var source in summary.Channels)
             {
-                int count = leads.Count(l => string.Equals(l.Source?.Trim(), source, StringComparison.OrdinalIgnoreCase));
+                int count = summary.ChannelCounts.TryGetValue(source, out int c) ? c : 0;
                 var btn = CreatePillButton($"{source} ({count})", source);
                 pnlSourcePills.Controls.Add(btn);
             }
@@ -134,11 +102,9 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             return btn;
         }
 
-        private void DisplayLeads(List<Lead> allLeads)
+        private void DisplayLeads(List<Lead> filteredLeads)
         {
-            var filtered = string.Equals(_selectedSource, "All", StringComparison.OrdinalIgnoreCase)
-                ? allLeads
-                : allLeads.Where(l => string.Equals(l.Source?.Trim(), _selectedSource, StringComparison.OrdinalIgnoreCase)).ToList();
+            var filtered = filteredLeads;
 
             gridLeads.Columns.Clear();
 
@@ -148,7 +114,7 @@ namespace CRMS_Peguit.winforms.Views.Marketing
                 Name = l.FullName,
                 CampaignSource = string.IsNullOrWhiteSpace(l.Source) ? "Untagged" : l.Source,
                 Stage = (l.Stage ?? "New").ToUpper(),
-                Value = l.ExpectedValue.HasValue ? $"₱{l.ExpectedValue.Value:N0}" : "-",
+                Value = l.ExpectedValue.HasValue ? $"₱{l.ExpectedValue.Value:N2}" : "-",
                 Contact = string.IsNullOrWhiteSpace(l.Phone) ? l.Email ?? "-" : l.Phone,
                 AssignedAgent = _leadController.GetAssignedAgentName(l.AssignedAgentId) ?? "Unassigned",
                 CapturedDate = l.CreatedAt.ToString("MMM dd, yyyy")
@@ -171,11 +137,15 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             {
                 stageCol.HeaderText = "STAGE";
                 stageCol.FillWeight = 90;
+                stageCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                stageCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
             if (gridLeads.Columns["Value"] is DataGridViewColumn valCol)
             {
                 valCol.HeaderText = "EXPECTED VALUE";
                 valCol.FillWeight = 100;
+                valCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                valCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
             if (gridLeads.Columns["Contact"] is DataGridViewColumn conCol)
             {
@@ -194,12 +164,31 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             }
         }
 
+        private void GridLeads_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.Graphics is null) return;
+            string colName = gridLeads.Columns[e.ColumnIndex].Name;
+
+            if (colName == "Stage" && e.Value != null)
+            {
+                string stage = e.Value.ToString() ?? "";
+                UiGridHelper.PaintStatusIndicator(gridLeads, e, stage, center: false);
+            }
+            else if (colName == "Value" && e.Value != null)
+            {
+                string valStr = e.Value.ToString() ?? "-";
+                using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(gridLeads, e, valStr, font, Theme.TextPrimary,
+                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter, leftPadding: 8, rightPadding: 12);
+            }
+        }
+
         private void BtnAddCampaign_Click(object? sender, EventArgs e)
         {
             using var inputForm = new Form
             {
-                Text = "Create New Lead Source / Campaign",
-                Size = new Size(420, 210),
+                Text = "Create New Campaign / Lead Source",
+                Size = new Size(460, 300),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -209,7 +198,7 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 
             var lblPrompt = new Label
             {
-                Text = "Campaign / Source Name (e.g., Google Ads, Billboard, Event):",
+                Text = "Campaign / Source Name * (e.g., Summer Promo 2026, Ayala Expo):",
                 Location = new Point(24, 20),
                 AutoSize = true,
                 Font = new Font("Segoe UI", 9.5f)
@@ -218,16 +207,44 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             var txtName = new TextBox
             {
                 Location = new Point(24, 48),
-                Size = new Size(350, 30),
+                Size = new Size(390, 30),
                 Font = new Font("Segoe UI", 10f)
             };
+
+            var lblChannel = new Label
+            {
+                Text = "Channel / Category (e.g., Social Media, Portal, Event, Direct):",
+                Location = new Point(24, 90),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9.5f)
+            };
+
+            var cmbChannel = new ComboBox
+            {
+                Location = new Point(24, 118),
+                Size = new Size(390, 30),
+                Font = new Font("Segoe UI", 10f),
+                DropDownStyle = ComboBoxStyle.DropDown
+            };
+            cmbChannel.Items.AddRange(new object[]
+            {
+                "Social Media",
+                "Property Portal",
+                "Search Engine / Paid Ads",
+                "Referral",
+                "Event / Expo",
+                "Outdoor / Billboard",
+                "Direct / Walk-in",
+                "Website"
+            });
+            cmbChannel.SelectedIndex = 0;
 
             var btnCancel = new Button
             {
                 Text = "Cancel",
                 DialogResult = DialogResult.Cancel,
-                Location = new Point(134, 105),
-                Size = new Size(90, 38),
+                Location = new Point(174, 195),
+                Size = new Size(100, 38),
                 BackColor = Color.White,
                 ForeColor = Color.FromArgb(8, 52, 87),
                 FlatStyle = FlatStyle.Flat,
@@ -240,8 +257,8 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             {
                 Text = "Save Campaign",
                 DialogResult = DialogResult.OK,
-                Location = new Point(234, 105),
-                Size = new Size(140, 38),
+                Location = new Point(284, 195),
+                Size = new Size(130, 38),
                 BackColor = Color.FromArgb(15, 91, 158),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -251,6 +268,8 @@ namespace CRMS_Peguit.winforms.Views.Marketing
 
             inputForm.Controls.Add(lblPrompt);
             inputForm.Controls.Add(txtName);
+            inputForm.Controls.Add(lblChannel);
+            inputForm.Controls.Add(cmbChannel);
             inputForm.Controls.Add(btnCancel);
             inputForm.Controls.Add(btnSubmit);
             inputForm.AcceptButton = btnSubmit;
@@ -259,20 +278,29 @@ namespace CRMS_Peguit.winforms.Views.Marketing
             if (inputForm.ShowDialog(this) == DialogResult.OK)
             {
                 string newSource = txtName.Text.Trim();
+                string channel = cmbChannel.Text.Trim();
                 if (!string.IsNullOrWhiteSpace(newSource))
                 {
-                    if (!_activeSources.Contains(newSource, StringComparer.OrdinalIgnoreCase))
+                    bool saved = _campaignController.AddCampaign(newSource, string.IsNullOrWhiteSpace(channel) ? "Direct" : channel);
+                    if (saved)
                     {
-                        _activeSources.Add(newSource);
-                    }
-                    _selectedSource = newSource;
-                    LoadData();
+                        _selectedSource = newSource;
+                        LoadData();
 
-                    MessageBox.Show(
-                        $"Lead source / campaign '{newSource}' is now active and ready for lead tagging.",
-                        "Campaign Created",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                        MessageBox.Show(
+                            $"Campaign '{newSource}' has been successfully saved to the database.\n\nIt is now immediately available in the Agent's Lead Source dropdown for lead attribution.",
+                            "Campaign Saved",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Unable to save the campaign. Please check connection and try again.",
+                            "Error Saving Campaign",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
                 }
             }
         }

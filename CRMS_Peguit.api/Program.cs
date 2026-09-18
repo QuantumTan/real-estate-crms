@@ -193,7 +193,19 @@ app.MapPost(
         ITenantDbContextFactory tenantFactory) =>
     {
         await using var tenantDb = await tenantFactory.CreateAsync(companyId);
-        customer.TenantId = companyId;
+        if (customer.PersonId <= 0 && customer.Person == null)
+        {
+            customer.Person = new CRMS_Peguit.domain.entities.Person
+            {
+                FirstName = customer.FirstName,
+                MiddleName = customer.MiddleName,
+                LastName = customer.LastName,
+                Suffix = customer.Suffix,
+                Email = customer.Email,
+                Phone = customer.Phone
+            };
+        }
+        if (customer.CreatedByUserId <= 0) customer.CreatedByUserId = 1;
         customer.CreatedAt = DateTime.UtcNow;
         tenantDb.Customers.Add(customer);
         await tenantDb.SaveChangesAsync();
@@ -227,7 +239,8 @@ app.MapPost(
         ITenantDbContextFactory tenantFactory) =>
     {
         await using var tenantDb = await tenantFactory.CreateAsync(companyId);
-        property.TenantId = companyId;
+        if (property.CreatedByUserId <= 0) property.CreatedByUserId = 1;
+        property.CreatedAt = DateTime.UtcNow;
         tenantDb.Properties.Add(property);
         await tenantDb.SaveChangesAsync();
         return Results.Created(
@@ -260,7 +273,19 @@ app.MapPost(
         ITenantDbContextFactory tenantFactory) =>
     {
         await using var tenantDb = await tenantFactory.CreateAsync(companyId);
-        lead.TenantId = companyId;
+        if (lead.PersonId <= 0 && lead.Person == null)
+        {
+            lead.Person = new CRMS_Peguit.domain.entities.Person
+            {
+                FirstName = lead.FirstName,
+                MiddleName = lead.MiddleName,
+                LastName = lead.LastName,
+                Suffix = lead.Suffix,
+                Email = lead.Email,
+                Phone = lead.Phone
+            };
+        }
+        if (lead.CreatedByUserId <= 0) lead.CreatedByUserId = 1;
         lead.CreatedAt = DateTime.UtcNow;
         tenantDb.Leads.Add(lead);
         await tenantDb.SaveChangesAsync();
@@ -294,7 +319,7 @@ app.MapPost(
         ITenantDbContextFactory tenantFactory) =>
     {
         await using var tenantDb = await tenantFactory.CreateAsync(companyId);
-        deal.TenantId = companyId;
+        if (deal.CreatedByUserId <= 0) deal.CreatedByUserId = 1;
         deal.CreatedAt = DateTime.UtcNow;
         tenantDb.Deals.Add(deal);
         await tenantDb.SaveChangesAsync();
@@ -328,7 +353,7 @@ app.MapPost(
         ITenantDbContextFactory tenantFactory) =>
     {
         await using var tenantDb = await tenantFactory.CreateAsync(companyId);
-        activity.TenantId = companyId;
+        if (activity.LoggedByAgentId <= 0) activity.LoggedByAgentId = 1;
         if (activity.ActivityDate == default)
         {
             activity.ActivityDate = DateTime.UtcNow;

@@ -1,4 +1,5 @@
-﻿using CRMS_Peguit.winforms.Auth;
+using CRMS_Peguit.winforms.Auth;
+using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
 using ReaLTaiizor.Forms;
 using System;
@@ -9,11 +10,11 @@ namespace CRMS_Peguit.winforms
 {
     public partial class LoginForm : Form
     {
-        private readonly AuthService _authService;
+        private readonly AuthController _authController;
 
         // Store main form and its FormClosed handler.
-        private Form1? _mainForm;
-        private FormClosedEventHandler? _mainFormClosedHandler;   // <-- fixed type
+        private MainForm? _mainForm;
+        private FormClosedEventHandler? _mainFormClosedHandler;
 
         // ==========================================================
         // DEFAULT CONSTRUCTOR
@@ -30,9 +31,19 @@ namespace CRMS_Peguit.winforms
 
         public LoginForm(string apiBaseUrl)
         {
-            _authService = new AuthService(apiBaseUrl);
+            _authController = new AuthController(apiBaseUrl);
             InitializeComponent();
+            ApplyBranding();
             BindEvents();
+        }
+
+        private void ApplyBranding()
+        {
+            AppBrand.ApplyAppIcon(this);
+            if (AppBrand.Logo != null)
+            {
+                picBrandLogo.Image = AppBrand.Logo;
+            }
         }
 
         private void BindEvents()
@@ -45,6 +56,8 @@ namespace CRMS_Peguit.winforms
             lnkForgotPassword.Click += LnkForgotPasswordClick;
             btnLogin.Click += BtnLogin_Click;
             UiRadiusHelper.StyleButton(btnLogin, 8);
+            UiRadiusHelper.SetPadding(txtEmail, 8, 8);
+            UiRadiusHelper.SetPadding(txtPassword, 8, 8);
         }
 
         // ==========================================================
@@ -55,28 +68,14 @@ namespace CRMS_Peguit.winforms
         {
             lblError.Text = "";
 
-            if (string.IsNullOrWhiteSpace(txtCompanyId.Text))
+            var validation = _authController.ValidateCredentials(txtEmail.Text, txtPassword.Text);
+            if (!validation.IsValid)
             {
-                lblError.Text = "Company ID is required.";
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(txtEmail.Text))
-            {
-                lblError.Text = "Email is required.";
-                return;
-            }
-
-            if (!ContactEmailService.IsValidEmail(txtEmail.Text))
-            {
-                lblError.Text = "Enter a valid email address.";
-                txtEmail.Focus();
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(txtPassword.Text))
-            {
-                lblError.Text = "Password is required.";
+                lblError.Text = validation.ErrorMessage ?? "Invalid credentials.";
+                if (lblError.Text.Contains("email", StringComparison.OrdinalIgnoreCase))
+                    txtEmail.Focus();
+                else if (lblError.Text.Contains("password", StringComparison.OrdinalIgnoreCase))
+                    txtPassword.Focus();
                 return;
             }
 
@@ -85,9 +84,8 @@ namespace CRMS_Peguit.winforms
 
             try
             {
-                var result = await _authService.LoginAsync(
-                    txtCompanyId.Text.Trim(),
-                    txtEmail.Text.Trim(),
+                var result = await _authController.LoginAsync(
+                    txtEmail.Text,
                     txtPassword.Text
                 );
 
@@ -108,11 +106,9 @@ namespace CRMS_Peguit.winforms
                 }
 
                 // Create main form and store it.
-                _mainForm = new Form1();
+                _mainForm = new MainForm();
 
-                // Store the handler â€“ type now matches FormClosedEventHandler.
                 _mainFormClosedHandler = (s, args) => Close();
-
                 _mainForm.FormClosed += _mainFormClosedHandler;
 
                 _mainForm.Show();
@@ -133,13 +129,6 @@ namespace CRMS_Peguit.winforms
         {
             lblError.Text = "";
 
-            if (string.IsNullOrWhiteSpace(txtCompanyId.Text))
-            {
-                lblError.Text = "Company ID is required before requesting a reset.";
-                txtCompanyId.Focus();
-                return;
-            }
-
             if (string.IsNullOrWhiteSpace(txtEmail.Text))
             {
                 lblError.Text = "Email is required before requesting a reset.";
@@ -159,8 +148,7 @@ namespace CRMS_Peguit.winforms
             try
             {
                 var result = await ContactEmailService.SendForgotPasswordAsync(
-                    txtEmail.Text.Trim(),
-                    txtCompanyId.Text.Trim());
+                    txtEmail.Text.Trim());
 
                 MessageBox.Show(
                     result.Message,

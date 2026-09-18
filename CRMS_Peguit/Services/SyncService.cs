@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
-using CRMS_Peguit.domain.Entities;
 using CRMS_Peguit.infrastructure.data;
 
 namespace CRMS_Peguit.winforms.Models.Services
@@ -82,17 +81,23 @@ namespace CRMS_Peguit.winforms.Models.Services
                 // Ensure cloud database schema matches latest columns
                 SchemaRepairService.EnsureCrmPolishColumns(cloud);
 
+                // Pull any remotely registered users and roles from cloud to local
+                await PullMissingUsersAndRoles(local, cloud);
+
                 int totalChanges = 0;
                 var details = new List<string>();
 
                 // Sync in strict foreign-key dependency order
                 totalChanges += await SyncTable<Role>(local, cloud, "Roles", details);
+                totalChanges += await SyncTable<Person>(local, cloud, "Persons", details);
                 totalChanges += await SyncTable<User>(local, cloud, "Users", details);
                 totalChanges += await SyncTable<Customer>(local, cloud, "Customers", details);
                 totalChanges += await SyncTable<BuyerProfile>(local, cloud, "BuyerProfiles", details);
                 totalChanges += await SyncTable<Property>(local, cloud, "Properties", details);
                 totalChanges += await SyncTable<Lead>(local, cloud, "Leads", details);
                 totalChanges += await SyncTable<Deal>(local, cloud, "Deals", details);
+                totalChanges += await SyncTable<DealContingency>(local, cloud, "DealContingencies", details);
+                totalChanges += await SyncTable<DealClause>(local, cloud, "DealClauses", details);
                 totalChanges += await SyncTable<Activity>(local, cloud, "Activities", details);
                 totalChanges += await SyncTable<PropertyShowingDetail>(local, cloud, "PropertyShowingDetails", details);
                 totalChanges += await SyncTable<SupportTicket>(local, cloud, "SupportTickets", details);
@@ -266,6 +271,75 @@ namespace CRMS_Peguit.winforms.Models.Services
             int tableChanges = toInsert.Count + toUpdate.Count;
             details.Add($"{tableName}: +{toInsert.Count} ins, ~{toUpdate.Count} upd");
             return tableChanges;
+        }
+
+        private async Task PullMissingUsersAndRoles(RealEstateDbContext local, RealEstateDbContext cloud)
+        {
+            try
+            {
+                // 1. Pull missing Roles
+                var localRoles = await local.Roles.IgnoreQueryFilters().AsNoTracking().ToListAsync();
+                var cloudRoles = await cloud.Roles.IgnoreQueryFilters().AsNoTracking().ToListAsync();
+                var missingRoles = cloudRoles.Where(cr => !localRoles.Any(lr => lr.RoleId == cr.RoleId || lr.RoleName.ToLower() == cr.RoleName.ToLower())).ToList();
+
+                foreach (var role in missingRoles)
+                {
+                    await local.Database.ExecuteSqlRawAsync(@"
+                        IF NOT EXISTS (SELECT 1 FROM Roles WHERE RoleId = {0} OR RoleName = {2})
+                        BEGIN
+                            SET IDENTITY_INSERT Roles ON;
+                            INSERT INTO Roles (RoleId, TenantId, RoleName) VALUES ({0}, {1}, {2});
+                            SET IDENTITY_INSERT Roles OFF;
+                        END",
+                        role.RoleId, role.TenantId, role.RoleName);
+                }
+
+                // 2. Pull missing Users
+                var localUsers = await local.Users.IgnoreQueryFilters().Include(u => u.Person).AsNoTracking().ToListAsync();
+                var cloudUsers = await cloud.Users.IgnoreQueryFilters().Include(u => u.Person).AsNoTracking().ToListAsync();
+                var missingUsers = cloudUsers.Where(cu => !localUsers.Any(lu => lu.UserId == cu.UserId || lu.Email.ToLower() == cu.Email.ToLower())).ToList();
+
+                foreach (var user in missingUsers)
+                {
+                    await local.Database.ExecuteSqlRawAsync(@"
+                        IF NOT EXISTS (SELECT 1 FROM Users WHERE UserId = {0})
+                        BEGIN
+                            DECLARE @PersonId INT;
+                            SELECT TOP 1 @PersonId = PersonId FROM Persons WHERE Email = {3};
+                            IF @PersonId IS NULL
+                            BEGIN
+                                INSERT INTO Persons (FirstName, MiddleName, LastName, Suffix, Email, Phone, CreatedAt)
+                                VALUES ({1}, {2}, {4}, {5}, {3}, {6}, GETUTCDATE());
+                                SET @PersonId = SCOPE_IDENTITY();
+                            END
+
+                            SET IDENTITY_INSERT Users ON;
+                            INSERT INTO Users (UserId, PersonId, PasswordHash, RoleId, Status, CreatedAt)
+                            VALUES ({0}, @PersonId, {7}, {8}, {9}, {10});
+                            SET IDENTITY_INSERT Users OFF;
+                        END",
+                        user.UserId,
+                        user.FirstName ?? "User",
+                        (object?)user.MiddleName ?? DBNull.Value,
+                        user.Email,
+                        user.LastName ?? "",
+                        (object?)user.Suffix ?? DBNull.Value,
+                        (object?)user.Phone ?? DBNull.Value,
+                        user.PasswordHash ?? "",
+                        user.RoleId,
+                        user.Status ?? "active",
+                        user.CreatedAt);
+                }
+
+                if (missingRoles.Count > 0 || missingUsers.Count > 0)
+                {
+                    Log($"Pulled from cloud: {missingRoles.Count} new Role(s), {missingUsers.Count} new User(s).");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"PullMissingUsersAndRoles warning: {ex.Message}");
+            }
         }
 
         public int FailureCount => _failureCount;

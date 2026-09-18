@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,6 +13,7 @@ namespace CRMS_Peguit.domain.entities
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<Device> Devices { get; set; } = new List<Device>();
+        public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
 
     }
 }

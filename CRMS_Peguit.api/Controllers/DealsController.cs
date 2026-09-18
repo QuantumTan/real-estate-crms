@@ -33,10 +33,10 @@ namespace CRMS_Peguit.api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Deal deal)
         {
-            var tenantResolver = HttpContext.RequestServices
-                .GetRequiredService<ITenantResolver>();
-
-            deal.TenantId = tenantResolver.GetTenantId();
+            if (deal.CreatedByUserId <= 0)
+            {
+                deal.CreatedByUserId = 1;
+            }
             deal.CreatedAt = DateTime.UtcNow;
             deal.AgentId = null; // R23. Default state is Unassigned
 

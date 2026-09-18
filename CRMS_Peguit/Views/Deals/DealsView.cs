@@ -2,6 +2,7 @@ using System.Drawing.Drawing2D;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
+using CRMS_Peguit.winforms.Controls;
 using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Deals
@@ -13,12 +14,19 @@ namespace CRMS_Peguit.winforms.Views.Deals
         private Label _lblEmptyState = null!;
         private Button? _btnExport;
         private Button? _btnAdd;
+        private PaginationControl _pagination = null!;
+        private List<Deal> _allDeals = new();
+        private List<Deal> _filteredDeals = new();
+        private Dictionary<int, string> _customers = new();
+        private Dictionary<int, string> _properties = new();
+        private Dictionary<int, string> _agents = new();
 
         public DealsView()
         {
             InitializeComponent();
             _controller = new DealController();
 
+            InitPagination();
             InitEmptyState();
             ApplyStyling();
             BindEvents();
@@ -27,6 +35,16 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             this.Load += (_, _) => LayoutToolbar();
             this.Resize += (_, _) => LayoutToolbar();
+        }
+
+        private void InitPagination()
+        {
+            _pagination = new PaginationControl();
+            _pagination.SetItemLabel("deals");
+            _pagination.PageChanged += (_, _) => BindCurrentPage();
+            _pagination.PageSizeChanged += (_, _) => BindCurrentPage();
+            pnlCard.Controls.Add(_pagination);
+            _pagination.BringToFront();
         }
 
         private void InitEmptyState()
@@ -56,7 +74,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
         private void BindEvents()
         {
-            txtSearch.TextChanged += (_, _) => RefreshGrid();
+            txtSearch.TextChanged += (_, _) => RefreshGrid(reloadFromDb: false);
 
             if (RbacService.CanCreateSalesRecord)
             {
@@ -115,13 +133,27 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             grid.CellPainting += Grid_CellPainting;
             grid.CellContentClick += GridCellContentClick;
+            grid.CellDoubleClick += (_, e) =>
+            {
+                if (e.RowIndex < 0) return;
+                if (int.TryParse(grid.Rows[e.RowIndex].Cells["DealId"]?.Value?.ToString(), out int dealId))
+                {
+                    var deal = _controller.GetById(dealId);
+                    if (deal != null)
+                    {
+                        using var form = new DealDetailForm(deal, _controller);
+                        form.ShowDialog(this.FindForm());
+                        RefreshGrid();
+                    }
+                }
+            };
         }
 
         private void SetFilter(string stage)
         {
             _filterStage = stage;
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(reloadFromDb: false);
         }
 
         private void UpdateFilterPillStyles()
@@ -138,36 +170,28 @@ namespace CRMS_Peguit.winforms.Views.Deals
             foreach (var (btn, name) in pills)
             {
                 bool isSelected = string.Equals(_filterStage, name, StringComparison.OrdinalIgnoreCase);
-                if (isSelected)
-                {
-                    btn.BackColor = Color.FromArgb(15, 91, 158);
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                }
+                UiRadiusHelper.StyleFilterPill(btn, isSelected);
             }
         }
 
-        private void RefreshGrid()
+        private void RefreshGrid(bool reloadFromDb = true)
         {
-            grid.Columns.Clear();
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            if (reloadFromDb || _allDeals.Count == 0)
+            {
+                _allDeals = _controller.GetAll();
+                if (_allDeals.Any(d => d.Customer == null))
+                    _customers = _controller.GetCustomerNames();
+                if (_allDeals.Any(d => d.Property == null))
+                    _properties = _controller.GetPropertyAddresses();
+                if (_allDeals.Any(d => d.Agent == null && d.AgentId.HasValue))
+                    _agents = _controller.GetAgentNames();
+            }
 
-            var deals = _controller.GetAll();
-            var customers = _controller.GetCustomerNames();
-            var properties = _controller.GetPropertyAddresses();
-            var agents = _controller.GetAgentNames();
+            int total = _allDeals.Count;
+            decimal totalVolume = _allDeals.Sum(d => d.Value);
+            lblSubtitle.Text = $"{total} deals · ₱{totalVolume:N2} total volume";
 
-            int total = deals.Count;
-            decimal totalVolume = deals.Sum(d => d.Value);
-            lblSubtitle.Text = $"{total} deals · ₱{totalVolume:N0} total volume";
-
-            IEnumerable<Deal> query = deals;
+            IEnumerable<Deal> query = _allDeals;
 
             if (string.Equals(_filterStage, "Offer", StringComparison.OrdinalIgnoreCase))
             {
@@ -193,26 +217,41 @@ namespace CRMS_Peguit.winforms.Views.Deals
             {
                 query = query.Where(d =>
                     ContainsText(d.Stage, search) ||
-                    ContainsText(GetName(customers, d.CustomerId), search) ||
-                    ContainsText(GetName(properties, d.PropertyId), search) ||
-                    ContainsText(GetName(agents, d.AgentId), search));
+                    ContainsText(d.Customer?.FullName ?? GetName(_customers, d.CustomerId), search) ||
+                    ContainsText(d.Property?.Address ?? GetName(_properties, d.PropertyId), search) ||
+                    ContainsText(d.Agent?.FullName ?? GetName(_agents, d.AgentId), search));
             }
 
-            grid.DataSource = query
-                .Select(d => new
-                {
-                    d.DealId,
-                    Customer = GetName(customers, d.CustomerId),
-                    Property = GetName(properties, d.PropertyId),
-                    Agent = GetName(agents, d.AgentId),
-                    Value = $"₱{d.Value:N0}",
-                    Commission = $"{d.CommissionRate:P1}",
-                    Stage = string.IsNullOrWhiteSpace(d.Stage) ? "OFFER" : d.Stage.ToUpper(),
-                    CloseDate = d.ExpectedCloseDate.HasValue ? d.ExpectedCloseDate.Value.ToString("MMM dd, yyyy") : "-"
-                })
-                .ToList();
+            _filteredDeals = query.ToList();
+            _pagination.UpdatePagination(_filteredDeals.Count, 1, _pagination.PageSize);
+            BindCurrentPage();
+        }
 
-            grid.ShowCellToolTips = true;
+        private void BindCurrentPage()
+        {
+            grid.SuspendLayout();
+            try
+            {
+                grid.Columns.Clear();
+                grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+                var pageItems = _filteredDeals
+                    .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
+                    .Take(_pagination.PageSize)
+                    .Select(d => new
+                    {
+                        d.DealId,
+                        Customer = d.Customer?.FullName ?? GetName(_customers, d.CustomerId),
+                        Property = d.Property?.Address ?? GetName(_properties, d.PropertyId),
+                        Agent = d.Agent?.FullName ?? GetName(_agents, d.AgentId),
+                        Value = $"₱{d.Value:N2}",
+                        Commission = $"{d.CommissionRate:P1}",
+                        Stage = string.IsNullOrWhiteSpace(d.Stage) ? "OFFER" : d.Stage.ToUpper(),
+                        CloseDate = d.ExpectedCloseDate.HasValue ? d.ExpectedCloseDate.Value.ToString("MMM dd, yyyy") : "-"
+                    })
+                    .ToList();
+
+                grid.DataSource = pageItems;
 
             var dealIdCol = grid.Columns["DealId"];
             if (dealIdCol is not null) dealIdCol.Visible = false;
@@ -243,6 +282,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 valCol.HeaderText = "DEAL VALUE";
                 valCol.FillWeight = 100;
                 valCol.MinimumWidth = 100;
+                valCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                valCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
 
             if (grid.Columns["Commission"] is DataGridViewColumn comCol)
@@ -250,6 +291,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 comCol.HeaderText = "COMMISSION";
                 comCol.FillWeight = 90;
                 comCol.MinimumWidth = 90;
+                comCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                comCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
 
             if (grid.Columns["Stage"] is DataGridViewColumn stgCol)
@@ -257,6 +300,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 stgCol.HeaderText = "STAGE";
                 stgCol.FillWeight = 95;
                 stgCol.MinimumWidth = 95;
+                stgCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                stgCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
 
             if (grid.Columns["CloseDate"] is DataGridViewColumn dtCol)
@@ -268,7 +313,12 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _lblEmptyState.Visible = (grid.Rows.Count == 0);
+            _lblEmptyState.Visible = (_filteredDeals.Count == 0);
+            }
+            finally
+            {
+                grid.ResumeLayout();
+            }
         }
 
         private void GridCellContentClick(object? sender, DataGridViewCellEventArgs e)
@@ -283,7 +333,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             var customerVal = grid.Rows[e.RowIndex].Cells["Customer"]?.Value?.ToString() ?? "Buyer";
             var propVal = grid.Rows[e.RowIndex].Cells["Property"]?.Value?.ToString() ?? "Property";
             var stageVal = grid.Rows[e.RowIndex].Cells["Stage"]?.Value?.ToString() ?? "Stage";
-            var valVal = grid.Rows[e.RowIndex].Cells["Value"]?.Value?.ToString() ?? "₱0";
+            var valVal = grid.Rows[e.RowIndex].Cells["Value"]?.Value?.ToString() ?? "₱0.00";
             var agentVal = grid.Rows[e.RowIndex].Cells["Agent"]?.Value?.ToString() ?? "Agent";
 
             if (!int.TryParse(grid.Rows[e.RowIndex].Cells["DealId"]?.Value?.ToString(), out int dealId)) return;
@@ -295,33 +345,36 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 Font = new Font("Segoe UI", 10)
             };
 
+            var deal = _controller.GetById(dealId);
+            if (deal == null) return;
+
             var viewItem = new ToolStripMenuItem("📄 View Details & Terms");
             viewItem.Click += (_, _) =>
             {
-                var deal = _controller.GetById(dealId);
-                if (deal != null)
-                {
-                    using var form = new DealDetailForm(deal, _controller);
-                    form.ShowDialog(this.FindForm());
-                    RefreshGrid();
-                }
+                using var form = new DealDetailForm(deal, _controller);
+                form.ShowDialog(this.FindForm());
+                RefreshGrid();
             };
             menu.Items.Add(viewItem);
 
-            if (RbacService.CanCreateSalesRecord)
+            var contractItem = new ToolStripMenuItem("📜 View Contract & Terms");
+            contractItem.Click += (_, _) =>
+            {
+                using var viewer = new ContractTermsViewerDialog(deal, _controller);
+                viewer.ShowDialog(this.FindForm());
+            };
+            menu.Items.Add(contractItem);
+
+            if (RbacService.CanEditRecord(deal.AgentId, deal.CreatedByUserId))
             {
                 var editItem = new ToolStripMenuItem("✏️ Edit Deal & Terms");
                 editItem.Click += (_, _) =>
                 {
-                    var deal = _controller.GetById(dealId);
-                    if (deal != null)
+                    using var form = new DealInputForm(_controller, deal);
+                    if (form.ShowDialog(this.FindForm()) == DialogResult.OK && form.Result != null)
                     {
-                        using var form = new DealInputForm(_controller, deal);
-                        if (form.ShowDialog(this.FindForm()) == DialogResult.OK && form.Result != null)
-                        {
-                            _controller.Update(form.Result);
-                            RefreshGrid();
-                        }
+                        _controller.Update(form.Result);
+                        RefreshGrid();
                     }
                 };
                 menu.Items.Add(editItem);
@@ -332,14 +385,10 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 var deleteItem = new ToolStripMenuItem("🗑️ Remove Deal");
                 deleteItem.Click += (_, _) =>
                 {
-                    var deal = _controller.GetById(dealId);
-                    if (deal != null)
+                    if (MessageBox.Show($"Are you sure you want to remove Deal #{deal.DealId}?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     {
-                        if (MessageBox.Show($"Are you sure you want to remove Deal #{deal.DealId}?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
-                        {
-                            _controller.Delete(deal);
-                            RefreshGrid();
-                        }
+                        _controller.Delete(deal);
+                        RefreshGrid();
                     }
                 };
                 menu.Items.Add(deleteItem);
@@ -352,61 +401,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Custom render Stage pill badge
+            // Minimalist Status Indicator (Left-aligned at 12px, Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Stage" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string stage = e.Value.ToString() ?? "";
-                Color bgColor;
-                Color textColor;
-
-                if (stage.Contains("CLOSED", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(220, 252, 231);
-                    textColor = Color.FromArgb(22, 101, 52);
-                }
-                else if (stage.Contains("CONTRACT", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(224, 231, 255);
-                    textColor = Color.FromArgb(55, 48, 163);
-                }
-                else if (stage.Contains("RESERVATION", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(243, 232, 255);
-                    textColor = Color.FromArgb(107, 33, 168);
-                }
-                else if (stage.Contains("LOST", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Color.FromArgb(254, 226, 226);
-                    textColor = Color.FromArgb(153, 27, 27);
-                }
-                else
-                {
-                    bgColor = Color.FromArgb(224, 242, 254);
-                    textColor = Color.FromArgb(3, 105, 161);
-                }
-
-                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(stage, font);
-                    int pillWidth = size.Width + 16;
-                    int pillHeight = 22;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, stage, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: false);
             }
         }
 
@@ -471,7 +470,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
             int rightPadding = 30;
             int leftMargin = 30;
             int totalWidth = ClientSize.Width;
-            int y = 88;
+
+            // Explicit header positioning with clear separation
+            lblTitle.Location = new Point(leftMargin, 20);
+            lblSubtitle.Location = new Point(leftMargin + 2, lblTitle.Bottom + 4);
+            int y = Math.Max(96, lblSubtitle.Bottom + 16);
 
             // Position header action buttons
             int rightEdge = totalWidth - rightPadding;
@@ -510,8 +513,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 txtSearch.Left = leftMargin;
                 txtSearch.Width = Math.Min(360, availableForSearch);
 
-                pnlCard.Top = 126;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+                int cardTop = y + txtSearch.Height + 14;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 24);
             }
             else
             {
@@ -521,7 +525,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
 
                 int filterX = leftMargin;
-                int pillY = y + 36;
+                int pillY = y + txtSearch.Height + 10;
                 var forwardPills = new[] { btnFilterAll, btnFilterOffer, btnFilterContract, btnFilterClosed, btnFilterLost };
                 foreach (var p in forwardPills)
                 {
@@ -530,8 +534,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     filterX += p.Width + 6;
                 }
 
-                pnlCard.Top = pillY + 38;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+                int cardTop = pillY + 34;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 20);
             }
 
             pnlCard.Left = leftMargin;

@@ -82,16 +82,18 @@ namespace CRMS_Peguit.winforms.Models.Services
 
         public static Task<EmailSendResult> SendForgotPasswordAsync(
             string recipientEmail,
-            string companyId)
+            string? companyId = null)
         {
             string subject = "NEXA password reset request";
+            string companyLine = string.IsNullOrWhiteSpace(companyId)
+                ? string.Empty
+                : $"Company ID: {companyId}" + Environment.NewLine + Environment.NewLine;
+
             string body =
                 "We received a password reset request for your NEXA CRMS account." +
                 Environment.NewLine +
                 Environment.NewLine +
-                $"Company ID: {companyId}" +
-                Environment.NewLine +
-                Environment.NewLine +
+                companyLine +
                 "The secure reset-link workflow is still pending backend integration. Please contact your administrator to reset your password." +
                 Environment.NewLine +
                 Environment.NewLine +

@@ -13,12 +13,17 @@ namespace CRMS_Peguit.winforms.Views.Customers
         private string _filterStatus = "All";
         private Button? _btnExport;
         private Label _lblEmptyState = null!;
+        private PaginationControl _pagination = null!;
+        private List<Customer> _allCustomers = new();
+        private List<Customer> _filteredCustomers = new();
+        private Dictionary<int, string> _agentDict = new();
 
         public CustomersView()
         {
             InitializeComponent();
             _controller = new CustomerController();
 
+            InitPagination();
             InitEmptyState();
             ApplyStyling();
             BindEvents();
@@ -29,11 +34,21 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.Resize += (_, _) => LayoutToolbar();
         }
 
+        private void InitPagination()
+        {
+            _pagination = new PaginationControl();
+            _pagination.SetItemLabel("customers");
+            _pagination.PageChanged += (_, _) => BindCurrentPage();
+            _pagination.PageSizeChanged += (_, _) => BindCurrentPage();
+            pnlCard.Controls.Add(_pagination);
+            _pagination.BringToFront();
+        }
+
         private void InitEmptyState()
         {
             _lblEmptyState = new Label
             {
-                Text = "🔍 No customers match your search or filter criteria.\nTry adjusting your search terms or filter.",
+                Text = "No customers match your search or filter criteria.\nTry adjusting your search terms or filter.",
                 Font = new Font("Segoe UI", 11f),
                 ForeColor = Theme.TextSecondary,
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -58,7 +73,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
         {
             btnAdd.Visible = RbacService.CanCreateSalesRecord;
             btnAdd.Click += BtnAddClick;
-            txtSearch.TextChanged += (_, _) => RefreshGrid();
+            txtSearch.TextChanged += (_, _) => RefreshGrid(reloadFromDb: false);
 
             if (RbacService.CanExportData)
             {
@@ -102,7 +117,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
         {
             _filterStatus = filter;
             UpdateFilterPillStyles();
-            RefreshGrid();
+            RefreshGrid(reloadFromDb: false);
         }
 
         private void UpdateFilterPillStyles()
@@ -118,32 +133,23 @@ namespace CRMS_Peguit.winforms.Views.Customers
             foreach (var (btn, name) in pills)
             {
                 bool isSelected = string.Equals(_filterStatus, name, StringComparison.OrdinalIgnoreCase);
-                if (isSelected)
-                {
-                    btn.BackColor = Color.FromArgb(15, 91, 158);
-                    btn.ForeColor = Color.White;
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-                }
-                else
-                {
-                    btn.BackColor = Color.White;
-                    btn.ForeColor = Color.FromArgb(71, 85, 105);
-                    btn.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
-                }
+                UiRadiusHelper.StyleFilterPill(btn, isSelected);
             }
         }
 
-        private void RefreshGrid()
+        private void RefreshGrid(bool reloadFromDb = true)
         {
-            grid.Columns.Clear();
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            if (reloadFromDb || _allCustomers.Count == 0)
+            {
+                _allCustomers = _controller.GetAll().ToList();
+                _agentDict = _controller.GetAgentDictionary();
+            }
 
-            var allList = _controller.GetAll().ToList();
-            int total = allList.Count;
-            int active = allList.Count(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase));
+            int total = _allCustomers.Count;
+            int active = _allCustomers.Count(c => string.Equals(c.Status, "active", StringComparison.OrdinalIgnoreCase));
             lblSubtitle.Text = $"{total} total · {active} active";
 
-            IEnumerable<Customer> query = allList;
+            IEnumerable<Customer> query = _allCustomers;
 
             if (string.Equals(_filterStatus, "Active", StringComparison.OrdinalIgnoreCase))
             {
@@ -172,7 +178,19 @@ namespace CRMS_Peguit.winforms.Views.Customers
                     ContainsText(c.Phone, search));
             }
 
-            grid.DataSource = query
+            _filteredCustomers = query.ToList();
+            _pagination.UpdatePagination(_filteredCustomers.Count, 1, _pagination.PageSize);
+            BindCurrentPage();
+        }
+
+        private void BindCurrentPage()
+        {
+            grid.Columns.Clear();
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            var pageItems = _filteredCustomers
+                .Skip((_pagination.CurrentPage - 1) * _pagination.PageSize)
+                .Take(_pagination.PageSize)
                 .Select(c => new
                 {
                     c.CustomerId,
@@ -180,11 +198,13 @@ namespace CRMS_Peguit.winforms.Views.Customers
                     Company = string.IsNullOrWhiteSpace(c.Type) ? "Client" : char.ToUpper(c.Type[0]) + c.Type.Substring(1).ToLower(),
                     Phone = string.IsNullOrWhiteSpace(c.Phone) ? "-" : c.Phone,
                     Email = string.IsNullOrWhiteSpace(c.Email) ? "-" : c.Email,
-                    AssignedTo = _controller.GetAssignedAgentName(c.AssignedAgentId) ?? "Unassigned",
+                    AssignedTo = (c.AssignedAgentId.HasValue && _agentDict.TryGetValue(c.AssignedAgentId.Value, out var aName)) ? aName : "Unassigned",
                     Status = c.Status.ToUpper(),
                     LastContacted = c.CreatedAt.ToString("MMM dd, yyyy")
                 })
                 .ToList();
+
+            grid.DataSource = pageItems;
 
             var idCol = grid.Columns["CustomerId"];
             if (idCol is not null) idCol.Visible = false;
@@ -226,115 +246,45 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 statusCol.HeaderText = "STATUS";
                 statusCol.FillWeight = 90;
                 statusCol.MinimumWidth = 80;
+                statusCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                statusCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
             }
             if (grid.Columns["LastContacted"] is DataGridViewColumn lastCol)
             {
-                lastCol.HeaderText = "LAST CONTACTED";
-                lastCol.FillWeight = 100;
-                lastCol.MinimumWidth = 90;
+                lastCol.HeaderText = "LAST CONTACT";
+                lastCol.FillWeight = 130;
+                lastCol.MinimumWidth = 120;
             }
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            _lblEmptyState.Visible = (grid.Rows.Count == 0);
+            _lblEmptyState.Visible = (_filteredCustomers.Count == 0);
         }
 
         private void Grid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Custom render Status pill badge
+            // Minimalist Status Indicator (Left-aligned at 12px, Strictly No Badges/Pills)
             if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string status = e.Value.ToString() ?? "";
-                Color bgColor;
-                Color textColor;
-
-                if (status.Equals("ACTIVE", StringComparison.OrdinalIgnoreCase))
-                {
-                    bgColor = Theme.StatusActiveBg;
-                    textColor = Theme.StatusActiveText;
-                }
-                else if (status.Equals("PROSPECT", StringComparison.OrdinalIgnoreCase) || status.Contains("FOLLOW"))
-                {
-                    bgColor = Theme.StatusFollowUpBg;
-                    textColor = Theme.StatusFollowUpText;
-                }
-                else
-                {
-                    bgColor = Theme.StatusInactiveBg;
-                    textColor = Theme.StatusInactiveText;
-                }
-
-                using (var font = new Font("Segoe UI", 8.5f, FontStyle.Bold))
-                {
-                    var size = TextRenderer.MeasureText(status, font);
-                    int pillWidth = size.Width + 16;
-                    int pillHeight = 22;
-                    int pillX = e.CellBounds.X + (e.CellBounds.Width - pillWidth) / 2;
-                    int pillY = e.CellBounds.Y + (e.CellBounds.Height - pillHeight) / 2;
-                    var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-                    using (var brush = new SolidBrush(bgColor))
-                    using (var path = GetRoundedRectangle(pillRect, 8))
-                    {
-                        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        e.Graphics.FillPath(brush, path);
-                    }
-
-                    TextRenderer.DrawText(e.Graphics, status, font, pillRect, textColor,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: false);
             }
-            // Custom render Name with circular initials badge
+            // Custom render Name with circular initials badge at exact 12px inset
             else if (grid.Columns[e.ColumnIndex].Name == "Name" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string name = e.Value.ToString() ?? "";
                 string initials = GetInitials(name);
-
-                int avatarSize = 28;
-                int avatarX = e.CellBounds.X + 8;
-                int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
-                var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
-
-                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using (var brush = new SolidBrush(Color.FromArgb(71, 118, 153)))
-                {
-                    e.Graphics.FillEllipse(brush, avatarRect);
-                }
-
-                using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, Color.White,
-                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                }
-
-                var textRect = new Rectangle(avatarX + avatarSize + 10, e.CellBounds.Y,
-                    e.CellBounds.Width - avatarSize - 18, e.CellBounds.Height);
-
-                using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
-                {
-                    TextRenderer.DrawText(e.Graphics, name, font, textRect, Theme.TextPrimary,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-
-                e.Handled = true;
+                UiGridHelper.PaintAvatarCell(grid, e, name, initials, Color.FromArgb(71, 118, 153), Color.White);
             }
-            // Custom render Email as clickable blue
+            // Custom render Email with uniform 12px inset
             else if (grid.Columns[e.ColumnIndex].Name == "Email" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string email = e.Value.ToString() ?? "";
-                using (var font = new Font("Segoe UI", 9.5f))
-                {
-                    TextRenderer.DrawText(e.Graphics, email, font, e.CellBounds, Theme.Primary,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
-                }
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9.5f);
+                UiGridHelper.PaintTextCell(grid, e, email, font, Theme.Primary,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, leftPadding: 12);
             }
         }
 
@@ -389,7 +339,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             messageItem.Enabled = ContactEmailService.IsValidEmail(customer.Email);
             menu.Items.Add(messageItem);
 
-            if (RbacService.CanEditRecord(customer.AssignedAgentId, customer.CreatedByUserId))
+            if (RbacService.CanEditRecord(customer.AssignedAgentId, customer.CreatedByUserId, customer.AssignmentStatus))
             {
                 var editItem = new ToolStripMenuItem("Edit");
                 editItem.Click += (_, _) => EditCustomer(customer);
@@ -537,7 +487,11 @@ namespace CRMS_Peguit.winforms.Views.Customers
             int rightPadding = 30;
             int leftMargin = 30;
             int totalWidth = ClientSize.Width;
-            int y = 88;
+
+            // Explicit header positioning with clear separation
+            lblTitle.Location = new Point(leftMargin, 20);
+            lblSubtitle.Location = new Point(leftMargin + 2, lblTitle.Bottom + 4);
+            int y = Math.Max(96, lblSubtitle.Bottom + 16);
 
             // Position header action buttons
             int rightEdge = totalWidth - rightPadding;
@@ -575,8 +529,9 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 txtSearch.Left = leftMargin;
                 txtSearch.Width = Math.Min(360, availableForSearch);
 
-                pnlCard.Top = 126;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - 126 - 30);
+                int cardTop = y + txtSearch.Height + 14;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 24);
             }
             else
             {
@@ -586,7 +541,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 txtSearch.Width = Math.Max(180, totalWidth - leftMargin - rightPadding);
 
                 int filterX = leftMargin;
-                int pillY = y + 36;
+                int pillY = y + txtSearch.Height + 10;
                 var forwardPills = new[] { btnFilterAll, btnFilterActive, btnFilterFollowUp, btnFilterInactive };
                 foreach (var p in forwardPills)
                 {
@@ -595,8 +550,9 @@ namespace CRMS_Peguit.winforms.Views.Customers
                     filterX += p.Width + 6;
                 }
 
-                pnlCard.Top = pillY + 38;
-                pnlCard.Height = Math.Max(100, ClientSize.Height - pnlCard.Top - 20);
+                int cardTop = pillY + 34;
+                pnlCard.Top = cardTop;
+                pnlCard.Height = Math.Max(100, ClientSize.Height - cardTop - 20);
             }
 
             pnlCard.Left = leftMargin;

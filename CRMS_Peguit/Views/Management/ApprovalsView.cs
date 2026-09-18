@@ -233,82 +233,39 @@ namespace CRMS_Peguit.winforms.Views.Management
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Type Badge Column
+            // Type Column with clean glyph and uniform 12px inset
             if (grid.Columns[e.ColumnIndex].Name == "Type" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string type = e.Value.ToString() ?? "";
-
-                Color bgColor;
-                Color textColor;
-
-                switch (type)
+                string icon = type switch
                 {
-                    case "Lead":
-                        bgColor = Color.FromArgb(224, 242, 254);
-                        textColor = Color.FromArgb(3, 105, 161);
-                        break;
-                    case "Customer":
-                        bgColor = Color.FromArgb(220, 252, 231);
-                        textColor = Color.FromArgb(21, 128, 61);
-                        break;
-                    case "Property":
-                        bgColor = Color.FromArgb(243, 232, 255);
-                        textColor = Color.FromArgb(126, 34, 206);
-                        break;
-                    default:
-                        bgColor = Color.FromArgb(241, 245, 249);
-                        textColor = Color.FromArgb(71, 85, 105);
-                        break;
-                }
+                    "Lead" => "👤",
+                    "Customer" => "🏢",
+                    "Property" => "🏠",
+                    _ => "📋"
+                };
 
-                DrawPillBadge(e.Graphics, e.CellBounds, type, bgColor, textColor);
-                e.Handled = true;
+                using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
+                UiGridHelper.PaintTextCell(grid, e, $"{icon} {type}", font, Theme.TextPrimary,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter, leftPadding: 12);
             }
-            // Status Badge Column
+            // Status Column (minimalist 6px dot + text, Left-aligned at 12px, Strictly NO badges/pills)
             else if (grid.Columns[e.ColumnIndex].Name == "Status" && e.Value != null)
             {
-                e.PaintBackground(e.CellBounds, true);
                 string status = e.Value.ToString() ?? "";
-
-                Color bgColor = Color.FromArgb(254, 243, 199);
-                Color textColor = Color.FromArgb(180, 83, 9);
-
-                DrawPillBadge(e.Graphics, e.CellBounds, status, bgColor, textColor);
-                e.Handled = true;
+                UiGridHelper.PaintStatusIndicator(grid, e, status, center: false);
             }
-            // AssignedTo styling: italic gray if Unassigned
+            // AssignedTo styling: italic gray if Unassigned (uniform 12px inset)
             else if (grid.Columns[e.ColumnIndex].Name == "AssignedTo" && e.Value != null)
             {
                 string assigned = e.Value.ToString() ?? "";
                 if (string.Equals(assigned, "Unassigned", StringComparison.OrdinalIgnoreCase))
                 {
-                    e.PaintBackground(e.CellBounds, true);
                     using var italicFont = new Font("Segoe UI", 9.5f, FontStyle.Italic);
-                    TextRenderer.DrawText(e.Graphics, "Unassigned", italicFont, e.CellBounds, Color.FromArgb(148, 163, 184),
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-                    e.Handled = true;
+                    UiGridHelper.PaintTextCell(grid, e, "Unassigned", italicFont, Color.FromArgb(148, 163, 184),
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter, leftPadding: 12);
                 }
             }
-        }
-
-        private void DrawPillBadge(Graphics g, Rectangle bounds, string text, Color bgColor, Color textColor)
-        {
-            using var font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            var size = TextRenderer.MeasureText(text, font);
-            int pillWidth = size.Width + 16;
-            int pillHeight = 22;
-            int pillX = bounds.X + (bounds.Width - pillWidth) / 2;
-            int pillY = bounds.Y + (bounds.Height - pillHeight) / 2;
-            var pillRect = new Rectangle(pillX, pillY, pillWidth, pillHeight);
-
-            using var brush = new SolidBrush(bgColor);
-            using var path = GetRoundedRectangle(pillRect, 8);
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.FillPath(brush, path);
-
-            TextRenderer.DrawText(g, text, font, pillRect, textColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
         private static GraphicsPath GetRoundedRectangle(Rectangle bounds, int radius)

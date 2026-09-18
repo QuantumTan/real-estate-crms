@@ -12,6 +12,7 @@ namespace CRMS_Peguit.winforms.Controllers
     public class CustomerController : IDisposable
     {
         private readonly RealEstateDbContext _db;
+        private readonly NotificationController _notifCtrl;
 
         // FIXED: was hardcoded to 1 - now uses whoever is actually logged in.
         private int TenantId => CurrentSession.TenantId;
@@ -19,27 +20,36 @@ namespace CRMS_Peguit.winforms.Controllers
         public CustomerController()
         {
             _db = LocalDb.CreateContext(TenantId);
+            _notifCtrl = new NotificationController(_db);
         }
 
         public List<Customer> GetAll()
         {
-            var query = _db.Customers.AsNoTracking();
-
-            // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
-            // Manager/Admin retain full oversight (R26).
-            if (!RbacService.HasFullOversight && RbacService.IsAgent)
+            try
             {
-                int currentUserId = CurrentSession.UserId;
-                query = query.Where(c =>
-                    (c.AssignedAgentId.HasValue && c.AssignedAgentId.Value > 0)
-                        ? c.AssignedAgentId.Value == currentUserId
-                        : (c.CreatedByUserId.HasValue && c.CreatedByUserId.Value == currentUserId));
-            }
+                var query = _db.Customers.AsNoTracking();
 
-            return query
-                .OrderBy(x => x.LastName)
-                .ThenBy(x => x.FirstName)
-                .ToList();
+                // R23 & R25 (revised): Visibility scoped to creator while Pending, assignee once assigned.
+                // Manager/Admin retain full oversight (R26).
+                if (!RbacService.HasFullOversight && RbacService.IsAgent)
+                {
+                    int currentUserId = CurrentSession.UserId;
+                    query = query.Where(c =>
+                        (c.AssignedAgentId.HasValue && c.AssignedAgentId.Value > 0)
+                            ? c.AssignedAgentId.Value == currentUserId
+                            : c.CreatedByUserId == currentUserId);
+                }
+
+                return query
+                    .OrderBy(x => x.Person.LastName)
+                    .ThenBy(x => x.Person.FirstName)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomerController.GetAll] Error: {ex.Message}");
+                return new List<Customer>();
+            }
         }
 
         public Customer? GetById(int id)
@@ -58,9 +68,20 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public Customer Add(Customer customer)
         {
-            customer.TenantId = TenantId;
+            if (customer.PersonId <= 0 && customer.Person == null)
+            {
+                customer.Person = new Person
+                {
+                    FirstName = customer.FirstName,
+                    MiddleName = customer.MiddleName,
+                    LastName = customer.LastName,
+                    Suffix = customer.Suffix,
+                    Email = customer.Email,
+                    Phone = customer.Phone
+                };
+            }
             customer.CreatedAt = DateTime.UtcNow;
-            customer.CreatedByUserId = CurrentSession.UserId;
+            customer.CreatedByUserId = CurrentSession.UserId > 0 ? CurrentSession.UserId : 1;
             customer.IsDeleted = false;
             customer.DeletedAt = null;
 
@@ -81,12 +102,23 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.Customers.Add(customer);
             _db.SaveChanges();
             LogActivity("Customer Created", null, customer.CustomerId, $"Customer '{customer.FullName}' was created.");
+
+            if (customer.AssignedAgentId == null || customer.AssignedAgentId <= 0 || customer.AssignmentStatus == "pending_review")
+            {
+                _notifCtrl.NotifyManagers(TenantId, NotificationType.CustomerUnassigned, "New Customer Pending Assignment", $"Customer '{customer.FullName}' was created and needs review/assignment.", "Customer", customer.CustomerId);
+            }
+            else if (customer.AssignedAgentId.HasValue && customer.AssignedAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, customer.AssignedAgentId.Value, NotificationType.CustomerAssigned, "Customer Assigned to You", $"You have been assigned Customer '{customer.FullName}'.", "Customer", customer.CustomerId);
+            }
+
             return customer;
         }
 
         public void Update(Customer customer)
         {
             var item = _db.Customers
+                .Include(c => c.Person)
                 .SingleOrDefault(x => x.CustomerId == customer.CustomerId);
             if (item is null) return;
 
@@ -113,6 +145,12 @@ namespace CRMS_Peguit.winforms.Controllers
 
                 if (oldAgentId != newAgentId)
                 {
+                    if (newAgentId.HasValue && newAgentId.Value > 0)
+                    {
+                        TransferOpenFollowUps(item.CustomerId, newAgentId.Value);
+                        _notifCtrl.CreateNotification(TenantId, newAgentId.Value, NotificationType.CustomerAssigned, "Customer Assigned to You", $"You have been assigned Customer '{item.FullName}'.", "Customer", item.CustomerId);
+                    }
+
                     LogActivity("Customer Assignment Changed", null, item.CustomerId,
                         $"Customer '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
                 }
@@ -149,15 +187,30 @@ namespace CRMS_Peguit.winforms.Controllers
 
         public void Delete(Customer customer) => SoftDelete(customer);
 
+        private Dictionary<int, string>? _cachedAgentDict;
+
+        public Dictionary<int, string> GetAgentDictionary()
+        {
+            if (_cachedAgentDict != null) return _cachedAgentDict;
+            try
+            {
+                _cachedAgentDict = _db.Users
+                    .AsNoTracking()
+                    .Include(u => u.Person)
+                    .ToDictionary(u => u.UserId, u => u.FullName);
+            }
+            catch
+            {
+                _cachedAgentDict = new Dictionary<int, string>();
+            }
+            return _cachedAgentDict;
+        }
+
         public string? GetAssignedAgentName(int? assignedAgentId)
         {
             if (assignedAgentId is null) return null;
-            return _db.Users
-                .AsNoTracking()
-                .Where(u => u.UserId == assignedAgentId)
-                .AsEnumerable()
-                .Select(u => u.FullName)
-                .SingleOrDefault();
+            var dict = GetAgentDictionary();
+            return dict.TryGetValue(assignedAgentId.Value, out var name) ? name : null;
         }
 
         public List<Property> GetOwnedProperties(int customerId)
@@ -189,6 +242,11 @@ namespace CRMS_Peguit.winforms.Controllers
             item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             _db.SaveChanges();
             LogActivity("Customer Assignment Approved", null, item.CustomerId, $"Assignment for '{item.FullName}' was approved.");
+
+            if (item.AssignedAgentId.HasValue && item.AssignedAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, item.AssignedAgentId.Value, NotificationType.CustomerAssigned, "Customer Assignment Approved", $"Assignment for Customer '{item.FullName}' was approved.", "Customer", item.CustomerId);
+            }
         }
 
         public void AssignAgent(Customer customer, int? agentId, bool approve = true, string? notes = null)
@@ -198,6 +256,11 @@ namespace CRMS_Peguit.winforms.Controllers
 
             var oldAgentId = item.AssignedAgentId;
             var newAgentId = agentId <= 0 ? null : agentId;
+
+            if (newAgentId.HasValue && !_db.Users.Any(u => u.UserId == newAgentId.Value))
+            {
+                newAgentId = null;
+            }
 
             item.AssignedAgentId = newAgentId;
             item.AssignmentStatus = approve ? "approved" : "pending_review";
@@ -209,8 +272,35 @@ namespace CRMS_Peguit.winforms.Controllers
 
             if (oldAgentId != newAgentId)
             {
+                if (newAgentId.HasValue && newAgentId.Value > 0)
+                {
+                    TransferOpenFollowUps(item.CustomerId, newAgentId.Value);
+                    _db.SaveChanges();
+                    _notifCtrl.CreateNotification(TenantId, newAgentId.Value, NotificationType.CustomerAssigned, "Customer Assigned to You", $"You have been assigned Customer '{item.FullName}'.", "Customer", item.CustomerId);
+                }
+
                 LogActivity("Customer Assignment Changed", null, item.CustomerId,
                     $"Customer '{item.FullName}' assigned to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
+            }
+        }
+
+        private void TransferOpenFollowUps(int customerId, int newAgentId)
+        {
+            try
+            {
+                var openFollowUps = _db.TaskReminders
+                    .Where(t => t.RelatedCustomerId == customerId && !t.IsDeleted && t.Status != "Completed")
+                    .ToList();
+
+                foreach (var fu in openFollowUps)
+                {
+                    fu.AssignedToUserId = newAgentId;
+                    fu.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomerController.TransferOpenFollowUps] Error: {ex.Message}");
             }
         }
 
@@ -234,16 +324,11 @@ namespace CRMS_Peguit.winforms.Controllers
             return _db.Users
                 .AsNoTracking()
                 .Where(u => agentRoleIds.Contains(u.RoleId) && u.Status.ToLower() != "inactive")
-                .OrderBy(u => u.LastName)
-                .ThenBy(u => u.FirstName)
+                .OrderBy(u => u.Person.LastName)
+                .ThenBy(u => u.Person.FirstName)
                 .AsEnumerable()
                 .Select(u => new AgentPickerItem(u.UserId, u.FullName, u.Email))
                 .ToList();
-        }
-
-        public void LogEmail(Customer customer, string subject)
-        {
-            LogActivity("Email", null, customer.CustomerId, $"Email sent to '{customer.FullName}'. Subject: {subject}");
         }
 
         // KPI counts - computed here so CustomersView doesn't need its own queries
@@ -261,21 +346,67 @@ namespace CRMS_Peguit.winforms.Controllers
             };
         }
 
+        public void LogEmail(Customer customer, string subject)
+        {
+            LogActivity("Email", null, customer.CustomerId, $"Email sent to '{customer.FullName}'. Subject: {subject}");
+        }
+
+        public void LogCall(Customer customer, string notes)
+        {
+            LogActivity("Call", null, customer.CustomerId, $"Call logged for '{customer.FullName}': {notes}");
+        }
+
+        public void LogMeeting(Customer customer, string notes)
+        {
+            LogActivity("Meeting", null, customer.CustomerId, $"Meeting held with '{customer.FullName}': {notes}");
+        }
+
         private void LogActivity(string type, int? leadId, int? customerId, string notes)
         {
-            if (CurrentSession.UserId <= 0) return;
-
-            _db.Activities.Add(new Activity
+            try
             {
-                TenantId = TenantId,
-                Type = type,
-                RelatedLeadId = leadId,
-                RelatedCustomerId = customerId,
-                LoggedByAgentId = CurrentSession.UserId,
-                Notes = notes,
-                ActivityDate = DateTime.UtcNow
-            });
-            _db.SaveChanges();
+                if (CurrentSession.UserId <= 0) return;
+
+                int agentId = CurrentSession.UserId;
+                if (!_db.Users.Any(u => u.UserId == agentId))
+                {
+                    var userByEmail = CurrentSession.CurrentUser != null && !string.IsNullOrEmpty(CurrentSession.CurrentUser.Email)
+                        ? _db.Users.FirstOrDefault(u => u.Person != null && u.Person.Email != null && u.Person.Email.ToLower() == CurrentSession.CurrentUser.Email.ToLower())
+                        : null;
+
+                    if (userByEmail != null)
+                    {
+                        agentId = userByEmail.UserId;
+                    }
+                    else
+                    {
+                        var fallback = _db.Users.Select(u => u.UserId).FirstOrDefault();
+                        if (fallback > 0)
+                        {
+                            agentId = fallback;
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+                }
+
+                _db.Activities.Add(new Activity
+                {
+                    Type = type,
+                    RelatedLeadId = leadId,
+                    RelatedCustomerId = customerId,
+                    LoggedByAgentId = agentId,
+                    Notes = notes,
+                    ActivityDate = DateTime.UtcNow
+                });
+                _db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LogActivity error ({type}): {ex.Message}");
+            }
         }
 
         private static void ApplyAssignmentDefaults(Customer customer)
@@ -283,6 +414,63 @@ namespace CRMS_Peguit.winforms.Controllers
             // R23. Default state is Unassigned — never auto-assigned to creator.
             customer.AssignedAgentId = null;
             customer.AssignmentStatus = "pending_review";
+        }
+
+        public static bool ValidateCustomerInput(string firstName, string lastName, string? email, out string? errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(firstName))
+            {
+                errorMessage = "First name is required.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(lastName))
+            {
+                errorMessage = "Last name is required.";
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(email) && !ContactEmailService.IsValidEmail(email.Trim()))
+            {
+                errorMessage = "Enter a valid email address.";
+                return false;
+            }
+
+            errorMessage = null;
+            return true;
+        }
+
+        public List<Activity> GetRecentActivitiesForAgent(int agentId, int maxCount = 5)
+        {
+            try
+            {
+                return _db.Activities
+                    .AsNoTracking()
+                    .Where(a => a.LoggedByAgentId == agentId)
+                    .OrderByDescending(a => a.ActivityDate)
+                    .Take(maxCount)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomerController.GetRecentActivitiesForAgent] Error: {ex.Message}");
+                return new List<Activity>();
+            }
+        }
+
+        public int GetPendingReviewCount()
+        {
+            try
+            {
+                return _db.Customers
+                    .AsNoTracking()
+                    .Count(c => !c.IsDeleted && (c.AssignmentStatus == "pending_review" || c.AssignedAgentId == null));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[CustomerController.GetPendingReviewCount] Error: {ex.Message}");
+                return 0;
+            }
         }
 
         public void Dispose() => _db.Dispose();

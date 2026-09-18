@@ -11,7 +11,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
         private System.Windows.Forms.Label lblLastName = null!;
         private System.Windows.Forms.TextBox txtLastName = null!;
         private System.Windows.Forms.Label lblSuffix = null!;
-        private System.Windows.Forms.TextBox txtSuffix = null!;
+        private System.Windows.Forms.ComboBox cmbSuffix = null!;
 
         private System.Windows.Forms.Label lblEmail = null!;
         private System.Windows.Forms.TextBox txtEmail = null!;
@@ -19,7 +19,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
         private System.Windows.Forms.TextBox txtPhone = null!;
 
         private System.Windows.Forms.Label lblSource = null!;
-        private System.Windows.Forms.TextBox txtSource = null!;
+        private System.Windows.Forms.ComboBox cmbSource = null!;
         private System.Windows.Forms.Label lblStage = null!;
         private System.Windows.Forms.ComboBox cmbStage = null!;
 
@@ -54,13 +54,13 @@ namespace CRMS_Peguit.winforms.Views.Leads
             lblLastName = new Label();
             txtLastName = new TextBox();
             lblSuffix = new Label();
-            txtSuffix = new TextBox();
+            cmbSuffix = new ComboBox();
             lblEmail = new Label();
             txtEmail = new TextBox();
             lblPhone = new Label();
             txtPhone = new TextBox();
             lblSource = new Label();
-            txtSource = new TextBox();
+            cmbSource = new ComboBox();
             lblStage = new Label();
             cmbStage = new ComboBox();
             lblPriority = new Label();
@@ -146,18 +146,18 @@ namespace CRMS_Peguit.winforms.Views.Leads
             lblSuffix.TabIndex = 6;
             lblSuffix.Text = "Suffix";
             // 
-            // txtSuffix
+            // cmbSuffix
             // 
-            txtSuffix.BackColor = Color.White;
-            txtSuffix.BorderStyle = BorderStyle.FixedSingle;
-            txtSuffix.ForeColor = Color.FromArgb(8, 52, 87);
-            txtSuffix.Location = new Point(260, 115);
-            txtSuffix.MaxLength = 20;
-            txtSuffix.Name = "txtSuffix";
-            txtSuffix.PlaceholderText = "Jr., Sr., III, etc.";
-            txtSuffix.Size = new Size(220, 30);
-            txtSuffix.TabIndex = 7;
-            txtSuffix.TextChanged += txtSuffix_TextChanged;
+            cmbSuffix.BackColor = Color.White;
+            cmbSuffix.DropDownStyle = ComboBoxStyle.DropDown;
+            cmbSuffix.ForeColor = Color.FromArgb(8, 52, 87);
+            cmbSuffix.FormattingEnabled = true;
+            cmbSuffix.Items.AddRange(new object[] { "", "Jr.", "Sr.", "II", "III", "IV", "V" });
+            cmbSuffix.Location = new Point(260, 115);
+            cmbSuffix.MaxLength = 20;
+            cmbSuffix.Name = "cmbSuffix";
+            cmbSuffix.Size = new Size(220, 31);
+            cmbSuffix.TabIndex = 7;
             // 
             // lblEmail
             // 
@@ -207,21 +207,23 @@ namespace CRMS_Peguit.winforms.Views.Leads
             lblSource.ForeColor = Color.FromArgb(8, 52, 87);
             lblSource.Location = new Point(20, 230);
             lblSource.Name = "lblSource";
-            lblSource.Size = new Size(62, 23);
+            lblSource.Size = new Size(150, 23);
             lblSource.TabIndex = 12;
-            lblSource.Text = "Source";
+            lblSource.Text = "Source / Campaign";
             // 
-            // txtSource
+            // cmbSource
             // 
-            txtSource.BackColor = Color.White;
-            txtSource.BorderStyle = BorderStyle.FixedSingle;
-            txtSource.ForeColor = Color.FromArgb(8, 52, 87);
-            txtSource.Location = new Point(20, 255);
-            txtSource.MaxLength = 100;
-            txtSource.Name = "txtSource";
-            txtSource.PlaceholderText = "e.g. Website, Referral, Facebook";
-            txtSource.Size = new Size(220, 30);
-            txtSource.TabIndex = 13;
+            cmbSource.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            cmbSource.AutoCompleteSource = AutoCompleteSource.ListItems;
+            cmbSource.BackColor = Color.White;
+            cmbSource.DropDownStyle = ComboBoxStyle.DropDown;
+            cmbSource.ForeColor = Color.FromArgb(8, 52, 87);
+            cmbSource.FormattingEnabled = true;
+            cmbSource.Location = new Point(20, 255);
+            cmbSource.MaxLength = 100;
+            cmbSource.Name = "cmbSource";
+            cmbSource.Size = new Size(220, 31);
+            cmbSource.TabIndex = 13;
             // 
             // lblStage
             // 
@@ -312,25 +314,9 @@ namespace CRMS_Peguit.winforms.Views.Leads
             txtNotes.Size = new Size(460, 120);
             txtNotes.TabIndex = 21;
             // 
-            // btnSave
-            // 
-            btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            btnSave.BackColor = Color.FromArgb(37, 103, 156);
-            btnSave.Cursor = Cursors.Hand;
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.FlatStyle = FlatStyle.Flat;
-            btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            btnSave.ForeColor = Color.White;
-            btnSave.Location = new Point(300, 545);
-            btnSave.Name = "btnSave";
-            btnSave.Size = new Size(85, 38);
-            btnSave.TabIndex = 22;
-            btnSave.Text = "Save";
-            btnSave.UseVisualStyleBackColor = false;
             // 
             // btnCancel
             // 
-            btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             btnCancel.BackColor = Color.White;
             btnCancel.Cursor = Cursors.Hand;
             btnCancel.DialogResult = DialogResult.Cancel;
@@ -338,19 +324,33 @@ namespace CRMS_Peguit.winforms.Views.Leads
             btnCancel.FlatStyle = FlatStyle.Flat;
             btnCancel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCancel.ForeColor = Color.FromArgb(8, 52, 87);
-            btnCancel.Location = new Point(395, 545);
+            btnCancel.Location = new Point(300, 555);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(85, 38);
-            btnCancel.TabIndex = 23;
+            btnCancel.TabIndex = 22;
             btnCancel.Text = "Cancel";
             btnCancel.UseVisualStyleBackColor = false;
+            // 
+            // btnSave
+            // 
+            btnSave.BackColor = Color.FromArgb(37, 103, 156);
+            btnSave.Cursor = Cursors.Hand;
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.FlatStyle = FlatStyle.Flat;
+            btnSave.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnSave.ForeColor = Color.White;
+            btnSave.Location = new Point(395, 555);
+            btnSave.Name = "btnSave";
+            btnSave.Size = new Size(85, 38);
+            btnSave.TabIndex = 23;
+            btnSave.Text = "Save";
+            btnSave.UseVisualStyleBackColor = false;
             // 
             // LeadInputForm
             // 
             AcceptButton = btnSave;
             AutoScaleDimensions = new SizeF(9F, 23F);
             AutoScaleMode = AutoScaleMode.Font;
-            AutoScroll = true;
             BackColor = Color.FromArgb(243, 247, 250);
             CancelButton = btnCancel;
             ClientSize = new Size(504, 621);
@@ -361,13 +361,13 @@ namespace CRMS_Peguit.winforms.Views.Leads
             Controls.Add(lblLastName);
             Controls.Add(txtLastName);
             Controls.Add(lblSuffix);
-            Controls.Add(txtSuffix);
+            Controls.Add(cmbSuffix);
             Controls.Add(lblEmail);
             Controls.Add(txtEmail);
             Controls.Add(lblPhone);
             Controls.Add(txtPhone);
             Controls.Add(lblSource);
-            Controls.Add(txtSource);
+            Controls.Add(cmbSource);
             Controls.Add(lblStage);
             Controls.Add(cmbStage);
             Controls.Add(lblPriority);
@@ -376,13 +376,12 @@ namespace CRMS_Peguit.winforms.Views.Leads
             Controls.Add(txtExpectedValue);
             Controls.Add(lblNotes);
             Controls.Add(txtNotes);
-            Controls.Add(btnSave);
             Controls.Add(btnCancel);
+            Controls.Add(btnSave);
             Font = new Font("Segoe UI", 10F);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            MinimumSize = new Size(504, 480);
             Name = "LeadInputForm";
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterParent;

@@ -24,6 +24,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                 EnsureAssignmentColumns((SqlConnection)connection, "Leads");
                 EnsureAssignmentColumns((SqlConnection)connection, "Customers");
                 EnsureAssignmentColumns((SqlConnection)connection, "Properties");
+                EnsureNotificationTables((SqlConnection)connection);
             }
             finally
             {
@@ -60,16 +61,13 @@ namespace CRMS_Peguit.winforms.Models.Services
             ExecuteIfMissing(connection, "Deals", "PaymentScheme", "ALTER TABLE [Deals] ADD [PaymentScheme] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "ReservationFee", "ALTER TABLE [Deals] ADD [ReservationFee] decimal(18,2) NULL;");
             ExecuteIfMissing(connection, "Deals", "DownPaymentPercent", "ALTER TABLE [Deals] ADD [DownPaymentPercent] decimal(5,2) NULL;");
-            ExecuteIfMissing(connection, "Deals", "DownPaymentAmount", "ALTER TABLE [Deals] ADD [DownPaymentAmount] decimal(18,2) NULL;");
-            ExecuteIfMissing(connection, "Deals", "BalanceAmount", "ALTER TABLE [Deals] ADD [BalanceAmount] decimal(18,2) NULL;");
             ExecuteIfMissing(connection, "Deals", "CgtPayer", "ALTER TABLE [Deals] ADD [CgtPayer] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "DstPayer", "ALTER TABLE [Deals] ADD [DstPayer] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "TransferTaxPayer", "ALTER TABLE [Deals] ADD [TransferTaxPayer] nvarchar(50) NULL;");
             ExecuteIfMissing(connection, "Deals", "RegistrationFeePayer", "ALTER TABLE [Deals] ADD [RegistrationFeePayer] nvarchar(50) NULL;");
-            ExecuteIfMissing(connection, "Deals", "ContingenciesJson", "ALTER TABLE [Deals] ADD [ContingenciesJson] nvarchar(max) NULL;");
-            ExecuteIfMissing(connection, "Deals", "ApprovedClauseIds", "ALTER TABLE [Deals] ADD [ApprovedClauseIds] nvarchar(500) NULL;");
             ExecuteIfMissing(connection, "Deals", "SpecialStipulations", "ALTER TABLE [Deals] ADD [SpecialStipulations] nvarchar(max) NULL;");
             ExecuteIfMissing(connection, "Deals", "ContractSignedDate", "ALTER TABLE [Deals] ADD [ContractSignedDate] datetime2 NULL;");
+            ExecuteIfMissing(connection, "Deals", "CreatedByUserId", "ALTER TABLE [Deals] ADD [CreatedByUserId] int NOT NULL DEFAULT 1;");
         }
 
         private static void EnsurePropertyColumns(SqlConnection connection)
@@ -95,39 +93,12 @@ END";
 
         private static void EnsureUserColumns(SqlConnection connection)
         {
+            // 3NF: Personal info is normalized into Persons table.
             ExecuteIfMissing(
                 connection,
                 "Users",
-                "FirstName",
-                "ALTER TABLE [Users] ADD [FirstName] nvarchar(100) NOT NULL CONSTRAINT [DF_Users_FirstName] DEFAULT ('');");
-
-            ExecuteIfMissing(
-                connection,
-                "Users",
-                "MiddleName",
-                "ALTER TABLE [Users] ADD [MiddleName] nvarchar(100) NULL;");
-
-            ExecuteIfMissing(
-                connection,
-                "Users",
-                "LastName",
-                "ALTER TABLE [Users] ADD [LastName] nvarchar(100) NOT NULL CONSTRAINT [DF_Users_LastName] DEFAULT ('');");
-
-            ExecuteIfMissing(
-                connection,
-                "Users",
-                "Suffix",
-                "ALTER TABLE [Users] ADD [Suffix] nvarchar(20) NULL;");
-
-            using var cmd = connection.CreateCommand();
-            cmd.CommandText = @"
-IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'FullName' AND IS_NULLABLE = 'NO')
-BEGIN
-    ALTER TABLE [dbo].[Users] ALTER COLUMN [FullName] nvarchar(200) NULL;
-END
-UPDATE [Users] SET [FirstName] = CASE WHEN CHARINDEX('@', Email) > 0 THEN LEFT(Email, CHARINDEX('@', Email) - 1) ELSE Email END WHERE ([FirstName] IS NULL OR [FirstName] = '') AND ([LastName] IS NULL OR [LastName] = '');
-";
-            cmd.ExecuteNonQuery();
+                "PersonId",
+                "ALTER TABLE [Users] ADD [PersonId] int NOT NULL DEFAULT 1;");
         }
 
         private static void EnsureAssignmentColumns(SqlConnection connection, string tableName)
@@ -190,6 +161,50 @@ UPDATE [Users] SET [FirstName] = CASE WHEN CHARINDEX('@', Email) > 0 THEN LEFT(E
             command.CommandText =
                 $"IF COL_LENGTH('dbo.{tableName}', '{columnName}') IS NULL BEGIN {sql} END";
             command.ExecuteNonQuery();
+        }
+
+        private static void EnsureNotificationTables(SqlConnection connection)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+IF OBJECT_ID('dbo.Notifications', 'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[Notifications] (
+        [NotificationId] int NOT NULL IDENTITY(1,1),
+        [TenantId] int NOT NULL,
+        [RecipientUserId] int NOT NULL,
+        [Type] int NOT NULL,
+        [Title] nvarchar(200) NOT NULL,
+        [Message] nvarchar(1000) NOT NULL,
+        [RelatedEntityType] nvarchar(50) NULL,
+        [RelatedEntityId] int NULL,
+        [IsRead] bit NOT NULL DEFAULT 0,
+        [CreatedAt] datetime2 NOT NULL,
+        [ReadAt] datetime2 NULL,
+        CONSTRAINT [PK_Notifications] PRIMARY KEY ([NotificationId]),
+        CONSTRAINT [FK_Notifications_Users_RecipientUserId] FOREIGN KEY ([RecipientUserId]) REFERENCES [dbo].[Users] ([UserId]) ON DELETE CASCADE
+    );
+    CREATE NONCLUSTERED INDEX [IX_Notifications_TenantId] ON [dbo].[Notifications] ([TenantId]);
+    CREATE NONCLUSTERED INDEX [IX_Notifications_RecipientUserId] ON [dbo].[Notifications] ([RecipientUserId]);
+    CREATE NONCLUSTERED INDEX [IX_Notifications_IsRead] ON [dbo].[Notifications] ([IsRead]);
+    CREATE NONCLUSTERED INDEX [IX_Notifications_CreatedAt] ON [dbo].[Notifications] ([CreatedAt]);
+END;
+
+IF OBJECT_ID('dbo.NotificationPreferences', 'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[NotificationPreferences] (
+        [NotificationPreferenceId] int NOT NULL IDENTITY(1,1),
+        [TenantId] int NOT NULL,
+        [UserId] int NOT NULL,
+        [Type] int NOT NULL,
+        [IsEnabled] bit NOT NULL DEFAULT 1,
+        CONSTRAINT [PK_NotificationPreferences] PRIMARY KEY ([NotificationPreferenceId]),
+        CONSTRAINT [FK_NotificationPreferences_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([UserId]) ON DELETE CASCADE
+    );
+    CREATE NONCLUSTERED INDEX [IX_NotificationPreferences_TenantId] ON [dbo].[NotificationPreferences] ([TenantId]);
+    CREATE UNIQUE NONCLUSTERED INDEX [IX_NotificationPreferences_UserId_Type] ON [dbo].[NotificationPreferences] ([UserId], [Type]);
+END;";
+            cmd.ExecuteNonQuery();
         }
     }
 }

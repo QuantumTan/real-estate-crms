@@ -7,6 +7,7 @@ using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
+using CRMS_Peguit.winforms.Views.FollowUps;
 using CRMS_Peguit.winforms.Views.Shared;
 
 namespace CRMS_Peguit.winforms.Views.Customers
@@ -15,6 +16,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
     {
         private Customer? _customer;
         private readonly CustomerController? _controller;
+        private string _timelineFilter = "All";
 
         private Panel? _pnlHeader;
         private Panel? _pnlFooter;
@@ -39,12 +41,15 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
         private void SetupFormProperties()
         {
-            Text = _customer is not null ? $"Customer Details - {_customer.FullName}" : "Customer Details";
+            string displayName = _customer is not null ? UiDetailCardHelper.ToTitleCase(_customer.FullName) : "Customer Details";
+            Text = _customer is not null ? $"Customer Details - {displayName}" : "Customer Details";
             Size = new Size(760, 680);
             MinimumSize = new Size(620, 500);
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Color.FromArgb(244, 247, 251);
             DoubleBuffered = true;
+            AppBrand.ApplyDarkTitleBar(this);
+            AppBrand.ApplyAppIcon(this);
         }
 
         private void BuildUi()
@@ -81,16 +86,19 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 e.Graphics.DrawLine(pen, 0, _pnlHeader.Height - 1, _pnlHeader.Width, _pnlHeader.Height - 1);
             };
 
-            // Avatar circle
+            string formattedName = UiDetailCardHelper.ToTitleCase(_customer!.FullName);
+
+            // Avatar circle (centered with ample margins)
             var lblAvatar = new Label
             {
-                Text = UiDetailCardHelper.GetInitials(_customer!.FullName),
+                Text = UiDetailCardHelper.GetInitials(formattedName),
                 Font = new Font("Segoe UI", 15f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(29, 78, 216),      // #1D4ED8
                 BackColor = Color.FromArgb(239, 246, 255),    // #EFF6FF
-                Size = new Size(52, 52),
-                Location = new Point(24, 18),
-                TextAlign = ContentAlignment.MiddleCenter
+                Size = new Size(54, 54),
+                Location = new Point(24, 17),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0)
             };
             UiRadiusHelper.MakeCircularAvatar(lblAvatar);
             _pnlHeader.Controls.Add(lblAvatar);
@@ -98,7 +106,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             // Title & Subtitle block
             var lblName = new Label
             {
-                Text = _customer.FullName,
+                Text = formattedName,
                 Font = new Font("Segoe UI", 15.5f, FontStyle.Bold),
                 ForeColor = Theme.TextPrimary,
                 Location = new Point(88, 18),
@@ -119,15 +127,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             // Badges in Header
             var (sBg, sFg, sStroke) = UiDetailCardHelper.GetStatusColors(_customer.Status);
-            var statusBadge = UiDetailCardHelper.CreatePillBadge(_customer.Status, sBg, sFg, sStroke);
+            var statusBadge = UiDetailCardHelper.CreateStatusIndicator(UiDetailCardHelper.ToTitleCase(_customer.Status), sFg);
             statusBadge.Name = "headerStatusBadge";
             _pnlHeader.Controls.Add(statusBadge);
 
-            var typeBadge = UiDetailCardHelper.CreatePillBadge(
-                _customer.Type,
-                Color.FromArgb(241, 245, 249),
-                Color.FromArgb(51, 65, 85),
-                Color.FromArgb(203, 213, 225));
+            string typeStr = UiDetailCardHelper.ToTitleCase(_customer.Type);
+            var typeBadge = UiDetailCardHelper.CreateStatusIndicator(typeStr, Color.FromArgb(51, 65, 85));
             typeBadge.Name = "headerTypeBadge";
             _pnlHeader.Controls.Add(typeBadge);
 
@@ -165,7 +170,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             _pnlFooter.Controls.Add(_btnClose);
 
             // Edit Button (if permitted)
-            bool canEdit = _customer is not null && RbacService.CanEditRecord(_customer.AssignedAgentId, _customer.CreatedByUserId);
+            bool canEdit = _customer is not null && RbacService.CanEditRecord(_customer.AssignedAgentId, _customer.CreatedByUserId, _customer.AssignmentStatus);
             if (canEdit)
             {
                 _btnEdit = new Button
@@ -219,35 +224,35 @@ namespace CRMS_Peguit.winforms.Views.Customers
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(244, 247, 251),
-                Padding = new Padding(24, 18, 24, 18)
+                Padding = new Padding(24, 18, 24, 80)
             };
 
             int currentY = 16;
 
             // --- Card 1: Contact Information ---
             var cardContact = CreateCardPanel(ref currentY);
-            cardContact.Controls.Add(UiDetailCardHelper.CreateCardHeader("👤  Contact Information"));
-            cardContact.Controls.Add(UiDetailCardHelper.CreateDivider());
-            cardContact.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateCardHeader("👤  Contact Information"));
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateKeyValueRow(
                 "Email Address", string.IsNullOrWhiteSpace(_customer!.Email) ? "Not Provided" : _customer.Email,
                 "Phone Number", string.IsNullOrWhiteSpace(_customer.Phone) ? "Not Provided" : _customer.Phone));
-            cardContact.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
-                "Customer Type", _customer.Type,
-                "Account Status", _customer.Status));
+            UiDetailCardHelper.AddControl(cardContact, UiDetailCardHelper.CreateKeyValueRow(
+                "Customer Type", UiDetailCardHelper.ToTitleCase(_customer.Type),
+                "Account Status", UiDetailCardHelper.ToTitleCase(_customer.Status)));
             FinalizeCardHeight(cardContact, ref currentY);
             _pnlContent.Controls.Add(cardContact);
 
             // --- Card 2: Ownership & Assignment ---
             var cardOwner = CreateCardPanel(ref currentY);
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateCardHeader("👥  Ownership & Assignment"));
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateCardHeader("👥  Ownership Assignment"));
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateDivider());
             var agentName = _controller!.GetAssignedAgentName(_customer.AssignedAgentId);
-            cardOwner.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                 "Assigned Agent", agentName ?? "Unassigned",
-                "Assignment Review", _customer.AssignmentStatus));
+                "Assignment Review", UiDetailCardHelper.ToTitleCase(_customer.AssignmentStatus)));
             if (!string.IsNullOrWhiteSpace(_customer.AssignmentReviewNotes))
             {
-                cardOwner.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                UiDetailCardHelper.AddControl(cardOwner, UiDetailCardHelper.CreateKeyValueRow(
                     "Review Notes", _customer.AssignmentReviewNotes));
             }
             FinalizeCardHeight(cardOwner, ref currentY);
@@ -261,8 +266,8 @@ namespace CRMS_Peguit.winforms.Views.Customers
             {
                 var properties = _controller.GetOwnedProperties(_customer.CustomerId);
                 var cardProps = CreateCardPanel(ref currentY);
-                cardProps.Controls.Add(UiDetailCardHelper.CreateCardHeader("🏢  Owned Properties", properties.Count.ToString()));
-                cardProps.Controls.Add(UiDetailCardHelper.CreateDivider());
+                UiDetailCardHelper.AddControl(cardProps, UiDetailCardHelper.CreateCardHeader("🏢  Owned Properties", properties.Count.ToString()));
+                UiDetailCardHelper.AddControl(cardProps, UiDetailCardHelper.CreateDivider());
 
                 if (properties.Count == 0)
                 {
@@ -275,47 +280,163 @@ namespace CRMS_Peguit.winforms.Views.Customers
                         Height = 36,
                         TextAlign = ContentAlignment.MiddleLeft
                     };
-                    cardProps.Controls.Add(lblEmpty);
+                    UiDetailCardHelper.AddControl(cardProps, lblEmpty);
                 }
                 else
                 {
                     foreach (var p in properties)
                     {
                         var propTile = CreatePropertyTile(p);
-                        cardProps.Controls.Add(propTile);
+                        UiDetailCardHelper.AddControl(cardProps, propTile);
                     }
                 }
                 FinalizeCardHeight(cardProps, ref currentY);
                 _pnlContent.Controls.Add(cardProps);
             }
 
-            // --- Card 4: Recent Activities ---
-            var activities = _controller.GetActivityHistory(_customer.CustomerId);
-            var cardActivities = CreateCardPanel(ref currentY);
-            cardActivities.Controls.Add(UiDetailCardHelper.CreateCardHeader("⏱  Recent Activities", activities.Count.ToString()));
-            cardActivities.Controls.Add(UiDetailCardHelper.CreateDivider());
+            // --- Card 4: Unified Interaction Timeline ---
+            using var actCtrl = new ActivityController();
+            bool canViewTimeline = actCtrl.CanViewTimeline(_customer.AssignedAgentId);
+            bool canLogActivity = (RbacService.IsAgent && _customer.AssignedAgentId == CurrentSession.UserId) || RbacService.IsSuperAdmin;
+            var timelineItems = canViewTimeline ? actCtrl.GetTimeline(_customer.CustomerId, null, _timelineFilter) : new List<TimelineItemDto>();
 
-            if (activities.Count == 0)
+            var cardActivities = CreateCardPanel(ref currentY);
+
+            // Card Header with "+ Log Activity" Button
+            var pnlActHeader = new Panel
             {
-                var lblEmpty = new Label
+                Dock = DockStyle.Top,
+                Height = 36,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+
+            var lblActTitle = new Label
+            {
+                Text = "⏱  Interaction Timeline",
+                Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+                ForeColor = UiDetailCardHelper.SectionTitleColor,
+                Location = new Point(0, 6),
+                AutoSize = true
+            };
+            pnlActHeader.Controls.Add(lblActTitle);
+
+            var countBadge = UiDetailCardHelper.CreatePillBadge(
+                timelineItems.Count.ToString(),
+                Color.FromArgb(241, 245, 249),
+                Color.FromArgb(71, 85, 105),
+                Color.FromArgb(203, 213, 225));
+            countBadge.Location = new Point(lblActTitle.Right + 8, 6);
+            pnlActHeader.Controls.Add(countBadge);
+
+            if (canLogActivity)
+            {
+                var btnLogAct = new Button
                 {
-                    Text = "No activities logged yet for this customer.",
+                    Text = "+ Log Activity",
+                    Size = new Size(115, 28),
+                    Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                    BackColor = Theme.Primary,
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                btnLogAct.Location = new Point(cardActivities.Width - cardActivities.Padding.Right - 115 - 18, 4);
+                btnLogAct.FlatAppearance.BorderSize = 0;
+                UiRadiusHelper.StyleButton(btnLogAct, 6);
+                UiRadiusHelper.AttachHoverFeedback(btnLogAct, Theme.Primary, Theme.PrimaryDark);
+                btnLogAct.Click += (_, _) =>
+                {
+                    using var dlg = new LogActivityDialog(preselectedCustomerId: _customer.CustomerId);
+                    if (dlg.ShowDialog(this) == DialogResult.OK)
+                    {
+                        BuildUi();
+                    }
+                };
+                pnlActHeader.Controls.Add(btnLogAct);
+            }
+            UiDetailCardHelper.AddControl(cardActivities, pnlActHeader);
+            UiDetailCardHelper.AddControl(cardActivities, UiDetailCardHelper.CreateDivider());
+
+            if (!canViewTimeline)
+            {
+                var lblRestricted = new Label
+                {
+                    Text = "🔒 Interaction history is restricted to the assigned sales agent.",
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
                     ForeColor = UiDetailCardHelper.LabelMutedColor,
                     Dock = DockStyle.Top,
                     Height = 36,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
-                cardActivities.Controls.Add(lblEmpty);
+                UiDetailCardHelper.AddControl(cardActivities, lblRestricted);
             }
             else
             {
-                foreach (var a in activities.Take(15))
+                // Filter bar: All / Calls / Emails / Meetings / System Events
+                var pnlFilters = new Panel
                 {
-                    var item = CreateTimelineItem(a);
-                    cardActivities.Controls.Add(item);
+                    Dock = DockStyle.Top,
+                    Height = 34,
+                    Margin = new Padding(0, 0, 0, 10)
+                };
+
+                string[] filters = { "All", "Calls", "Emails", "Meetings", "System Events" };
+                string[] filterLabels = { "All", "Calls 📞", "Emails ✉️", "Meetings 📅", "System Events ⚙️" };
+                int btnX = 0;
+                for (int i = 0; i < filters.Length; i++)
+                {
+                    string f = filters[i];
+                    string label = filterLabels[i];
+                    bool isActive = string.Equals(_timelineFilter, f, StringComparison.OrdinalIgnoreCase);
+
+                    var btnF = new Button
+                    {
+                        Text = label,
+                        Location = new Point(btnX, 2),
+                        Height = 26,
+                        AutoSize = true,
+                        Font = new Font("Segoe UI", 8f, isActive ? FontStyle.Bold : FontStyle.Regular),
+                        BackColor = isActive ? Theme.Primary : Color.FromArgb(241, 245, 249),
+                        ForeColor = isActive ? Color.White : Color.FromArgb(71, 85, 105),
+                        FlatStyle = FlatStyle.Flat,
+                        Cursor = Cursors.Hand
+                    };
+                    btnF.FlatAppearance.BorderSize = 0;
+                    UiRadiusHelper.StyleButton(btnF, 5);
+                    btnF.Click += (_, _) =>
+                    {
+                        _timelineFilter = f;
+                        BuildUi();
+                    };
+                    pnlFilters.Controls.Add(btnF);
+                    btnX += btnF.PreferredSize.Width + 6;
+                }
+                UiDetailCardHelper.AddControl(cardActivities, pnlFilters);
+
+                if (timelineItems.Count == 0)
+                {
+                    var lblEmpty = new Label
+                    {
+                        Text = $"No activity or event records match the filter '{_timelineFilter}'.",
+                        Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
+                        ForeColor = UiDetailCardHelper.LabelMutedColor,
+                        Dock = DockStyle.Top,
+                        Height = 36,
+                        TextAlign = ContentAlignment.MiddleLeft
+                    };
+                    UiDetailCardHelper.AddControl(cardActivities, lblEmpty);
+                }
+                else
+                {
+                    foreach (var item in timelineItems)
+                    {
+                        var row = CreateUnifiedTimelineRow(item, actCtrl);
+                        UiDetailCardHelper.AddControl(cardActivities, row);
+                    }
                 }
             }
+
             FinalizeCardHeight(cardActivities, ref currentY);
             _pnlContent.Controls.Add(cardActivities);
 
@@ -420,47 +541,145 @@ namespace CRMS_Peguit.winforms.Views.Customers
             return tile;
         }
 
-        private Panel CreateTimelineItem(Activity a)
+        private Panel CreateUnifiedTimelineRow(TimelineItemDto item, ActivityController actCtrl)
         {
-            var item = new Panel
+            var row = new Panel
             {
-                Height = 44,
                 Dock = DockStyle.Top,
                 BackColor = Color.Transparent,
-                Margin = new Padding(0, 0, 0, 6)
+                Margin = new Padding(0, 0, 0, 8),
+                AutoSize = true,
+                Padding = new Padding(0, 4, 0, 6)
             };
+
+            // Left icon
+            string icon = item.Type switch
+            {
+                "Call" => "📞",
+                "Email" => "✉️",
+                "Meeting" => "📅",
+                _ => "⚙️"
+            };
+
+            var lblIcon = new Label
+            {
+                Text = icon,
+                Font = new Font("Segoe UI Emoji", 10f),
+                Location = new Point(0, 6),
+                Size = new Size(24, 22),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            row.Controls.Add(lblIcon);
 
             // Date chip
             var dateBadge = UiDetailCardHelper.CreatePillBadge(
-                a.ActivityDate.ToLocalTime().ToString("MMM d, yyyy"),
+                item.Timestamp.ToLocalTime().ToString("MMM d, yyyy h:mm tt"),
                 Color.FromArgb(241, 245, 249),
                 Color.FromArgb(71, 85, 105),
                 Color.FromArgb(226, 232, 240));
-            dateBadge.Location = new Point(0, 8);
-            item.Controls.Add(dateBadge);
+            dateBadge.Location = new Point(28, 6);
+            row.Controls.Add(dateBadge);
 
-            // Type badge
-            var typeBadge = UiDetailCardHelper.CreatePillBadge(
-                a.Type,
-                Color.FromArgb(239, 246, 255),
-                Color.FromArgb(29, 78, 216),
-                Color.FromArgb(191, 219, 254));
-            typeBadge.Location = new Point(dateBadge.Right + 8, 8);
-            item.Controls.Add(typeBadge);
-
-            // Notes
-            var lblNotes = new Label
+            // Title / Type label
+            var lblTitle = new Label
             {
-                Text = a.Notes ?? string.Empty,
-                Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
+                Text = item.Title,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
                 ForeColor = UiDetailCardHelper.ValueTextColor,
-                Location = new Point(typeBadge.Right + 12, 10),
-                AutoSize = true,
-                MaximumSize = new Size(380, 24)
+                Location = new Point(dateBadge.Right + 8, 8),
+                AutoSize = true
             };
-            item.Controls.Add(lblNotes);
+            row.Controls.Add(lblTitle);
 
-            return item;
+            int nextX = lblTitle.Right + 8;
+
+            // Outcome badge (for calls)
+            if (item.Outcome.HasValue)
+            {
+                bool isConnected = item.Outcome.Value == CallOutcome.Connected;
+                var outcomeBadge = UiDetailCardHelper.CreatePillBadge(
+                    ActivityController.FormatCallOutcome(item.Outcome.Value),
+                    isConnected ? Color.FromArgb(236, 253, 245) : Color.FromArgb(254, 243, 199),
+                    isConnected ? Color.FromArgb(4, 120, 87) : Color.FromArgb(180, 83, 9),
+                    isConnected ? Color.FromArgb(167, 243, 208) : Color.FromArgb(253, 230, 138));
+                outcomeBadge.Location = new Point(nextX, 6);
+                row.Controls.Add(outcomeBadge);
+                nextX = outcomeBadge.Right + 6;
+            }
+
+            // Duration badge (if available)
+            if (item.DurationMinutes.HasValue && item.DurationMinutes.Value > 0)
+            {
+                var durBadge = UiDetailCardHelper.CreatePillBadge(
+                    $"{item.DurationMinutes}m",
+                    Color.FromArgb(239, 246, 255),
+                    Color.FromArgb(29, 78, 216),
+                    Color.FromArgb(191, 219, 254));
+                durBadge.Location = new Point(nextX, 6);
+                row.Controls.Add(durBadge);
+                nextX = durBadge.Right + 6;
+            }
+
+            // Actor label
+            var lblActor = new Label
+            {
+                Text = $"by {item.ActorName}",
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Italic),
+                ForeColor = UiDetailCardHelper.LabelMutedColor,
+                Location = new Point(nextX, 9),
+                AutoSize = true
+            };
+            row.Controls.Add(lblActor);
+
+            // Action button: "➕ Schedule Follow-Up" shortcut (if user is Agent)
+            if (RbacService.IsAgent && item.CanCreateFollowUp)
+            {
+                var btnFollowUp = new Button
+                {
+                    Text = "➕ Follow-Up",
+                    Size = new Size(95, 24),
+                    Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                    BackColor = Color.White,
+                    ForeColor = Theme.Primary,
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                    Location = new Point(Math.Max(500, row.Width - 110), 6)
+                };
+                btnFollowUp.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
+                UiRadiusHelper.StyleButton(btnFollowUp, 4);
+                UiRadiusHelper.AttachHoverFeedback(btnFollowUp, Color.White, Color.FromArgb(241, 245, 249));
+                btnFollowUp.Click += (_, _) =>
+                {
+                    using var fuCtrl = new FollowUpController();
+                    var template = actCtrl.CreateFollowUpTemplate(item);
+                    using var fuForm = new FollowUpInputForm(fuCtrl, template);
+                    if (fuForm.ShowDialog(this) == DialogResult.OK && fuForm.Result != null)
+                    {
+                        fuCtrl.Add(fuForm.Result);
+                        MessageBox.Show("Follow-up scheduled successfully.", "Follow-Up Scheduled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        BuildUi();
+                    }
+                };
+                row.Controls.Add(btnFollowUp);
+            }
+
+            // Notes row
+            if (!string.IsNullOrWhiteSpace(item.Notes))
+            {
+                var lblNotes = new Label
+                {
+                    Text = item.Notes,
+                    Font = new Font("Segoe UI", 9f),
+                    ForeColor = Color.FromArgb(51, 65, 85),
+                    Location = new Point(28, 34),
+                    AutoSize = true,
+                    MaximumSize = new Size(620, 0)
+                };
+                row.Controls.Add(lblNotes);
+            }
+
+            return row;
         }
 
         private void LayoutResponsiveComponents()
@@ -484,19 +703,22 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
             if (_pnlFooter != null)
             {
+                // Left-aligned contextual action
+                if (_btnMessage != null)
+                {
+                    _btnMessage.Location = new Point(24, 13);
+                }
+
+                // Right-aligned dialog actions (8px spacing)
                 int right = _pnlFooter.ClientSize.Width - 24;
                 if (_btnClose != null)
                 {
                     _btnClose.Location = new Point(right - _btnClose.Width, 13);
-                    right -= (_btnClose.Width + 10);
+                    right -= (_btnClose.Width + 8);
                 }
                 if (_btnEdit != null && _btnEdit.Visible)
                 {
                     _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
-                }
-                if (_btnMessage != null)
-                {
-                    _btnMessage.Location = new Point(24, 13);
                 }
             }
 

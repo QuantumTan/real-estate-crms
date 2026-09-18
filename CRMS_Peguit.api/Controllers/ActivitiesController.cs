@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.infrastructure.data;
@@ -33,10 +33,10 @@ namespace CRMS_Peguit.api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Activity activity)
         {
-            var tenantResolver = HttpContext.RequestServices
-                .GetRequiredService<ITenantResolver>();
-
-            activity.TenantId = tenantResolver.GetTenantId();
+            if (activity.LoggedByAgentId <= 0)
+            {
+                activity.LoggedByAgentId = 1;
+            }
             activity.ActivityDate = DateTime.UtcNow;
 
             _db.Activities.Add(activity);

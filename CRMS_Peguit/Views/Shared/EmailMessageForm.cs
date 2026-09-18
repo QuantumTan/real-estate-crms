@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.winforms.Models.Services;
+using CRMS_Peguit.winforms.Models.Services;
 
 namespace CRMS_Peguit.winforms.Views.Shared
 {
@@ -12,15 +12,21 @@ namespace CRMS_Peguit.winforms.Views.Shared
         {
         }
 
-        public EmailMessageForm(string recipientName, string? recipientEmail)
+        public EmailMessageForm(string recipientName, string? recipientEmail, string? defaultSubject = null)
         {
             _recipientName = recipientName;
             InitializeComponent();
             UiRadiusHelper.StyleButton(btnSend, 8);
             UiRadiusHelper.StyleButton(btnCancel, 8);
+            UiRadiusHelper.AttachHoverFeedback(btnCancel, Color.White, Color.FromArgb(241, 245, 249));
+            UiRadiusHelper.AttachHoverFeedback(btnSend, Theme.Primary, Theme.PrimaryDark);
             this.Text = $"Message {_recipientName}";
             btnSend.Click += BtnSendClick;
             txtRecipient.Text = recipientEmail ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(defaultSubject))
+            {
+                txtSubject.Text = defaultSubject.Trim();
+            }
         }
 
         private async void BtnSendClick(object? sender, EventArgs e)

@@ -149,8 +149,8 @@ namespace CRMS_Peguit.winforms.Models.Services
             sb.AppendLine($"Total Purchase Price: ₱{deal.Value:N2}");
             sb.AppendLine($"Payment Scheme      : {deal.PaymentScheme ?? "Spot Cash"}");
             sb.AppendLine($"Reservation Deposit : ₱{(deal.ReservationFee.HasValue ? deal.ReservationFee.Value.ToString("N2") : "0.00")}");
-            sb.AppendLine($"Downpayment ({deal.DownPaymentPercent ?? 20:N1}%): ₱{(deal.DownPaymentAmount.HasValue ? deal.DownPaymentAmount.Value.ToString("N2") : "0.00")}");
-            sb.AppendLine($"Balance Payable     : ₱{(deal.BalanceAmount.HasValue ? deal.BalanceAmount.Value.ToString("N2") : (deal.Value - (deal.DownPaymentAmount ?? 0)).ToString("N2"))}");
+            sb.AppendLine($"Downpayment ({deal.DownPaymentPercent ?? 20:N1}%): ₱{deal.DownPaymentAmount:N2}");
+            sb.AppendLine($"Balance Payable     : ₱{deal.BalanceAmount:N2}");
             sb.AppendLine($"Commission Rate     : {deal.CommissionRate:P1}");
             sb.AppendLine();
             sb.AppendLine("--- 3. STATUTORY TAX & CLOSING EXPENSE ALLOCATION ---");
@@ -159,8 +159,10 @@ namespace CRMS_Peguit.winforms.Models.Services
             sb.AppendLine($"• Local Transfer Tax                 : Shouldered by {deal.TransferTaxPayer}");
             sb.AppendLine($"• Title Registration & Notarial Fees : Shouldered by {deal.RegistrationFeePayer}");
             sb.AppendLine();
-            sb.AppendLine("--- 4. CONDITIONS PRECEDENT & CONTINGENCIES ---");
-            var contingencies = DealContingency.DeserializeList(deal.ContingenciesJson);
+            // --- 4. CONDITIONS PRECEDENT & CONTINGENCIES ---
+            var contingencies = (deal.Contingencies != null && deal.Contingencies.Count > 0)
+                ? deal.Contingencies.OrderBy(c => c.DealContingencyId).ToList()
+                : DealContingency.DeserializeList(deal.ContingenciesJson);
             if (contingencies.Count == 0)
             {
                 sb.AppendLine("Standard due diligence conditions apply.");

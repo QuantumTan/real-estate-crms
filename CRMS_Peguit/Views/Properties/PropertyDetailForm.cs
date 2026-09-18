@@ -44,6 +44,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Color.FromArgb(244, 247, 251);
             DoubleBuffered = true;
+            AppBrand.ApplyDarkTitleBar(this);
+            AppBrand.ApplyAppIcon(this);
         }
 
         private void BuildUi()
@@ -132,15 +134,12 @@ namespace CRMS_Peguit.winforms.Views.Properties
 
             // Badges in Header
             var (sBg, sFg, sStroke) = UiDetailCardHelper.GetStatusColors(_property.Status);
-            var statusBadge = UiDetailCardHelper.CreatePillBadge(_property.Status, sBg, sFg, sStroke);
+            var statusBadge = UiDetailCardHelper.CreateStatusIndicator(UiDetailCardHelper.ToTitleCase(_property.Status), sFg);
             statusBadge.Name = "headerStatusBadge";
             _pnlHeader.Controls.Add(statusBadge);
 
-            var typeBadge = UiDetailCardHelper.CreatePillBadge(
-                string.IsNullOrWhiteSpace(_property.PropertyType) ? "Property" : _property.PropertyType,
-                Color.FromArgb(241, 245, 249),
-                Color.FromArgb(51, 65, 85),
-                Color.FromArgb(203, 213, 225));
+            string propType = string.IsNullOrWhiteSpace(_property.PropertyType) ? "Property" : UiDetailCardHelper.ToTitleCase(_property.PropertyType);
+            var typeBadge = UiDetailCardHelper.CreateStatusIndicator(propType, Color.FromArgb(51, 65, 85));
             typeBadge.Name = "headerTypeBadge";
             _pnlHeader.Controls.Add(typeBadge);
 
@@ -178,7 +177,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             _pnlFooter.Controls.Add(_btnClose);
 
             // Edit Button (if permitted)
-            bool canEdit = _property is not null && RbacService.CanEditRecord(_property.ListedByAgentId, _property.CreatedByUserId);
+            bool canEdit = _property is not null && RbacService.CanEditRecord(_property.ListedByAgentId, _property.CreatedByUserId, _property.AssignmentStatus);
             if (canEdit)
             {
                 _btnEdit = new Button
@@ -207,18 +206,19 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(244, 247, 251),
-                Padding = new Padding(24, 18, 24, 18)
+                Padding = new Padding(24, 18, 24, 80)
             };
 
             int currentY = 16;
 
-            // --- Card 1: Valuation Hero Banner ---
+            // --- Card 1: Valuation Hero Banner (clean floating metric card) ---
             var cardPrice = CreateCardPanel(ref currentY);
             var pnlPriceHero = new Panel
             {
-                Height = 64,
+                Height = 68,
                 Dock = DockStyle.Top,
-                BackColor = Color.FromArgb(240, 253, 244), // #F0FDF4
+                BackColor = Color.FromArgb(248, 250, 252), // Subtle #F8FAFC
+                Margin = new Padding(0, 0, 0, 12),
                 Padding = new Padding(18, 10, 18, 10)
             };
             pnlPriceHero.Paint += (s, e) =>
@@ -226,7 +226,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 var rect = new Rectangle(0, 0, pnlPriceHero.Width - 1, pnlPriceHero.Height - 1);
                 using var path = UiRadiusHelper.CreateRoundedPath(rect, 8);
-                using var pen = new Pen(Color.FromArgb(187, 247, 208), 1f);
+                using var pen = new Pen(Color.FromArgb(226, 232, 240), 1f); // Subtle #E2E8F0
                 e.Graphics.DrawPath(pen, path);
             };
             UiRadiusHelper.ApplyRoundedCorners(pnlPriceHero, 8);
@@ -235,8 +235,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
             {
                 Text = "LISTING PRICE",
                 Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(22, 101, 52),
-                Location = new Point(14, 12),
+                ForeColor = Color.FromArgb(100, 116, 139), // Muted #64748B
+                Location = new Point(14, 10),
                 AutoSize = true
             };
             pnlPriceHero.Controls.Add(lblPriceCap);
@@ -245,54 +245,48 @@ namespace CRMS_Peguit.winforms.Views.Properties
             {
                 Text = $"₱{_property!.Price:N2}",
                 Font = new Font("Segoe UI", 18f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(21, 128, 61),
-                Location = new Point(12, 28),
+                ForeColor = Color.FromArgb(15, 23, 42), // Clean high-contrast #0F172A
+                Location = new Point(14, 28),
                 AutoSize = true
             };
             pnlPriceHero.Controls.Add(lblPriceVal);
 
-            var (statusBg, statusFg, statusBorder) = UiDetailCardHelper.GetStatusColors(_property.Status);
-            var badgeVal = UiDetailCardHelper.CreatePillBadge(_property.Status, statusBg, statusFg, statusBorder);
-            badgeVal.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            badgeVal.Location = new Point(pnlPriceHero.Width - badgeVal.Width - 16, 20);
-            pnlPriceHero.Controls.Add(badgeVal);
-
-            cardPrice.Controls.Add(pnlPriceHero);
+            UiDetailCardHelper.AddControl(cardPrice, pnlPriceHero);
             FinalizeCardHeight(cardPrice, ref currentY);
             _pnlContent.Controls.Add(cardPrice);
 
             // --- Card 2: Property Specifications ---
             var cardSpecs = CreateCardPanel(ref currentY);
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateCardHeader("🏢  Property Specifications"));
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateCardHeader("🏢  Property Specifications"));
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateDivider());
 
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateKeyValueRow(
                 "Address", _property.Address,
-                "Property Type", string.IsNullOrWhiteSpace(_property.PropertyType) ? "Unspecified" : _property.PropertyType));
-            cardSpecs.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
-                "Listing Status", _property.Status,
+                "Property Type", string.IsNullOrWhiteSpace(_property.PropertyType) ? "Unspecified" : UiDetailCardHelper.ToTitleCase(_property.PropertyType)));
+            UiDetailCardHelper.AddControl(cardSpecs, UiDetailCardHelper.CreateKeyValueRow(
+                "Listing Status", UiDetailCardHelper.ToTitleCase(_property.Status),
                 "Listing Date", _property.CreatedAt != default ? _property.CreatedAt.ToString("MMMM d, yyyy") : "N/A"));
             FinalizeCardHeight(cardSpecs, ref currentY);
             _pnlContent.Controls.Add(cardSpecs);
 
             // --- Card 3: Ownership & Listing Agent ---
             var cardOwnership = CreateCardPanel(ref currentY);
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateCardHeader("👥  Ownership & Listing Agent"));
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateCardHeader("👥  Ownership & Listing Agent"));
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateDivider());
 
             var ownerName = _controller!.GetOwnerName(_property.OwnerCustomerId);
             var agentName = _controller.GetListedAgentName(_property.ListedByAgentId);
 
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
-                "Property Owner", ownerName ?? $"Customer #{_property.OwnerCustomerId}",
-                "Listing Agent", agentName ?? (_property.ListedByAgentId.HasValue ? $"User #{_property.ListedByAgentId.Value}" : "Unassigned")));
-            cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
-                "Assignment Status", _property.AssignmentStatus,
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateKeyValueRow(
+                "Property Owner", ownerName != null ? UiDetailCardHelper.ToTitleCase(ownerName) : $"Customer #{_property.OwnerCustomerId}",
+                "Listing Agent", agentName != null ? UiDetailCardHelper.ToTitleCase(agentName) : (_property.ListedByAgentId.HasValue ? $"User #{_property.ListedByAgentId.Value}" : "Unassigned")));
+            UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateKeyValueRow(
+                "Assignment Status", UiDetailCardHelper.ToTitleCase(_property.AssignmentStatus),
                 "Reviewed By", _property.AssignmentReviewedByUserId.HasValue ? $"User #{_property.AssignmentReviewedByUserId.Value}" : "Pending Review"));
 
             if (!string.IsNullOrWhiteSpace(_property.AssignmentReviewNotes))
             {
-                cardOwnership.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+                UiDetailCardHelper.AddControl(cardOwnership, UiDetailCardHelper.CreateKeyValueRow(
                     "Review Notes", _property.AssignmentReviewNotes));
             }
 
@@ -364,7 +358,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
                 if (_btnClose != null)
                 {
                     _btnClose.Location = new Point(right - _btnClose.Width, 13);
-                    right -= (_btnClose.Width + 10);
+                    right -= (_btnClose.Width + 8);
                 }
                 if (_btnEdit != null && _btnEdit.Visible)
                 {

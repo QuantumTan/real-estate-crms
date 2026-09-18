@@ -21,7 +21,7 @@ namespace CRMS_Peguit.winforms.Models.Services
         public static readonly Color HeaderText = Color.FromArgb(100, 116, 139);   // #64748B
         public static readonly Color GridBorder = Color.FromArgb(241, 245, 249);   // #F1F5F9
 
-        public static void ApplyModernGridStyle(DataGridView grid, int rowHeight = 50)
+        public static void ApplyModernGridStyle(DataGridView grid, int rowHeight = 52)
         {
             if (grid is null) return;
 
@@ -36,35 +36,41 @@ namespace CRMS_Peguit.winforms.Models.Services
             grid.MultiSelect = false;
             grid.ShowCellToolTips = true;
             grid.RowTemplate.Height = rowHeight;
-            grid.ColumnHeadersHeight = 48;
+            grid.ColumnHeadersHeight = 46;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
 
-            // Column Header Styling
+            // Column Header Styling (Uniform Subtle Surface #F8FAFC, 1px bottom border, zero blue highlight)
             grid.ColumnHeadersDefaultCellStyle.BackColor = HeaderBg;
             grid.ColumnHeadersDefaultCellStyle.ForeColor = HeaderText;
+            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = HeaderBg;
+            grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = HeaderText;
             grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
             grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(12, 0, 12, 0);
+            grid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
 
-            // Default Row Styling
+            // Default Row Styling (Vertically Centered)
             grid.DefaultCellStyle.BackColor = RowNormal;
             grid.DefaultCellStyle.ForeColor = TextDark;
             grid.DefaultCellStyle.SelectionBackColor = SelectionBg;
             grid.DefaultCellStyle.SelectionForeColor = TextDark;
             grid.DefaultCellStyle.Font = new Font("Segoe UI", 9.5f);
             grid.DefaultCellStyle.Padding = new Padding(12, 0, 12, 0);
+            grid.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
 
-            // Alternating Row Styling (Zebra Striping)
+            // Alternating Row Styling (Zebra Striping, Vertically Centered)
             grid.AlternatingRowsDefaultCellStyle.BackColor = RowAlternate;
             grid.AlternatingRowsDefaultCellStyle.ForeColor = TextDark;
             grid.AlternatingRowsDefaultCellStyle.SelectionBackColor = SelectionBg;
             grid.AlternatingRowsDefaultCellStyle.SelectionForeColor = TextDark;
             grid.AlternatingRowsDefaultCellStyle.Font = new Font("Segoe UI", 9.5f);
             grid.AlternatingRowsDefaultCellStyle.Padding = new Padding(12, 0, 12, 0);
+            grid.AlternatingRowsDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
 
             // Smooth Row Hover Tracking
             int hoverRow = -1;
             int hoverCol = -1;
 
+            // Cell cursor and tooltip for Actions
             grid.CellMouseEnter += (s, e) =>
             {
                 hoverCol = e.ColumnIndex;
@@ -77,6 +83,11 @@ namespace CRMS_Peguit.winforms.Models.Services
                     if (hoverRow < grid.RowCount && !grid.Rows[hoverRow].Selected)
                         grid.InvalidateRow(hoverRow);
                 }
+
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && (grid.Columns[e.ColumnIndex].Name == "Actions" || grid.Columns[e.ColumnIndex] is Controls.ActionsColumn))
+                {
+                    grid.Cursor = Cursors.Hand;
+                }
             };
 
             grid.CellMouseLeave += (s, e) =>
@@ -88,6 +99,19 @@ namespace CRMS_Peguit.winforms.Models.Services
                     hoverCol = -1;
                     if (old < grid.RowCount && !grid.Rows[old].Selected)
                         grid.InvalidateRow(old);
+                }
+
+                if (e.ColumnIndex >= 0 && (grid.Columns[e.ColumnIndex].Name == "Actions" || grid.Columns[e.ColumnIndex] is Controls.ActionsColumn))
+                {
+                    grid.Cursor = Cursors.Default;
+                }
+            };
+
+            grid.CellFormatting += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && (grid.Columns[e.ColumnIndex].Name == "Actions" || grid.Columns[e.ColumnIndex] is Controls.ActionsColumn))
+                {
+                    grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ToolTipText = "Options";
                 }
             };
 
@@ -111,22 +135,235 @@ namespace CRMS_Peguit.winforms.Models.Services
                 e.Graphics.DrawLine(pen, 0, grid.ColumnHeadersHeight - 1, grid.Width, grid.ColumnHeadersHeight - 1);
             };
 
-            // Intercept Actions column painting for modern circular button
+            // Cell and Header Painting
             grid.CellPainting += (s, e) =>
             {
-                if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Graphics == null) return;
-                var col = grid.Columns[e.ColumnIndex];
-                if (col.Name == "Actions" || col is Controls.ActionsColumn)
+                if (e.Graphics == null) return;
+
+                // Uniform Header Painting: Guarantees NO blue fill on first cell
+                if (e.RowIndex == -1 && e.ColumnIndex >= 0)
                 {
-                    PaintActionCell(e, e.RowIndex == hoverRow && e.ColumnIndex == hoverCol);
+                    using (var hBrush = new SolidBrush(HeaderBg))
+                    {
+                        e.Graphics.FillRectangle(hBrush, e.CellBounds);
+                    }
+
+                    var col = grid.Columns[e.ColumnIndex];
+                    var formatFlags = TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
+                    if (col.HeaderCell.Style.Alignment == DataGridViewContentAlignment.MiddleRight)
+                        formatFlags |= TextFormatFlags.Right;
+                    else if (col.HeaderCell.Style.Alignment == DataGridViewContentAlignment.MiddleCenter)
+                        formatFlags |= TextFormatFlags.HorizontalCenter;
+                    else
+                        formatFlags |= TextFormatFlags.Left;
+
+                    var headerTextRect = new Rectangle(e.CellBounds.X + 12, e.CellBounds.Y, e.CellBounds.Width - 24, e.CellBounds.Height);
+                    TextRenderer.DrawText(e.Graphics, col.HeaderText, grid.ColumnHeadersDefaultCellStyle.Font, headerTextRect, HeaderText, formatFlags);
+
+                    // 1px subtle bottom border
+                    using (var bPen = new Pen(Color.FromArgb(226, 232, 240), 1f))
+                    {
+                        e.Graphics.DrawLine(bPen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+                    }
+                    e.Handled = true;
+                    return;
+                }
+
+                if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+                var column = grid.Columns[e.ColumnIndex];
+                if (column.Name == "Actions" || column is Controls.ActionsColumn)
+                {
+                    Color cellBg = grid.Rows[e.RowIndex].Selected
+                        ? SelectionBg
+                        : (e.RowIndex == hoverRow ? RowHover : (e.RowIndex % 2 == 1 ? RowAlternate : RowNormal));
+                    PaintActionCell(e, e.RowIndex == hoverRow && e.ColumnIndex == hoverCol, cellBg);
                 }
             };
         }
 
-        public static void PaintActionCell(DataGridViewCellPaintingEventArgs e, bool isHovered)
+        public static Color GetStatusColor(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status)) return Theme.StatusNeutral;
+            string key = status.Trim().ToUpperInvariant();
+
+            return key switch
+            {
+                // Green (#16A34A) - Success, positive completion, active, converted, won, sold
+                "CONVERTED" or "ACTIVE" or "AVAILABLE" or "CLOSED" or "RESOLVED" or "APPROVED" or "COMPLETED" or "WON" or "SOLD" => Theme.StatusSuccess,
+
+                // Amber (#D97706) - Pending, in-progress, awaiting action, triage
+                "CONTACTED" or "PENDING REVIEW" or "PENDING_REVIEW" or "OFFER" or "CONTRACT" or "UNDER CONTRACT" or "PENDING" or "IN PROGRESS" or "IN_PROGRESS" or "FOLLOW UP" or "FOLLOW_UP" or "QUALIFIED" or "RESERVATION" or "UNDER REVIEW" or "TODAY" or "MEDIUM" => Theme.StatusPending,
+
+                // Red (#DC2626) - Alert, critical, negative outcome, overdue, cancelled
+                "INACTIVE" or "OVERDUE" or "LOST" or "URGENT" or "CRITICAL" or "HIGH" or "REJECTED" or "CANCELLED" or "CANCELED" or "FAILED" => Theme.StatusAlert,
+
+                // Blue (#2563EB) - New, initial, prospect, open, upcoming
+                "NEW" or "OPEN" or "PROSPECT" or "UPCOMING" => Theme.StatusInfo,
+
+                // Muted Gray (#6B7280) - Neutral, unassigned, low, draft, archived
+                "UNASSIGNED" or "LOW" or "DRAFT" or "ARCHIVED" or "UNKNOWN" or "-" => Theme.StatusNeutral,
+
+                _ => Theme.StatusNeutral
+            };
+        }
+
+        /// <summary>
+        /// Renders minimalist status indicator: 6px circular dot + clean colored text.
+        /// Strictly NO rounded badge pills, NO background pill fills, NO outer stroke boxes.
+        /// Defaults to left-aligned (center: false) with uniform 12px margin for perfect vertical column alignment.
+        /// </summary>
+        public static void PaintStatusIndicator(DataGridView grid, DataGridViewCellPaintingEventArgs e, string status, bool center = false)
+        {
+            if (e.Graphics == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            // Paint base row background
+            Color rowBg = grid.Rows[e.RowIndex].Selected
+                ? SelectionBg
+                : (e.RowIndex % 2 == 1 ? RowAlternate : RowNormal);
+
+            using (var bgBrush = new SolidBrush(rowBg))
+            {
+                e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+            }
+
+            Color statusColor = GetStatusColor(status);
+            string displayText = status.Trim();
+
+            using var font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            var textSize = TextRenderer.MeasureText(displayText, font);
+
+            int dotSize = 6;
+            int spacing = 8;
+            int totalWidth = dotSize + spacing + textSize.Width;
+
+            int startX = center
+                ? e.CellBounds.X + (e.CellBounds.Width - totalWidth) / 2
+                : e.CellBounds.X + 12;
+            int dotY = e.CellBounds.Y + (e.CellBounds.Height - dotSize) / 2;
+
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // 6px circular dot indicator
+            using (var dotBrush = new SolidBrush(statusColor))
+            {
+                e.Graphics.FillEllipse(dotBrush, startX, dotY, dotSize, dotSize);
+            }
+
+            // Clean colored text
+            int textX = startX + dotSize + spacing;
+            var textRect = new Rectangle(textX, e.CellBounds.Y, Math.Max(10, e.CellBounds.Right - textX - 8), e.CellBounds.Height);
+            TextRenderer.DrawText(e.Graphics, displayText, font, textRect, statusColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+            // Bottom grid line
+            using (var linePen = new Pen(GridBorder, 1f))
+            {
+                e.Graphics.DrawLine(linePen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Paints cell text with uniform padding and 1px bottom border, preventing 0px margin jumps.
+        /// </summary>
+        public static void PaintTextCell(DataGridView grid, DataGridViewCellPaintingEventArgs e, string text, Font font, Color textColor, TextFormatFlags flags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis, int leftPadding = 12, int rightPadding = 12)
+        {
+            if (e.Graphics == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            Color rowBg = grid.Rows[e.RowIndex].Selected
+                ? SelectionBg
+                : (e.RowIndex % 2 == 1 ? RowAlternate : RowNormal);
+
+            using (var bgBrush = new SolidBrush(rowBg))
+            {
+                e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+            }
+
+            var textRect = new Rectangle(
+                e.CellBounds.X + leftPadding,
+                e.CellBounds.Y,
+                Math.Max(10, e.CellBounds.Width - leftPadding - rightPadding),
+                e.CellBounds.Height);
+
+            TextRenderer.DrawText(e.Graphics, text, font, textRect, textColor, flags);
+
+            using (var linePen = new Pen(GridBorder, 1f))
+            {
+                e.Graphics.DrawLine(linePen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+            }
+
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// Paints an avatar with initials at exact 12px inset followed by bold primary text.
+        /// </summary>
+        public static void PaintAvatarCell(DataGridView grid, DataGridViewCellPaintingEventArgs e, string name, string initials, Color avatarBg, Color avatarText)
+        {
+            if (e.Graphics == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            Color rowBg = grid.Rows[e.RowIndex].Selected
+                ? SelectionBg
+                : (e.RowIndex % 2 == 1 ? RowAlternate : RowNormal);
+
+            using (var bgBrush = new SolidBrush(rowBg))
+            {
+                e.Graphics.FillRectangle(bgBrush, e.CellBounds);
+            }
+
+            int avatarSize = 28;
+            int avatarX = e.CellBounds.X + 12;
+            int avatarY = e.CellBounds.Y + (e.CellBounds.Height - avatarSize) / 2;
+            var avatarRect = new Rectangle(avatarX, avatarY, avatarSize, avatarSize);
+
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using (var brush = new SolidBrush(avatarBg))
+            {
+                e.Graphics.FillEllipse(brush, avatarRect);
+            }
+
+            using (var font = new Font("Segoe UI", 8f, FontStyle.Bold))
+            {
+                TextRenderer.DrawText(e.Graphics, initials, font, avatarRect, avatarText,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            }
+
+            int textX = avatarX + avatarSize + 10;
+            var textRect = new Rectangle(textX, e.CellBounds.Y,
+                Math.Max(10, e.CellBounds.Width - (textX - e.CellBounds.X) - 12), e.CellBounds.Height);
+
+            using (var font = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+            {
+                TextRenderer.DrawText(e.Graphics, name, font, textRect, Theme.TextPrimary,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+
+            using (var linePen = new Pen(GridBorder, 1f))
+            {
+                e.Graphics.DrawLine(linePen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
+            }
+
+            e.Handled = true;
+        }
+
+        public static Color GetRowBackgroundColor(DataGridView grid, int rowIndex, int hoveredRowIndex)
+        {
+            if (grid == null || rowIndex < 0 || rowIndex >= grid.RowCount) return RowNormal;
+            if (grid.Rows[rowIndex].Selected) return SelectionBg;
+            if (rowIndex == hoveredRowIndex) return RowHover;
+            return (rowIndex % 2 == 1) ? RowAlternate : RowNormal;
+        }
+
+        public static void PaintActionCell(DataGridViewCellPaintingEventArgs e, bool isHovered, Color? background = null)
         {
             if (e.Graphics == null) return;
-            e.PaintBackground(e.CellBounds, true);
+            
+            Color rowBg = background ?? RowNormal;
+            using (var rowBrush = new SolidBrush(rowBg))
+            {
+                e.Graphics.FillRectangle(rowBrush, e.CellBounds);
+            }
 
             int btnSize = 28;
             int x = e.CellBounds.X + (e.CellBounds.Width - btnSize) / 2;
@@ -135,21 +372,23 @@ namespace CRMS_Peguit.winforms.Models.Services
 
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // Soft circular pill background
-            Color bg = isHovered ? Color.FromArgb(226, 232, 240) : Color.FromArgb(241, 245, 249);
+            // Soft circular pill background with hover state
+            Color bg = isHovered ? Color.FromArgb(219, 234, 254) : Color.FromArgb(241, 245, 249); // #DBEAFE hover tint
+            Color borderColor = isHovered ? Color.FromArgb(147, 197, 253) : Color.FromArgb(226, 232, 240);
             using (var brush = new SolidBrush(bg))
             {
                 e.Graphics.FillEllipse(brush, rect);
             }
 
-            using (var borderPen = new Pen(Color.FromArgb(226, 232, 240), 1f))
+            using (var borderPen = new Pen(borderColor, 1f))
             {
                 e.Graphics.DrawEllipse(borderPen, rect);
             }
 
             // Draw clean centered 3 vertical dots
+            Color dotsColor = isHovered ? Color.FromArgb(29, 78, 216) : Color.FromArgb(71, 85, 105);
             using (var font = new Font("Segoe UI", 12f, FontStyle.Bold))
-            using (var textBrush = new SolidBrush(Color.FromArgb(71, 85, 105)))
+            using (var textBrush = new SolidBrush(dotsColor))
             {
                 var sf = new StringFormat
                 {
@@ -157,6 +396,12 @@ namespace CRMS_Peguit.winforms.Models.Services
                     LineAlignment = StringAlignment.Center
                 };
                 e.Graphics.DrawString("⋮", font, textBrush, new RectangleF(x, y - 1, btnSize, btnSize), sf);
+            }
+
+            // Bottom border divider
+            using (var pen = new Pen(GridBorder, 1f))
+            {
+                e.Graphics.DrawLine(pen, e.CellBounds.Left, e.CellBounds.Bottom - 1, e.CellBounds.Right, e.CellBounds.Bottom - 1);
             }
 
             e.Handled = true;

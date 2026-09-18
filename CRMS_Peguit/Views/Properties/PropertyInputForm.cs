@@ -1,4 +1,4 @@
-﻿using CRMS_Peguit.domain.entities;
+using CRMS_Peguit.domain.entities;
 using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Models.Services;
@@ -26,6 +26,8 @@ namespace CRMS_Peguit.winforms.Views.Properties
             InitializeComponent();
             UiRadiusHelper.StyleButton(btnSave, 8);
             UiRadiusHelper.StyleButton(btnCancel, 8);
+            UiRadiusHelper.AttachHoverFeedback(btnCancel, Color.White, Color.FromArgb(241, 245, 249));
+            UiRadiusHelper.AttachHoverFeedback(btnSave, Theme.Primary, Theme.PrimaryDark);
             btnSave.Click += BtnSaveClick;
             LoadPickers();
             LoadData();
@@ -59,7 +61,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             if (_existingProperty is not null)
             {
                 txtAddress.Text = _existingProperty.Address;
-                txtPrice.Text = _existingProperty.Price.ToString("F0");
+                txtPrice.Text = _existingProperty.Price.ToString("F2");
 
                 SelectComboValue(cmbPropertyType, _existingProperty.PropertyType, "house");
                 SelectComboValue(cmbStatus, _existingProperty.Status, "available");
@@ -101,7 +103,7 @@ namespace CRMS_Peguit.winforms.Views.Properties
             decimal price = 0;
             if (!string.IsNullOrWhiteSpace(txtPrice.Text))
             {
-                if (decimal.TryParse(txtPrice.Text.Trim(), out decimal parsedPrice) && parsedPrice >= 0)
+                if (decimal.TryParse(txtPrice.Text.Replace(",", "").Trim(), out decimal parsedPrice) && parsedPrice >= 0)
                 {
                     price = parsedPrice;
                 }

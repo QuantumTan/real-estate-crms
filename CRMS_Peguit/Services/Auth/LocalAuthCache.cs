@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using System;
 using System.IO;
 
@@ -29,38 +29,51 @@ namespace CRMS_Peguit.winforms.Auth
         {
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
+
+            // Check if existing table has CompanyId column (old schema)
+            var checkCmd = conn.CreateCommand();
+            checkCmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('CachedLogin') WHERE name = 'CompanyId';";
+            var oldColExists = Convert.ToInt32(checkCmd.ExecuteScalar() ?? 0) > 0;
+            if (oldColExists)
+            {
+                // Drop legacy table so it can be recreated with Email alone as PK
+                var dropCmd = conn.CreateCommand();
+                dropCmd.CommandText = "DROP TABLE IF EXISTS CachedLogin;";
+                dropCmd.ExecuteNonQuery();
+            }
+
             var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS CachedLogin (
-                    CompanyId TEXT NOT NULL,
-                    Email TEXT NOT NULL,
+                    Email TEXT PRIMARY KEY,
+                    TenantId INTEGER NOT NULL,
                     UserId INTEGER NOT NULL,
                     FullName TEXT NOT NULL,
                     PasswordHash TEXT NOT NULL,
                     RoleName TEXT NOT NULL,
-                    LastSyncedAt TEXT NOT NULL,
-                    PRIMARY KEY (CompanyId, Email)
+                    LastSyncedAt TEXT NOT NULL
                 );";
             cmd.ExecuteNonQuery();
         }
 
         // Called after every successful ONLINE login, so the cache stays fresh
-        public void SaveSuccessfulLogin(string companyId, int userId, string fullName, string email, string passwordHash, string roleName)
+        public void SaveSuccessfulLogin(int tenantId, int userId, string fullName, string email, string passwordHash, string roleName)
         {
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO CachedLogin (CompanyId, Email, UserId, FullName, PasswordHash, RoleName, LastSyncedAt)
-                VALUES ($companyId, $email, $userId, $fullName, $hash, $role, $syncedAt)
-                ON CONFLICT(CompanyId, Email) DO UPDATE SET
+                INSERT INTO CachedLogin (Email, TenantId, UserId, FullName, PasswordHash, RoleName, LastSyncedAt)
+                VALUES ($email, $tenantId, $userId, $fullName, $hash, $role, $syncedAt)
+                ON CONFLICT(Email) DO UPDATE SET
+                    TenantId = excluded.TenantId,
                     UserId = excluded.UserId,
                     FullName = excluded.FullName,
                     PasswordHash = excluded.PasswordHash,
                     RoleName = excluded.RoleName,
                     LastSyncedAt = excluded.LastSyncedAt;";
-            cmd.Parameters.AddWithValue("$companyId", companyId);
             cmd.Parameters.AddWithValue("$email", email);
+            cmd.Parameters.AddWithValue("$tenantId", tenantId);
             cmd.Parameters.AddWithValue("$userId", userId);
             cmd.Parameters.AddWithValue("$fullName", fullName);
             cmd.Parameters.AddWithValue("$hash", passwordHash);
@@ -69,31 +82,32 @@ namespace CRMS_Peguit.winforms.Auth
             cmd.ExecuteNonQuery();
         }
 
-        public CachedLoginRecord? TryGetCachedLogin(string companyId, string email)
+        public CachedLoginRecord? TryGetCachedLogin(string email)
         {
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             var cmd = conn.CreateCommand();
-            cmd.CommandText = @"SELECT UserId, FullName, PasswordHash, RoleName, LastSyncedAt
-                                 FROM CachedLogin WHERE CompanyId = $companyId AND Email = $email;";
-            cmd.Parameters.AddWithValue("$companyId", companyId);
+            cmd.CommandText = @"SELECT TenantId, UserId, FullName, PasswordHash, RoleName, LastSyncedAt
+                                 FROM CachedLogin WHERE Email = $email;";
             cmd.Parameters.AddWithValue("$email", email);
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read()) return null;
 
             return new CachedLoginRecord(
-                UserId: reader.GetInt32(0),
-                FullName: reader.GetString(1),
+                TenantId: reader.GetInt32(0),
+                UserId: reader.GetInt32(1),
+                FullName: reader.GetString(2),
                 Email: email,
-                PasswordHash: reader.GetString(2),
-                RoleName: reader.GetString(3),
-                LastSyncedAt: DateTime.Parse(reader.GetString(4))
+                PasswordHash: reader.GetString(3),
+                RoleName: reader.GetString(4),
+                LastSyncedAt: DateTime.Parse(reader.GetString(5))
             );
         }
     }
 
     public record CachedLoginRecord(
+        int TenantId,
         int UserId,
         string FullName,
         string Email,

@@ -11,7 +11,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
         private System.Windows.Forms.Label lblLastName = null!;
         private System.Windows.Forms.TextBox txtLastName = null!;
         private System.Windows.Forms.Label lblSuffix = null!;
-        private System.Windows.Forms.TextBox txtSuffix = null!;
+        private System.Windows.Forms.ComboBox cmbSuffix = null!;
 
         private System.Windows.Forms.Label lblEmail = null!;
         private System.Windows.Forms.TextBox txtEmail = null!;
@@ -46,7 +46,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.lblLastName = new System.Windows.Forms.Label();
             this.txtLastName = new System.Windows.Forms.TextBox();
             this.lblSuffix = new System.Windows.Forms.Label();
-            this.txtSuffix = new System.Windows.Forms.TextBox();
+            this.cmbSuffix = new System.Windows.Forms.ComboBox();
             this.lblEmail = new System.Windows.Forms.Label();
             this.txtEmail = new System.Windows.Forms.TextBox();
             this.lblPhone = new System.Windows.Forms.Label();
@@ -132,17 +132,18 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.lblSuffix.TabIndex = 6;
             this.lblSuffix.Text = "Suffix";
             // 
-            // txtSuffix
+            // cmbSuffix
             // 
-            this.txtSuffix.BackColor = System.Drawing.Color.White;
-            this.txtSuffix.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtSuffix.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
-            this.txtSuffix.Location = new System.Drawing.Point(260, 115);
-            this.txtSuffix.MaxLength = 20;
-            this.txtSuffix.Name = "txtSuffix";
-            this.txtSuffix.PlaceholderText = "Jr., Sr., III, etc.";
-            this.txtSuffix.Size = new System.Drawing.Size(220, 25);
-            this.txtSuffix.TabIndex = 7;
+            this.cmbSuffix.BackColor = System.Drawing.Color.White;
+            this.cmbSuffix.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cmbSuffix.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
+            this.cmbSuffix.FormattingEnabled = true;
+            this.cmbSuffix.Items.AddRange(new object[] { "", "Jr.", "Sr.", "II", "III", "IV", "V" });
+            this.cmbSuffix.Location = new System.Drawing.Point(260, 115);
+            this.cmbSuffix.MaxLength = 20;
+            this.cmbSuffix.Name = "cmbSuffix";
+            this.cmbSuffix.Size = new System.Drawing.Size(220, 25);
+            this.cmbSuffix.TabIndex = 7;
             // 
             // lblEmail
             // 
@@ -236,25 +237,9 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.cmbStatus.Size = new System.Drawing.Size(220, 27);
             this.cmbStatus.TabIndex = 15;
             // 
-            // btnSave
-            // 
-            this.btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSave.BackColor = System.Drawing.Color.FromArgb(37, 103, 156);
-            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSave.FlatAppearance.BorderSize = 0;
-            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.btnSave.ForeColor = System.Drawing.Color.White;
-            this.btnSave.Location = new System.Drawing.Point(300, 390);
-            this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(85, 38);
-            this.btnSave.TabIndex = 16;
-            this.btnSave.Text = "Save";
-            this.btnSave.UseVisualStyleBackColor = false;
             // 
             // btnCancel
             // 
-            this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnCancel.BackColor = System.Drawing.Color.White;
             this.btnCancel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
@@ -262,19 +247,33 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCancel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnCancel.ForeColor = System.Drawing.Color.FromArgb(8, 52, 87);
-            this.btnCancel.Location = new System.Drawing.Point(395, 390);
+            this.btnCancel.Location = new System.Drawing.Point(300, 390);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(85, 38);
-            this.btnCancel.TabIndex = 17;
+            this.btnCancel.TabIndex = 16;
             this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = false;
+            // 
+            // btnSave
+            // 
+            this.btnSave.BackColor = System.Drawing.Color.FromArgb(37, 103, 156);
+            this.btnSave.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnSave.FlatAppearance.BorderSize = 0;
+            this.btnSave.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSave.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnSave.ForeColor = System.Drawing.Color.White;
+            this.btnSave.Location = new System.Drawing.Point(395, 390);
+            this.btnSave.Name = "btnSave";
+            this.btnSave.Size = new System.Drawing.Size(85, 38);
+            this.btnSave.TabIndex = 17;
+            this.btnSave.Text = "Save";
+            this.btnSave.UseVisualStyleBackColor = false;
             // 
             // CustomerInputForm
             // 
             this.AcceptButton = this.btnSave;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.AutoScroll = true;
             this.BackColor = System.Drawing.Color.FromArgb(243, 247, 250);
             this.CancelButton = this.btnCancel;
             this.ClientSize = new System.Drawing.Size(504, 461);
@@ -285,7 +284,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.Controls.Add(this.lblLastName);
             this.Controls.Add(this.txtLastName);
             this.Controls.Add(this.lblSuffix);
-            this.Controls.Add(this.txtSuffix);
+            this.Controls.Add(this.cmbSuffix);
             this.Controls.Add(this.lblEmail);
             this.Controls.Add(this.txtEmail);
             this.Controls.Add(this.lblPhone);
@@ -294,13 +293,12 @@ namespace CRMS_Peguit.winforms.Views.Customers
             this.Controls.Add(this.cmbType);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.cmbStatus);
-            this.Controls.Add(this.btnSave);
             this.Controls.Add(this.btnCancel);
+            this.Controls.Add(this.btnSave);
             this.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(504, 460);
             this.Name = "CustomerInputForm";
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;

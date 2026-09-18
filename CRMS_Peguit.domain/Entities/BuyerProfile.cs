@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
 
 namespace CRMS_Peguit.domain.entities
 {
@@ -8,9 +6,10 @@ namespace CRMS_Peguit.domain.entities
     {
         public int CustomerId { get; set; }
 
-        public int TenantId { get; set; }
         public decimal Budget { get; set; }
         public string? PreferredLocation { get; set; }
         public string? PreferredPropertyType { get; set; }
+
+        public virtual Customer Customer { get; set; } = null!;
     }
 }

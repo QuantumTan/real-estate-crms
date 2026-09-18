@@ -24,7 +24,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
         private Panel? _pnlFooter;
         private Panel? _pnlContent;
         private Button? _btnEdit;
-        private Button? _btnExportTermSheet;
+        private Button? _btnViewContract;
         private Button? _btnClose;
 
         public DealDetailForm() : this(new Deal(), new DealController())
@@ -48,6 +48,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
             StartPosition = FormStartPosition.CenterParent;
             BackColor = Color.FromArgb(244, 247, 251);
             DoubleBuffered = true;
+            AppBrand.ApplyDarkTitleBar(this);
+            AppBrand.ApplyAppIcon(this);
         }
 
         private void BuildUi()
@@ -186,7 +188,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             _pnlFooter.Controls.Add(_btnClose);
 
             // Edit Button (if permitted)
-            bool canEdit = RbacService.CanCreateSalesRecord;
+            bool canEdit = _deal != null && RbacService.CanEditRecord(_deal.AgentId, _deal.CreatedByUserId);
             if (canEdit)
             {
                 _btnEdit = new Button
@@ -203,25 +205,26 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 _pnlFooter.Controls.Add(_btnEdit);
             }
 
-            // Export Term Sheet Button
-            _btnExportTermSheet = new Button
+            // View Contract & Terms Button
+            _btnViewContract = new Button
             {
-                Text = "📄 Export Term Sheet",
-                Size = new Size(165, 36),
+                Text = "📜 View Contract & Terms",
+                Size = new Size(185, 36),
                 BackColor = Color.White,
                 ForeColor = Theme.Primary,
-                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
-            UiRadiusHelper.StyleButton(_btnExportTermSheet, 8);
-            _btnExportTermSheet.Paint += (s, e) =>
+            UiRadiusHelper.StyleButton(_btnViewContract, 8);
+            _btnViewContract.Paint += (s, e) =>
             {
                 using var p = new Pen(UiDetailCardHelper.BorderColor, 1f);
-                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, _btnExportTermSheet.Width - 1, _btnExportTermSheet.Height - 1), 8);
+                using var path = UiRadiusHelper.CreateRoundedPath(new Rectangle(0, 0, _btnViewContract.Width - 1, _btnViewContract.Height - 1), 8);
                 e.Graphics.DrawPath(p, path);
             };
-            UiRadiusHelper.AttachHoverFeedback(_btnExportTermSheet, Color.White, Color.FromArgb(241, 245, 249));
-            _btnExportTermSheet.Click += BtnExportTermSheetClick;
-            _pnlFooter.Controls.Add(_btnExportTermSheet);
+            UiRadiusHelper.AttachHoverFeedback(_btnViewContract, Color.White, Color.FromArgb(241, 245, 249));
+            _btnViewContract.Click += BtnViewContractClick;
+            _pnlFooter.Controls.Add(_btnViewContract);
 
             AcceptButton = _btnClose;
             CancelButton = _btnClose;
@@ -235,15 +238,15 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(244, 247, 251),
-                Padding = new Padding(24, 18, 24, 18)
+                Padding = new Padding(24, 18, 24, 80)
             };
 
             int currentY = 16;
 
             // --- Card 1: Pipeline Stage Progression ---
             var cardPipeline = CreateCardPanel(ref currentY);
-            cardPipeline.Controls.Add(UiDetailCardHelper.CreateCardHeader("📊  Deal Stage Progression"));
-            cardPipeline.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardPipeline, UiDetailCardHelper.CreateCardHeader("📊  Deal Stage Progression"));
+            UiDetailCardHelper.AddControl(cardPipeline, UiDetailCardHelper.CreateDivider());
 
             bool isLost = string.Equals(_deal!.Stage, "Lost", StringComparison.OrdinalIgnoreCase);
             if (isLost)
@@ -264,20 +267,20 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     TextAlign = ContentAlignment.MiddleLeft
                 };
                 lostBanner.Controls.Add(lblLost);
-                cardPipeline.Controls.Add(lostBanner);
+                UiDetailCardHelper.AddControl(cardPipeline, lostBanner);
             }
             else
             {
                 var stepper = CreatePipelineStepper();
-                cardPipeline.Controls.Add(stepper);
+                UiDetailCardHelper.AddControl(cardPipeline, stepper);
             }
             FinalizeCardHeight(cardPipeline, ref currentY);
             _pnlContent.Controls.Add(cardPipeline);
 
             // --- Card 2: Commercial Financial Terms ---
             var cardFinancials = CreateCardPanel(ref currentY);
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateCardHeader("💳  Commercial Terms & Financing Structure"));
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateCardHeader("💳  Commercial Terms & Financing Structure"));
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateDivider());
 
             // 4 summary tiles
             var pnlFinancialTiles = new Panel
@@ -289,21 +292,21 @@ namespace CRMS_Peguit.winforms.Views.Deals
             };
 
             decimal resFee = _deal.ReservationFee ?? 0;
-            decimal downAmt = _deal.DownPaymentAmount ?? (_deal.Value * ((_deal.DownPaymentPercent ?? 20) / 100m));
-            decimal balAmt = _deal.BalanceAmount ?? Math.Max(0, _deal.Value - downAmt);
+            decimal downAmt = _deal.DownPaymentAmount;
+            decimal balAmt = _deal.BalanceAmount;
 
-            AddSummaryTile(pnlFinancialTiles, 0, "TOTAL PURCHASE PRICE", $"₱{_deal.Value:N0}", Color.FromArgb(15, 23, 42));
-            AddSummaryTile(pnlFinancialTiles, 164, "RESERVATION DEPOSIT", $"₱{resFee:N0}", Color.FromArgb(30, 41, 59));
-            AddSummaryTile(pnlFinancialTiles, 328, $"DOWNPAYMENT ({_deal.DownPaymentPercent ?? 20:N0}%)", $"₱{downAmt:N0}", Color.FromArgb(21, 128, 61));
-            AddSummaryTile(pnlFinancialTiles, 492, "BALANCE TO FINANCE", $"₱{balAmt:N0}", Color.FromArgb(29, 78, 216));
-            cardFinancials.Controls.Add(pnlFinancialTiles);
+            AddSummaryTile(pnlFinancialTiles, 0, "TOTAL PURCHASE PRICE", $"₱{_deal.Value:N2}", Color.FromArgb(15, 23, 42));
+            AddSummaryTile(pnlFinancialTiles, 164, "RESERVATION DEPOSIT", $"₱{resFee:N2}", Color.FromArgb(30, 41, 59));
+            AddSummaryTile(pnlFinancialTiles, 328, $"DOWNPAYMENT ({_deal.DownPaymentPercent ?? 20:0.##}%)", $"₱{downAmt:N2}", Color.FromArgb(21, 128, 61));
+            AddSummaryTile(pnlFinancialTiles, 492, "BALANCE TO FINANCE", $"₱{balAmt:N2}", Color.FromArgb(29, 78, 216));
+            UiDetailCardHelper.AddControl(cardFinancials, pnlFinancialTiles);
 
             string closeDateStr = _deal.ExpectedCloseDate.HasValue ? _deal.ExpectedCloseDate.Value.ToString("MMMM d, yyyy") : "Not set";
             decimal commVal = _deal.Value * _deal.CommissionRate;
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateKeyValueRow(
                 "Payment Scheme", _deal.PaymentScheme ?? "Spot Cash",
                 "Target Closing Date", closeDateStr));
-            cardFinancials.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardFinancials, UiDetailCardHelper.CreateKeyValueRow(
                 "Brokerage Commission", $"{_deal.CommissionRate:P1} (₱{commVal:N2})",
                 "Contract Status", string.IsNullOrWhiteSpace(_deal.Stage) ? "Offer" : _deal.Stage));
             FinalizeCardHeight(cardFinancials, ref currentY);
@@ -311,23 +314,25 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             // --- Card 3: Statutory Tax & Closing Cost Allocation ---
             var cardTaxes = CreateCardPanel(ref currentY);
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateCardHeader("⚖️  Statutory Tax & Closing Cost Allocation"));
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateCardHeader("⚖️  Statutory Tax & Closing Cost Allocation"));
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateDivider());
 
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateKeyValueRow(
                 "Capital Gains Tax (6%)", $"Shouldered by {_deal.CgtPayer}",
                 "Doc Stamp Tax (1.5%)", $"Shouldered by {_deal.DstPayer}"));
-            cardTaxes.Controls.Add(UiDetailCardHelper.CreateKeyValueRow(
+            UiDetailCardHelper.AddControl(cardTaxes, UiDetailCardHelper.CreateKeyValueRow(
                 "Local Transfer Tax", $"Shouldered by {_deal.TransferTaxPayer}",
                 "Title Registration Fees", $"Shouldered by {_deal.RegistrationFeePayer}"));
             FinalizeCardHeight(cardTaxes, ref currentY);
             _pnlContent.Controls.Add(cardTaxes);
 
             // --- Card 4: Closing Contingencies Tracker ---
-            var contingencies = DealContingency.DeserializeList(_deal.ContingenciesJson);
+            var contingencies = (_deal.Contingencies != null && _deal.Contingencies.Count > 0)
+                ? _deal.Contingencies.OrderBy(c => c.DealContingencyId).ToList()
+                : DealContingency.DeserializeList(_deal.ContingenciesJson);
             var cardContingencies = CreateCardPanel(ref currentY);
-            cardContingencies.Controls.Add(UiDetailCardHelper.CreateCardHeader("✅  Closing Contingencies & Conditions Precedent", contingencies.Count.ToString()));
-            cardContingencies.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardContingencies, UiDetailCardHelper.CreateCardHeader("✅  Closing Contingencies & Conditions Precedent", contingencies.Count.ToString()));
+            UiDetailCardHelper.AddControl(cardContingencies, UiDetailCardHelper.CreateDivider());
 
             if (contingencies.Count == 0)
             {
@@ -340,14 +345,14 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     Height = 36,
                     TextAlign = ContentAlignment.MiddleLeft
                 };
-                cardContingencies.Controls.Add(lblEmpty);
+                UiDetailCardHelper.AddControl(cardContingencies, lblEmpty);
             }
             else
             {
                 for (int i = 0; i < contingencies.Count; i++)
                 {
                     var itemPanel = CreateContingencyItem(contingencies[i], i);
-                    cardContingencies.Controls.Add(itemPanel);
+                    UiDetailCardHelper.AddControl(cardContingencies, itemPanel);
                 }
             }
             FinalizeCardHeight(cardContingencies, ref currentY);
@@ -355,8 +360,8 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
             // --- Card 5: Contract Clauses & Special Stipulations ---
             var cardClauses = CreateCardPanel(ref currentY);
-            cardClauses.Controls.Add(UiDetailCardHelper.CreateCardHeader("📜  Agreed Brokerage Clauses & Special Stipulations"));
-            cardClauses.Controls.Add(UiDetailCardHelper.CreateDivider());
+            UiDetailCardHelper.AddControl(cardClauses, UiDetailCardHelper.CreateCardHeader("📜  Agreed Brokerage Clauses & Special Stipulations"));
+            UiDetailCardHelper.AddControl(cardClauses, UiDetailCardHelper.CreateDivider());
 
             var activeIds = (_deal.ApprovedClauseIds ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var allClauses = DealClauseLibrary.GetStandardClauses();
@@ -366,7 +371,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             foreach (var clause in activeClauses)
             {
                 var clausePanel = CreateClauseItem(clause);
-                cardClauses.Controls.Add(clausePanel);
+                UiDetailCardHelper.AddControl(cardClauses, clausePanel);
             }
 
             if (!string.IsNullOrWhiteSpace(_deal.SpecialStipulations))
@@ -401,9 +406,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     AutoSize = true,
                     MaximumSize = new Size(580, 0)
                 };
-                pnlStip.Controls.Add(lblStipBody);
                 pnlStip.Controls.Add(lblStipTitle);
-                cardClauses.Controls.Add(pnlStip);
+                lblStipTitle.SendToBack();
+                pnlStip.Controls.Add(lblStipBody);
+                lblStipBody.SendToBack();
+                UiDetailCardHelper.AddControl(cardClauses, pnlStip);
             }
             FinalizeCardHeight(cardClauses, ref currentY);
             _pnlContent.Controls.Add(cardClauses);
@@ -705,15 +712,15 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 if (_btnClose != null)
                 {
                     _btnClose.Location = new Point(right - _btnClose.Width, 13);
-                    right -= (_btnClose.Width + 10);
+                    right -= (_btnClose.Width + 8);
                 }
                 if (_btnEdit != null && _btnEdit.Visible)
                 {
                     _btnEdit.Location = new Point(right - _btnEdit.Width, 13);
                 }
-                if (_btnExportTermSheet != null)
+                if (_btnViewContract != null)
                 {
-                    _btnExportTermSheet.Location = new Point(24, 13);
+                    _btnViewContract.Location = new Point(24, 13);
                 }
             }
 
@@ -732,7 +739,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
 
         private void BtnEditClick(object? sender, EventArgs e)
         {
-            if (_deal == null) return;
+            if (_deal == null || !RbacService.CanEditRecord(_deal.AgentId, _deal.CreatedByUserId)) return;
 
             using var editForm = new DealInputForm(_controller, _deal);
             if (editForm.ShowDialog(this) == DialogResult.OK && editForm.Result is not null)
@@ -743,36 +750,12 @@ namespace CRMS_Peguit.winforms.Views.Deals
             }
         }
 
-        private void BtnExportTermSheetClick(object? sender, EventArgs e)
+        private void BtnViewContractClick(object? sender, EventArgs e)
         {
             if (_deal == null) return;
 
-            var customers = _controller.GetCustomerNames();
-            var properties = _controller.GetPropertyAddresses();
-            var agents = _controller.GetAgentNames();
-
-            string buyer = customers.TryGetValue(_deal.CustomerId, out string? b) ? b : $"Customer #{_deal.CustomerId}";
-            string prop = properties.TryGetValue(_deal.PropertyId, out string? p) ? p : $"Property #{_deal.PropertyId}";
-            string agent = _deal.AgentId.HasValue && agents.TryGetValue(_deal.AgentId.Value, out string? a) ? a : "Unassigned";
-
-            string documentText = DealClauseLibrary.FormatTermSheetText(_deal, buyer, prop, agent);
-
-            using var sfd = new SaveFileDialog
-            {
-                Filter = "Text Document (*.txt)|*.txt",
-                FileName = $"TermSheet_Deal_{_deal.DealId}_{DateTime.Now:yyyyMMdd}.txt",
-                Title = "Save Real Estate Term Sheet"
-            };
-
-            if (sfd.ShowDialog(this) == DialogResult.OK)
-            {
-                File.WriteAllText(sfd.FileName, documentText);
-                MessageBox.Show(
-                    $"Real Estate Term Sheet exported successfully to:\n{sfd.FileName}",
-                    "Term Sheet Exported",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
+            using var viewer = new ContractTermsViewerDialog(_deal, _controller);
+            viewer.ShowDialog(this);
         }
     }
 }

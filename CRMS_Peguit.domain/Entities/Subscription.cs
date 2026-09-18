@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -8,11 +8,13 @@ namespace CRMS_Peguit.domain.entities
     {
         public int SubscriptionId { get; set; }
 
-        public int TenantId { get; set; }
+        public int CompanyId { get; set; }
         public string PlanName { get; set; } = string.Empty;
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public decimal BillingAmount { get; set; }
         public string Status { get; set; } = string.Empty;
+
+        public Company? Company { get; set; }
     }
 }
