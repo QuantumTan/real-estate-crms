@@ -41,7 +41,7 @@ namespace CRMS_Peguit.winforms
         private System.Windows.Forms.Button btnToggleSidebar = null!;
         private System.Windows.Forms.Label lblRoleBadge = null!;
         private System.Windows.Forms.TextBox txtGlobalSearch = null!;
-        private System.Windows.Forms.Label lblBellIcon = null!;
+        private CRMS_Peguit.winforms.Views.Controls.NotificationBell notificationBell = null!;
         private System.Windows.Forms.Label lblHeaderAvatar = null!;
         private System.Windows.Forms.Label lblHeaderUserName = null!;
         private System.Windows.Forms.Panel mainPanel = null!;
@@ -95,7 +95,7 @@ namespace CRMS_Peguit.winforms
             this.btnToggleSidebar = new System.Windows.Forms.Button();
             this.lblRoleBadge = new System.Windows.Forms.Label();
             this.txtGlobalSearch = new System.Windows.Forms.TextBox();
-            this.lblBellIcon = new System.Windows.Forms.Label();
+            this.notificationBell = new CRMS_Peguit.winforms.Views.Controls.NotificationBell();
             this.lblHeaderAvatar = new System.Windows.Forms.Label();
             this.lblHeaderUserName = new System.Windows.Forms.Label();
             this.mainPanel = new System.Windows.Forms.Panel();
@@ -571,7 +571,7 @@ namespace CRMS_Peguit.winforms
             this.topHeaderPanel.Controls.Add(this.btnToggleSidebar);
             this.topHeaderPanel.Controls.Add(this.lblRoleBadge);
             this.topHeaderPanel.Controls.Add(this.txtGlobalSearch);
-            this.topHeaderPanel.Controls.Add(this.lblBellIcon);
+            this.topHeaderPanel.Controls.Add(this.notificationBell);
             this.topHeaderPanel.Controls.Add(this.lblHeaderAvatar);
             this.topHeaderPanel.Controls.Add(this.lblHeaderUserName);
             this.topHeaderPanel.Dock = System.Windows.Forms.DockStyle.Top;
@@ -618,18 +618,14 @@ namespace CRMS_Peguit.winforms
             this.txtGlobalSearch.Size = new System.Drawing.Size(320, 24);
             this.txtGlobalSearch.TabIndex = 2;
             // 
-            // lblBellIcon
+            // notificationBell
             // 
-            this.lblBellIcon.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.lblBellIcon.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.lblBellIcon.Font = new System.Drawing.Font("Segoe UI Emoji", 12F);
-            this.lblBellIcon.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-            this.lblBellIcon.Location = new System.Drawing.Point(800, 16);
-            this.lblBellIcon.Name = "lblBellIcon";
-            this.lblBellIcon.Size = new System.Drawing.Size(28, 28);
-            this.lblBellIcon.TabIndex = 2;
-            this.lblBellIcon.Text = "🔔";
-            this.lblBellIcon.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.notificationBell.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.notificationBell.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.notificationBell.Location = new System.Drawing.Point(796, 12);
+            this.notificationBell.Name = "notificationBell";
+            this.notificationBell.Size = new System.Drawing.Size(34, 34);
+            this.notificationBell.TabIndex = 2;
             // 
             // lblHeaderAvatar
             // 

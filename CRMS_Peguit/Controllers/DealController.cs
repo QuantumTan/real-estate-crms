@@ -13,10 +13,12 @@ namespace CRMS_Peguit.winforms.Controllers
     {
         private readonly RealEstateDbContext _db;
         public int TenantId => CurrentSession.TenantId;
+        private readonly NotificationController _notifCtrl;
 
         public DealController()
         {
             _db = LocalDb.CreateContext(tenantId: TenantId);
+            _notifCtrl = new NotificationController(_db);
         }
 
         public List<Deal> GetAll()
@@ -116,6 +118,9 @@ namespace CRMS_Peguit.winforms.Controllers
             var item = _db.Deals.Include(d => d.Contingencies).Include(d => d.DealClauses).SingleOrDefault(x => x.DealId == deal.DealId);
             if (item is null) return;
 
+            var oldStage = item.Stage;
+            var newStage = deal.Stage;
+
             item.CustomerId = deal.CustomerId;
             item.PropertyId = deal.PropertyId;
             item.AgentId = deal.AgentId;
@@ -136,6 +141,33 @@ namespace CRMS_Peguit.winforms.Controllers
             item.ContractSignedDate = deal.ContractSignedDate;
 
             _db.SaveChanges();
+
+            if (!string.Equals(oldStage, newStage, StringComparison.OrdinalIgnoreCase))
+            {
+                var advancedStages = new[] { "Reservation", "Contract Signed", "Closed" };
+                if (item.AgentId.HasValue && item.AgentId.Value > 0 && advancedStages.Any(s => string.Equals(s, newStage, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _notifCtrl.CreateNotification(
+                        TenantId,
+                        item.AgentId.Value,
+                        NotificationType.DealStageChanged,
+                        "Deal Stage Advanced",
+                        $"Deal #{item.DealId} has advanced to '{newStage}'.",
+                        "Deal",
+                        item.DealId);
+                }
+
+                if (string.Equals(newStage, "Closed", StringComparison.OrdinalIgnoreCase))
+                {
+                    _notifCtrl.NotifyManagers(
+                        TenantId,
+                        NotificationType.DealClosed,
+                        "Deal Closed",
+                        $"Deal #{item.DealId} was successfully Closed for ₱{item.Value:N2}.",
+                        "Deal",
+                        item.DealId);
+                }
+            }
         }
 
         public void UpdateContingencyStatus(int dealId, int contingencyIndex, string newStatus, string? notes = null)

@@ -14,10 +14,12 @@ namespace CRMS_Peguit.winforms.Controllers
         private readonly RealEstateDbContext _db;
 
         private int TenantId => CurrentSession.TenantId;
+        private readonly NotificationController _notifCtrl;
 
         public PropertyController()
         {
             _db = LocalDb.CreateContext(TenantId);
+            _notifCtrl = new NotificationController(_db);
         }
 
         public List<Property> GetAll()
@@ -94,6 +96,8 @@ namespace CRMS_Peguit.winforms.Controllers
                 .SingleOrDefault(x => x.PropertyId == property.PropertyId);
             if (item is null) return;
 
+            var oldStatus = item.Status;
+
             item.Address = property.Address;
             item.PropertyType = property.PropertyType;
             item.Price = property.Price;
@@ -114,12 +118,22 @@ namespace CRMS_Peguit.winforms.Controllers
 
                 if (oldAgentId != newAgentId)
                 {
+                    if (newAgentId.HasValue && newAgentId.Value > 0)
+                    {
+                        _notifCtrl.CreateNotification(TenantId, newAgentId.Value, NotificationType.PropertyAssigned, "Property Listing Assigned", $"You have been assigned to listing '{item.Address}'.", "Property", item.PropertyId);
+                    }
+
                     LogActivity("Property Assignment Changed", null, null,
                         $"Property listing '{item.Address}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
                 }
             }
 
             _db.SaveChanges();
+
+            if (!string.Equals(oldStatus, property.Status, StringComparison.OrdinalIgnoreCase) && item.ListedByAgentId.HasValue && item.ListedByAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, item.ListedByAgentId.Value, NotificationType.PropertyStatusChanged, "Property Status Updated", $"Property '{item.Address}' status changed to '{property.Status}'.", "Property", item.PropertyId);
+            }
 
             LogActivity("Property Updated", null, null, $"Property listing '{item.Address}' was updated.");
         }

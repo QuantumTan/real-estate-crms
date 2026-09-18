@@ -139,7 +139,9 @@ namespace CRMS_Peguit.winforms
         {
             btnToggleSidebar.Click += (_, _) => ToggleSidebar();
             mainToolTip.SetToolTip(btnToggleSidebar, "Toggle Sidebar (Ctrl+B)");
-            mainToolTip.SetToolTip(lblBellIcon, "System Status & Notifications");
+            mainToolTip.SetToolTip(notificationBell, "System Status & Notifications");
+            notificationBell.NavigationRequested += m => NavigateTo(m);
+            notificationBell.Initialize();
             mainToolTip.SetToolTip(txtGlobalSearch, "Global search (Ctrl+K or Ctrl+F)");
             mainToolTip.SetToolTip(lblStatusDot, "Online — Active Session");
             mainToolTip.SetToolTip(lblRoleBadge, "Current Role Scope");
@@ -159,8 +161,6 @@ namespace CRMS_Peguit.winforms
             btnReports.Click += (s, e) => { SetActiveNavButton(btnReports); BtnReportsClick(s, e); };
             btnApprovals.Click += (s, e) => { SetActiveNavButton(btnApprovals); BtnApprovalsClick(s, e); };
             btnSupportTickets.Click += (s, e) => { SetActiveNavButton(btnSupportTickets); BtnSupportTicketsClick(s, e); };
-
-            lblBellIcon.Click += (_, _) => ShowNotificationMenu();
 
             // ── Global Search: debounced TextChanged → floating results dropdown ──
             _searchDebounce = new System.Windows.Forms.Timer { Interval = 300 };
@@ -292,40 +292,7 @@ namespace CRMS_Peguit.winforms
 
         private void ShowNotificationMenu()
         {
-            var menu = new ContextMenuStrip
-            {
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                Font = new Font("Segoe UI", 9.5f)
-            };
-
-            var user = CurrentSession.CurrentUser;
-            var header = new ToolStripMenuItem($"Session: {user?.FullName ?? "User"} ({user?.GetDashboardType() ?? "Active"})")
-            {
-                Enabled = false,
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold)
-            };
-            menu.Items.Add(header);
-            menu.Items.Add(new ToolStripSeparator());
-
-            var statusItem = new ToolStripMenuItem("🟢 System Status: Connected & Operational")
-            {
-                Enabled = false
-            };
-            menu.Items.Add(statusItem);
-
-            if (CurrentSession.CanAccess("Approvals") && RbacService.CanApproveAssignments)
-            {
-                var approvalsItem = new ToolStripMenuItem("📋 Pending Approvals — Click to Review");
-                approvalsItem.Click += (_, _) => NavigateTo("approvals");
-                menu.Items.Add(approvalsItem);
-            }
-
-            var quickAction = new ToolStripMenuItem("🔍 Jump to Search (Ctrl+K or Ctrl+F)");
-            quickAction.Click += (_, _) => txtGlobalSearch.Focus();
-            menu.Items.Add(quickAction);
-
-            menu.Show(lblBellIcon, new Point(lblBellIcon.Width - 260, lblBellIcon.Height + 4));
+            notificationBell.ShowNotificationDropdown();
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -478,7 +445,7 @@ namespace CRMS_Peguit.winforms
             lblHeaderUserName.ForeColor = Theme.TextPrimary;
             lblHeaderAvatar.BackColor = AzureTints.SkylineBlue;
             lblHeaderAvatar.ForeColor = AzureTints.PureWhite;
-            lblBellIcon.ForeColor = Theme.TextSecondary;
+            notificationBell.Invalidate();
 
             // WCAG AA Compliant Section Headings (≥ 4.5:1 on dark sidebar)
             lblSalesSection.ForeColor = Theme.SidebarTextMuted;

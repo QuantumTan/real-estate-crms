@@ -14,10 +14,12 @@ namespace CRMS_Peguit.winforms.Controllers
         private readonly RealEstateDbContext _db;
 
         private int TenantId => CurrentSession.TenantId;
+        private readonly NotificationController _notifCtrl;
 
         public SupportTicketController()
         {
             _db = LocalDb.CreateContext(TenantId);
+            _notifCtrl = new NotificationController(_db);
         }
 
         // =========================================================================
@@ -165,6 +167,15 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.TicketComments.Add(createComment);
             _db.SaveChanges();
 
+            // Manager receives: A new Support Ticket is logged by an Agent (needs oversight/potential reassignment)
+            _notifCtrl.NotifyManagers(
+                TenantId,
+                NotificationType.TicketCreated,
+                "New Support Ticket Logged",
+                $"Support Ticket '{ticket.TicketNumber}' was logged by {authorName} and requires attention.",
+                "SupportTicket",
+                ticket.TicketId);
+
             return ticket;
         }
 
@@ -241,6 +252,29 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.TicketComments.Add(logEntry);
 
             _db.SaveChanges();
+
+            if (ticket.AssignedToUserId.HasValue && ticket.AssignedToUserId.Value > 0 && ticket.AssignedToUserId.Value != actorUserId)
+            {
+                _notifCtrl.CreateNotification(
+                    TenantId,
+                    ticket.AssignedToUserId.Value,
+                    NotificationType.TicketStatusChanged,
+                    "Ticket Status Updated",
+                    $"Support Ticket '{ticket.TicketNumber}' status changed to '{targetStatus}'.",
+                    "SupportTicket",
+                    ticket.TicketId);
+            }
+            if (ticket.RaisedByUserId != actorUserId)
+            {
+                _notifCtrl.CreateNotification(
+                    TenantId,
+                    ticket.RaisedByUserId,
+                    NotificationType.TicketStatusChanged,
+                    "Ticket Status Updated",
+                    $"Support Ticket '{ticket.TicketNumber}' status changed to '{targetStatus}'.",
+                    "SupportTicket",
+                    ticket.TicketId);
+            }
         }
 
         // =========================================================================
@@ -329,6 +363,19 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.TicketComments.Add(logEntry);
 
             _db.SaveChanges();
+
+            // Agent receives: A Support Ticket is assigned or reassigned to them
+            if (validNewAgentId.HasValue && validNewAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(
+                    TenantId,
+                    validNewAgentId.Value,
+                    NotificationType.TicketAssigned,
+                    "Support Ticket Assigned to You",
+                    $"Support Ticket '{ticket.TicketNumber}' has been assigned to you by {actorName}.",
+                    "SupportTicket",
+                    ticket.TicketId);
+            }
         }
 
         // =========================================================================

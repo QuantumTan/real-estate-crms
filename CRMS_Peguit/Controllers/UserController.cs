@@ -15,10 +15,12 @@ namespace CRMS_Peguit.winforms.Controllers
     {
         private readonly RealEstateDbContext _db;
         public int TenantId => CurrentSession.TenantId;
+        private readonly NotificationController _notifCtrl;
 
         public UserController()
         {
             _db = LocalDb.CreateContext(tenantId: TenantId);
+            _notifCtrl = new NotificationController(_db);
         }
 
         private void EnsureAdmin()
@@ -100,6 +102,14 @@ namespace CRMS_Peguit.winforms.Controllers
             try
             {
                 await _db.SaveChangesAsync();
+
+                _notifCtrl.NotifyAdmins(
+                    TenantId,
+                    NotificationType.AdminAccountCreated,
+                    "New User Account Created",
+                    $"User account '{user.FullName}' was created under Tenant #{TenantId}.",
+                    "User",
+                    user.UserId);
             }
             catch (DbUpdateException ex)
             {

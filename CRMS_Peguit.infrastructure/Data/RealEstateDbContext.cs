@@ -30,6 +30,8 @@ namespace CRMS_Peguit.infrastructure.data
         public DbSet<BackupLog> BackupLogs => Set<BackupLog>();
         public DbSet<TaskReminder> TaskReminders => Set<TaskReminder>();
         public DbSet<Campaign> Campaigns => Set<Campaign>();
+        public DbSet<Notification> Notifications => Set<Notification>();
+        public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
         public RealEstateDbContext(
             DbContextOptions<RealEstateDbContext> options,
@@ -479,6 +481,37 @@ namespace CRMS_Peguit.infrastructure.data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
+            builder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(x => x.NotificationId);
+                entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+                entity.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+                entity.Property(x => x.RelatedEntityType).HasMaxLength(50);
+
+                entity.HasIndex(x => x.TenantId);
+                entity.HasIndex(x => x.RecipientUserId);
+                entity.HasIndex(x => x.IsRead);
+                entity.HasIndex(x => x.CreatedAt);
+
+                entity.HasOne(x => x.RecipientUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.RecipientUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<NotificationPreference>(entity =>
+            {
+                entity.HasKey(x => x.NotificationPreferenceId);
+
+                entity.HasIndex(x => x.TenantId);
+                entity.HasIndex(x => new { x.UserId, x.Type }).IsUnique();
+
+                entity.HasOne(x => x.User)
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // --- Global query filters (3NF Transitively Derived via FK chains) ---
             builder.Entity<Role>().HasQueryFilter(x => x.TenantId == _tenantId);
             builder.Entity<User>().HasQueryFilter(x => x.Role.TenantId == _tenantId);
@@ -496,6 +529,8 @@ namespace CRMS_Peguit.infrastructure.data
             builder.Entity<SystemSetting>().HasQueryFilter(x => x.UpdatedByUser.Role.TenantId == _tenantId);
             builder.Entity<BackupLog>().HasQueryFilter(x => x.PerformedByUser.Role.TenantId == _tenantId);
             builder.Entity<Campaign>().HasQueryFilter(x => x.TenantId == _tenantId);
+            builder.Entity<Notification>().HasQueryFilter(x => x.RecipientUser.Role.TenantId == _tenantId);
+            builder.Entity<NotificationPreference>().HasQueryFilter(x => x.User.Role.TenantId == _tenantId);
         }
 
         public override int SaveChanges(bool acceptAllChangesOnSuccess)

@@ -24,6 +24,7 @@ namespace CRMS_Peguit.winforms.Models.Services
                 EnsureAssignmentColumns((SqlConnection)connection, "Leads");
                 EnsureAssignmentColumns((SqlConnection)connection, "Customers");
                 EnsureAssignmentColumns((SqlConnection)connection, "Properties");
+                EnsureNotificationTables((SqlConnection)connection);
             }
             finally
             {
@@ -160,6 +161,50 @@ END";
             command.CommandText =
                 $"IF COL_LENGTH('dbo.{tableName}', '{columnName}') IS NULL BEGIN {sql} END";
             command.ExecuteNonQuery();
+        }
+
+        private static void EnsureNotificationTables(SqlConnection connection)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+IF OBJECT_ID('dbo.Notifications', 'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[Notifications] (
+        [NotificationId] int NOT NULL IDENTITY(1,1),
+        [TenantId] int NOT NULL,
+        [RecipientUserId] int NOT NULL,
+        [Type] int NOT NULL,
+        [Title] nvarchar(200) NOT NULL,
+        [Message] nvarchar(1000) NOT NULL,
+        [RelatedEntityType] nvarchar(50) NULL,
+        [RelatedEntityId] int NULL,
+        [IsRead] bit NOT NULL DEFAULT 0,
+        [CreatedAt] datetime2 NOT NULL,
+        [ReadAt] datetime2 NULL,
+        CONSTRAINT [PK_Notifications] PRIMARY KEY ([NotificationId]),
+        CONSTRAINT [FK_Notifications_Users_RecipientUserId] FOREIGN KEY ([RecipientUserId]) REFERENCES [dbo].[Users] ([UserId]) ON DELETE CASCADE
+    );
+    CREATE NONCLUSTERED INDEX [IX_Notifications_TenantId] ON [dbo].[Notifications] ([TenantId]);
+    CREATE NONCLUSTERED INDEX [IX_Notifications_RecipientUserId] ON [dbo].[Notifications] ([RecipientUserId]);
+    CREATE NONCLUSTERED INDEX [IX_Notifications_IsRead] ON [dbo].[Notifications] ([IsRead]);
+    CREATE NONCLUSTERED INDEX [IX_Notifications_CreatedAt] ON [dbo].[Notifications] ([CreatedAt]);
+END;
+
+IF OBJECT_ID('dbo.NotificationPreferences', 'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[NotificationPreferences] (
+        [NotificationPreferenceId] int NOT NULL IDENTITY(1,1),
+        [TenantId] int NOT NULL,
+        [UserId] int NOT NULL,
+        [Type] int NOT NULL,
+        [IsEnabled] bit NOT NULL DEFAULT 1,
+        CONSTRAINT [PK_NotificationPreferences] PRIMARY KEY ([NotificationPreferenceId]),
+        CONSTRAINT [FK_NotificationPreferences_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([UserId]) ON DELETE CASCADE
+    );
+    CREATE NONCLUSTERED INDEX [IX_NotificationPreferences_TenantId] ON [dbo].[NotificationPreferences] ([TenantId]);
+    CREATE UNIQUE NONCLUSTERED INDEX [IX_NotificationPreferences_UserId_Type] ON [dbo].[NotificationPreferences] ([UserId], [Type]);
+END;";
+            cmd.ExecuteNonQuery();
         }
     }
 }

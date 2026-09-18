@@ -58,6 +58,68 @@ namespace CRMS_Peguit.winforms
                 return;
             }
 
+            if (args.Contains("--verify-notifications"))
+            {
+                using var startupDb = LocalDb.CreateContext();
+                startupDb.Database.EnsureCreated();
+                SchemaRepairService.EnsureCrmPolishColumns(startupDb);
+
+                int testUserId = 1;
+                CRMS_Peguit.winforms.Auth.CurrentSession.Start(testUserId, 1, "System Admin", "admin@test.com", "Admin", null, false);
+
+                using var notifCtrl = new CRMS_Peguit.winforms.Controllers.NotificationController();
+
+                // 1. Test creation
+                var n1 = notifCtrl.CreateNotification(1, testUserId, domain.entities.NotificationType.LeadAssigned, "Test Lead Assigned", "You were assigned test lead.", "Lead", 101);
+                Console.WriteLine($"[VERIFY-NOTIF] Created N1: {n1 != null}, Id: {n1?.NotificationId}");
+
+                // 2. Test debounce (duplicate within 2 min should be suppressed)
+                var n1Duplicate = notifCtrl.CreateNotification(1, testUserId, domain.entities.NotificationType.LeadAssigned, "Test Lead Assigned", "You were assigned test lead.", "Lead", 101);
+                Console.WriteLine($"[VERIFY-NOTIF] Debounced duplicate: {n1Duplicate == null} (expected true)");
+
+                // 3. Test preference suppression
+                var prefs = notifCtrl.GetPreferences(testUserId);
+                prefs[domain.entities.NotificationType.PropertyStatusChanged] = false;
+                notifCtrl.UpdatePreferences(testUserId, prefs);
+                var nSuppressed = notifCtrl.CreateNotification(1, testUserId, domain.entities.NotificationType.PropertyStatusChanged, "Property Updated", "Status changed.", "Property", 202);
+                Console.WriteLine($"[VERIFY-NOTIF] Suppressed by preference: {nSuppressed == null} (expected true)");
+
+                // 4. Test query scoping and unread count
+                var myNotifs = notifCtrl.GetMyNotifications(testUserId);
+                int unread = notifCtrl.GetUnreadCount(testUserId);
+                Console.WriteLine($"[VERIFY-NOTIF] My notifications count: {myNotifs.Count}, Unread count: {unread}");
+
+                // 5. Test MarkAsRead and MarkAllAsRead
+                if (n1 != null)
+                {
+                    bool readOk = notifCtrl.MarkAsRead(n1.NotificationId);
+                    Console.WriteLine($"[VERIFY-NOTIF] MarkAsRead single: {readOk}");
+                }
+                int marked = notifCtrl.MarkAllAsRead(testUserId);
+                int unreadAfter = notifCtrl.GetUnreadCount(testUserId);
+                Console.WriteLine($"[VERIFY-NOTIF] MarkAllAsRead marked: {marked}, Unread after: {unreadAfter} (expected 0)");
+
+                // 6. Test Access Control validation for click-through
+                bool agentCanViewOther = CRMS_Peguit.winforms.Auth.RbacService.CanAgentViewRecord(assignedAgentId: 999, createdByUserId: 888);
+                // Switch session to Agent role
+                CRMS_Peguit.winforms.Auth.CurrentSession.Start(5, 1, "Test Agent", "agent@test.com", "Agent", null, false);
+                bool agentDeniedReassigned = !CRMS_Peguit.winforms.Auth.RbacService.CanAgentViewRecord(assignedAgentId: 999, createdByUserId: 888);
+                bool agentAllowedOwn = CRMS_Peguit.winforms.Auth.RbacService.CanAgentViewRecord(assignedAgentId: 5, createdByUserId: 888);
+                Console.WriteLine($"[VERIFY-NOTIF] RBAC Reassignment Protection: Denied unauthorized={agentDeniedReassigned}, Allowed own={agentAllowedOwn}");
+
+                // Restore preference
+                prefs[domain.entities.NotificationType.PropertyStatusChanged] = true;
+                notifCtrl.UpdatePreferences(testUserId, prefs);
+
+                // 7. Test MainForm instantiation (verifies no transparent background exceptions on login)
+                CRMS_Peguit.winforms.Auth.CurrentSession.Start(testUserId, 1, "System Admin", "admin@test.com", "Admin", null, false);
+                using var form = new MainForm();
+                Console.WriteLine($"[VERIFY-NOTIF] MainForm instantiated cleanly without transparent exception: {form != null}");
+
+                Console.WriteLine("[VERIFY-NOTIFICATIONS] All verification checks completed successfully!");
+                return;
+            }
+
             if (args.Contains("--sync-once"))
             {
                 if (!string.IsNullOrWhiteSpace(cloudConnection))

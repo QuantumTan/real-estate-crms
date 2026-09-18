@@ -12,6 +12,7 @@ namespace CRMS_Peguit.winforms.Controllers
     public class CustomerController : IDisposable
     {
         private readonly RealEstateDbContext _db;
+        private readonly NotificationController _notifCtrl;
 
         // FIXED: was hardcoded to 1 - now uses whoever is actually logged in.
         private int TenantId => CurrentSession.TenantId;
@@ -19,6 +20,7 @@ namespace CRMS_Peguit.winforms.Controllers
         public CustomerController()
         {
             _db = LocalDb.CreateContext(TenantId);
+            _notifCtrl = new NotificationController(_db);
         }
 
         public List<Customer> GetAll()
@@ -100,6 +102,16 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.Customers.Add(customer);
             _db.SaveChanges();
             LogActivity("Customer Created", null, customer.CustomerId, $"Customer '{customer.FullName}' was created.");
+
+            if (customer.AssignedAgentId == null || customer.AssignedAgentId <= 0 || customer.AssignmentStatus == "pending_review")
+            {
+                _notifCtrl.NotifyManagers(TenantId, NotificationType.CustomerUnassigned, "New Customer Pending Assignment", $"Customer '{customer.FullName}' was created and needs review/assignment.", "Customer", customer.CustomerId);
+            }
+            else if (customer.AssignedAgentId.HasValue && customer.AssignedAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, customer.AssignedAgentId.Value, NotificationType.CustomerAssigned, "Customer Assigned to You", $"You have been assigned Customer '{customer.FullName}'.", "Customer", customer.CustomerId);
+            }
+
             return customer;
         }
 
@@ -136,6 +148,7 @@ namespace CRMS_Peguit.winforms.Controllers
                     if (newAgentId.HasValue && newAgentId.Value > 0)
                     {
                         TransferOpenFollowUps(item.CustomerId, newAgentId.Value);
+                        _notifCtrl.CreateNotification(TenantId, newAgentId.Value, NotificationType.CustomerAssigned, "Customer Assigned to You", $"You have been assigned Customer '{item.FullName}'.", "Customer", item.CustomerId);
                     }
 
                     LogActivity("Customer Assignment Changed", null, item.CustomerId,
@@ -229,6 +242,11 @@ namespace CRMS_Peguit.winforms.Controllers
             item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             _db.SaveChanges();
             LogActivity("Customer Assignment Approved", null, item.CustomerId, $"Assignment for '{item.FullName}' was approved.");
+
+            if (item.AssignedAgentId.HasValue && item.AssignedAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, item.AssignedAgentId.Value, NotificationType.CustomerAssigned, "Customer Assignment Approved", $"Assignment for Customer '{item.FullName}' was approved.", "Customer", item.CustomerId);
+            }
         }
 
         public void AssignAgent(Customer customer, int? agentId, bool approve = true, string? notes = null)
@@ -258,6 +276,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 {
                     TransferOpenFollowUps(item.CustomerId, newAgentId.Value);
                     _db.SaveChanges();
+                    _notifCtrl.CreateNotification(TenantId, newAgentId.Value, NotificationType.CustomerAssigned, "Customer Assigned to You", $"You have been assigned Customer '{item.FullName}'.", "Customer", item.CustomerId);
                 }
 
                 LogActivity("Customer Assignment Changed", null, item.CustomerId,

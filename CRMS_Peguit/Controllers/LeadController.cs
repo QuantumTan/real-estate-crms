@@ -12,6 +12,7 @@ namespace CRMS_Peguit.winforms.Controllers
     public class LeadController : IDisposable
     {
         private readonly RealEstateDbContext _db;
+        private readonly NotificationController _notifCtrl;
 
         // FIXED: was hardcoded to 1 - now uses whoever is actually logged in.
         private int TenantId => CurrentSession.TenantId;
@@ -19,6 +20,7 @@ namespace CRMS_Peguit.winforms.Controllers
         public LeadController()
         {
             _db = LocalDb.CreateContext(TenantId);
+            _notifCtrl = new NotificationController(_db);
         }
 
         public List<Lead> GetAll()
@@ -100,6 +102,16 @@ namespace CRMS_Peguit.winforms.Controllers
             _db.Leads.Add(lead);
             _db.SaveChanges();
             LogActivity("Lead Created", lead.LeadId, null, $"Lead '{lead.FullName}' was created.");
+
+            if (lead.AssignedAgentId == null || lead.AssignedAgentId <= 0 || lead.AssignmentStatus == "pending_review")
+            {
+                _notifCtrl.NotifyManagers(TenantId, NotificationType.LeadUnassigned, "New Lead Pending Assignment", $"Lead '{lead.FullName}' was created and is pending review/assignment.", "Lead", lead.LeadId);
+            }
+            else if (lead.AssignedAgentId.HasValue && lead.AssignedAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, lead.AssignedAgentId.Value, NotificationType.LeadAssigned, "Lead Assigned to You", $"You have been assigned Lead '{lead.FullName}'.", "Lead", lead.LeadId);
+            }
+
             return lead;
         }
 
@@ -139,11 +151,20 @@ namespace CRMS_Peguit.winforms.Controllers
                     if (newAgentId.HasValue && newAgentId.Value > 0)
                     {
                         TransferOpenFollowUps(item.LeadId, newAgentId.Value);
+                        _notifCtrl.CreateNotification(TenantId, newAgentId.Value, NotificationType.LeadAssigned, "Lead Assigned to You", $"You have been assigned Lead '{item.FullName}'.", "Lead", item.LeadId);
                     }
 
                     LogActivity("Lead Assignment Changed", item.LeadId, null,
                         $"Lead '{item.FullName}' assignment changed from Agent #{oldAgentId?.ToString() ?? "Unassigned"} to Agent #{newAgentId?.ToString() ?? "Unassigned"} by User #{CurrentSession.UserId}.");
                 }
+                else if (item.Stage != lead.Stage && item.AssignedAgentId.HasValue && item.AssignedAgentId.Value > 0)
+                {
+                    _notifCtrl.CreateNotification(TenantId, item.AssignedAgentId.Value, NotificationType.LeadStageChanged, "Lead Stage Updated", $"Lead '{item.FullName}' stage changed to {lead.Stage}.", "Lead", item.LeadId);
+                }
+            }
+            else if (item.Stage != lead.Stage && item.AssignedAgentId.HasValue && item.AssignedAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, item.AssignedAgentId.Value, NotificationType.LeadStageChanged, "Lead Stage Updated", $"Lead '{item.FullName}' stage changed to {lead.Stage}.", "Lead", item.LeadId);
             }
 
             _db.SaveChanges();
@@ -246,6 +267,11 @@ namespace CRMS_Peguit.winforms.Controllers
             item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             _db.SaveChanges();
             LogActivity("Lead Assignment Approved", item.LeadId, null, $"Assignment for '{item.FullName}' was approved.");
+
+            if (item.AssignedAgentId.HasValue && item.AssignedAgentId.Value > 0)
+            {
+                _notifCtrl.CreateNotification(TenantId, item.AssignedAgentId.Value, NotificationType.LeadAssigned, "Lead Assignment Approved", $"Assignment for Lead '{item.FullName}' was approved.", "Lead", item.LeadId);
+            }
         }
 
         public void AssignAgent(Lead lead, int? agentId, bool approve = true, string? notes = null)
@@ -262,10 +288,13 @@ namespace CRMS_Peguit.winforms.Controllers
             }
 
             item.AssignedAgentId = newAgentId;
-            item.AssignmentStatus = approve ? "approved" : "pending_review";
-            item.AssignmentReviewedByUserId = CurrentSession.UserId;
-            item.AssignmentReviewedAt = DateTime.UtcNow;
-            item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            if (approve)
+            {
+                item.AssignmentStatus = "approved";
+                item.AssignmentReviewedByUserId = CurrentSession.UserId;
+                item.AssignmentReviewedAt = DateTime.UtcNow;
+                item.AssignmentReviewNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            }
 
             _db.SaveChanges();
 
@@ -275,6 +304,7 @@ namespace CRMS_Peguit.winforms.Controllers
                 {
                     TransferOpenFollowUps(item.LeadId, newAgentId.Value);
                     _db.SaveChanges();
+                    _notifCtrl.CreateNotification(TenantId, newAgentId.Value, NotificationType.LeadAssigned, "Lead Assigned to You", $"You have been assigned Lead '{item.FullName}'.", "Lead", item.LeadId);
                 }
 
                 LogActivity("Lead Assignment Changed", item.LeadId, null,
