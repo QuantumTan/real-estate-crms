@@ -209,8 +209,14 @@ namespace CRMS_Peguit.winforms.Views.Leads
 
         private void SetFilter(string stage)
         {
-            if (string.Equals(_filterStage, stage, StringComparison.OrdinalIgnoreCase)) return;
-            _filterStage = stage;
+            if (string.Equals(_filterStage, stage, StringComparison.OrdinalIgnoreCase) && !string.Equals(stage, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                _filterStage = "All";
+            }
+            else
+            {
+                _filterStage = stage;
+            }
             UpdateFilterPillStyles();
             RefreshGrid(reloadFromDb: false, animate: true);
         }
@@ -419,6 +425,7 @@ namespace CRMS_Peguit.winforms.Views.Leads
             }
 
             UiGridHelper.AddActionsColumn(grid, 64);
+            UiGridHelper.EnforceTableStandards(grid);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             _pnlEmptyState.Visible = (_filteredLeads.Count == 0);
         }

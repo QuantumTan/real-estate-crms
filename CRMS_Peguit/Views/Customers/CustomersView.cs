@@ -115,7 +115,14 @@ namespace CRMS_Peguit.winforms.Views.Customers
 
         private void SetFilter(string filter)
         {
-            _filterStatus = filter;
+            if (string.Equals(_filterStatus, filter, StringComparison.OrdinalIgnoreCase) && !string.Equals(filter, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                _filterStatus = "All";
+            }
+            else
+            {
+                _filterStatus = filter;
+            }
             UpdateFilterPillStyles();
             RefreshGrid(reloadFromDb: false);
         }
@@ -257,6 +264,7 @@ namespace CRMS_Peguit.winforms.Views.Customers
             }
 
             UiGridHelper.AddActionsColumn(grid, 64);
+            UiGridHelper.EnforceTableStandards(grid);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             _lblEmptyState.Visible = (_filteredCustomers.Count == 0);
         }

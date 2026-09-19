@@ -4,6 +4,7 @@ using CRMS_Peguit.winforms.Auth;
 using CRMS_Peguit.winforms.Controllers;
 using CRMS_Peguit.winforms.Controls;
 using CRMS_Peguit.winforms.Models.Services;
+using CRMS_Peguit.winforms.Services;
 
 namespace CRMS_Peguit.winforms.Views.Deals
 {
@@ -121,11 +122,17 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 _btnExport.BringToFront();
             }
 
-            btnFilterAll.Click += (_, _) => SetFilter("All");
-            btnFilterOffer.Click += (_, _) => SetFilter("Offer");
-            btnFilterContract.Click += (_, _) => SetFilter("Contract");
-            btnFilterClosed.Click += (_, _) => SetFilter("Closed");
-            btnFilterLost.Click += (_, _) => SetFilter("Lost");
+            kpiTotal.Click += (_, _) => ToggleOrSetFilter("All");
+            kpiOffer.Click += (_, _) => ToggleOrSetFilter("Offer");
+            kpiContract.Click += (_, _) => ToggleOrSetFilter("Contract");
+            kpiClosed.Click += (_, _) => ToggleOrSetFilter("Closed");
+            kpiLost.Click += (_, _) => ToggleOrSetFilter("Lost");
+
+            btnFilterAll.Click += (_, _) => ToggleOrSetFilter("All");
+            btnFilterOffer.Click += (_, _) => ToggleOrSetFilter("Offer");
+            btnFilterContract.Click += (_, _) => ToggleOrSetFilter("Contract");
+            btnFilterClosed.Click += (_, _) => ToggleOrSetFilter("Closed");
+            btnFilterLost.Click += (_, _) => ToggleOrSetFilter("Lost");
 
             // Modern Grid Styling & Search Padding
             UiGridHelper.ApplyModernGridStyle(grid, 52);
@@ -147,6 +154,18 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     }
                 }
             };
+        }
+
+        private void ToggleOrSetFilter(string stage)
+        {
+            if (string.Equals(_filterStage, stage, StringComparison.OrdinalIgnoreCase) && !string.Equals(stage, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                SetFilter("All");
+            }
+            else
+            {
+                SetFilter(stage);
+            }
         }
 
         private void SetFilter(string stage)
@@ -172,6 +191,34 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 bool isSelected = string.Equals(_filterStage, name, StringComparison.OrdinalIgnoreCase);
                 UiRadiusHelper.StyleFilterPill(btn, isSelected);
             }
+
+            if (_allDeals != null)
+            {
+                int total = _allDeals.Count;
+                int offer = _allDeals.Count(d => string.Equals(d.Stage, "Offer", StringComparison.OrdinalIgnoreCase) || string.Equals(d.Stage, "Reservation", StringComparison.OrdinalIgnoreCase));
+                int contract = _allDeals.Count(d => string.Equals(d.Stage, "ContractSigned", StringComparison.OrdinalIgnoreCase) || string.Equals(d.Stage, "Contract", StringComparison.OrdinalIgnoreCase));
+                int closed = _allDeals.Count(d => string.Equals(d.Stage, "Closed", StringComparison.OrdinalIgnoreCase));
+                int lost = _allDeals.Count(d => string.Equals(d.Stage, "Lost", StringComparison.OrdinalIgnoreCase));
+
+                decimal totalVol = _allDeals.Sum(d => d.Value);
+                decimal closedVol = _allDeals.Where(d => string.Equals(d.Stage, "Closed", StringComparison.OrdinalIgnoreCase)).Sum(d => d.Value);
+                decimal contractVol = _allDeals.Where(d => string.Equals(d.Stage, "ContractSigned", StringComparison.OrdinalIgnoreCase) || string.Equals(d.Stage, "Contract", StringComparison.OrdinalIgnoreCase)).Sum(d => d.Value);
+
+                kpiTotal.SetValue(total);
+                kpiTotal.SetSubtitle($"{AppFormat.FormatCompactCurrency(totalVol)} total volume");
+                kpiOffer.SetValue(offer);
+                kpiContract.SetValue(contract);
+                kpiContract.SetSubtitle($"{AppFormat.FormatCompactCurrency(contractVol)} in escrow");
+                kpiClosed.SetValue(closed);
+                kpiClosed.SetSubtitle($"{AppFormat.FormatCompactCurrency(closedVol)} revenue");
+                kpiLost.SetValue(lost);
+
+                kpiTotal.SetSelected(string.Equals(_filterStage, "All", StringComparison.OrdinalIgnoreCase));
+                kpiOffer.SetSelected(string.Equals(_filterStage, "Offer", StringComparison.OrdinalIgnoreCase));
+                kpiContract.SetSelected(string.Equals(_filterStage, "Contract", StringComparison.OrdinalIgnoreCase));
+                kpiClosed.SetSelected(string.Equals(_filterStage, "Closed", StringComparison.OrdinalIgnoreCase));
+                kpiLost.SetSelected(string.Equals(_filterStage, "Lost", StringComparison.OrdinalIgnoreCase));
+            }
         }
 
         private void RefreshGrid(bool reloadFromDb = true)
@@ -185,11 +232,13 @@ namespace CRMS_Peguit.winforms.Views.Deals
                     _properties = _controller.GetPropertyAddresses();
                 if (_allDeals.Any(d => d.Agent == null && d.AgentId.HasValue))
                     _agents = _controller.GetAgentNames();
+
+                UpdateFilterPillStyles();
             }
 
             int total = _allDeals.Count;
             decimal totalVolume = _allDeals.Sum(d => d.Value);
-            lblSubtitle.Text = $"{total} deals · ₱{totalVolume:N2} total volume";
+            lblSubtitle.Text = $"{total} deals · {AppFormat.FormatCurrency(totalVolume)} total volume";
 
             IEnumerable<Deal> query = _allDeals;
 
@@ -244,7 +293,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
                         Customer = d.Customer?.FullName ?? GetName(_customers, d.CustomerId),
                         Property = d.Property?.Address ?? GetName(_properties, d.PropertyId),
                         Agent = d.Agent?.FullName ?? GetName(_agents, d.AgentId),
-                        Value = $"₱{d.Value:N2}",
+                        Value = AppFormat.FormatCurrency(d.Value),
                         Commission = $"{d.CommissionRate:P1}",
                         Stage = string.IsNullOrWhiteSpace(d.Stage) ? "OFFER" : d.Stage.ToUpper(),
                         CloseDate = d.ExpectedCloseDate.HasValue ? d.ExpectedCloseDate.Value.ToString("MMM dd, yyyy") : "-"
@@ -280,7 +329,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             if (grid.Columns["Value"] is DataGridViewColumn valCol)
             {
                 valCol.HeaderText = "DEAL VALUE";
-                valCol.FillWeight = 100;
+                valCol.FillWeight = 110;
                 valCol.MinimumWidth = 100;
                 valCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
                 valCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -289,7 +338,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             if (grid.Columns["Commission"] is DataGridViewColumn comCol)
             {
                 comCol.HeaderText = "COMMISSION";
-                comCol.FillWeight = 90;
+                comCol.FillWeight = 95;
                 comCol.MinimumWidth = 90;
                 comCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
                 comCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -298,7 +347,7 @@ namespace CRMS_Peguit.winforms.Views.Deals
             if (grid.Columns["Stage"] is DataGridViewColumn stgCol)
             {
                 stgCol.HeaderText = "STAGE";
-                stgCol.FillWeight = 95;
+                stgCol.FillWeight = 105;
                 stgCol.MinimumWidth = 95;
                 stgCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
                 stgCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
@@ -310,6 +359,9 @@ namespace CRMS_Peguit.winforms.Views.Deals
                 dtCol.FillWeight = 110;
                 dtCol.MinimumWidth = 110;
             }
+
+            UiGridHelper.AlignNumericColumn(grid, "Value");
+            UiGridHelper.AlignNumericColumn(grid, "Commission");
 
             UiGridHelper.AddActionsColumn(grid, 64);
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -401,11 +453,19 @@ namespace CRMS_Peguit.winforms.Views.Deals
         {
             if (e.RowIndex < 0 || e.Graphics is null) return;
 
-            // Minimalist Status Indicator (Left-aligned at 12px, Strictly No Badges/Pills)
-            if (grid.Columns[e.ColumnIndex].Name == "Stage" && e.Value != null)
+            string colName = grid.Columns[e.ColumnIndex].Name;
+
+            // Buyer Avatar + Bold Name (Issue 4)
+            if (colName == "Customer" && e.Value != null)
+            {
+                string name = e.Value.ToString() ?? "";
+                UiGridHelper.PaintAvatarCell(grid, e, name);
+            }
+            // Rounded Status Badge (Issue 2)
+            else if (colName == "Stage" && e.Value != null)
             {
                 string stage = e.Value.ToString() ?? "";
-                UiGridHelper.PaintStatusIndicator(grid, e, stage, center: false);
+                UiGridHelper.PaintStatusBadge(grid, e, stage, center: false);
             }
         }
 
@@ -474,7 +534,11 @@ namespace CRMS_Peguit.winforms.Views.Deals
             // Explicit header positioning with clear separation
             lblTitle.Location = new Point(leftMargin, 20);
             lblSubtitle.Location = new Point(leftMargin + 2, lblTitle.Bottom + 4);
-            int y = Math.Max(96, lblSubtitle.Bottom + 16);
+
+            pnlKpiContainer.Location = new Point(leftMargin, lblSubtitle.Bottom + 14);
+            pnlKpiContainer.Width = Math.Max(100, totalWidth - leftMargin - rightPadding);
+
+            int y = pnlKpiContainer.Bottom + 16;
 
             // Position header action buttons
             int rightEdge = totalWidth - rightPadding;
