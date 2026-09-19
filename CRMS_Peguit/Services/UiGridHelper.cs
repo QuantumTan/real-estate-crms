@@ -208,12 +208,11 @@ namespace CRMS_Peguit.winforms.Models.Services
         }
 
         /// <summary>
-        /// Renders modern status pill badge in table cell:
-        /// - Title Case text with spaces (no snake_case or raw DB enums)
-        /// - Semantic background tint, subtle border, and bold text color from StatusColorHelper
-        /// - Perfectly rounded pill capsule with 12px inset
+        /// Renders status in table cell as bold colored TEXT only — strictly NO background pill shape, NO border, and NO container.
+        /// Title Case text with spaces (no snake_case or raw DB enums).
+        /// Shared 4-tier semantic color palette: Green (Won/Closed/Active), Amber (Pending/In-Progress), Red (Lost/Overdue), Gray (New/Unassigned).
         /// </summary>
-        public static void PaintStatusBadge(DataGridView grid, DataGridViewCellPaintingEventArgs e, string rawStatus, bool center = false)
+        public static void PaintStatusText(DataGridView grid, DataGridViewCellPaintingEventArgs e, string rawStatus, bool center = false)
         {
             if (e.Graphics == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
 
@@ -228,46 +227,21 @@ namespace CRMS_Peguit.winforms.Models.Services
             }
 
             string displayText = StatusColorHelper.ToTitleCase(rawStatus);
-            var (bgColor, textColor, borderColor) = StatusColorHelper.GetColors(rawStatus);
+            Color textColor = StatusColorHelper.GetTextColor(rawStatus);
 
-            using var font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            var textSize = TextRenderer.MeasureText(displayText, font);
+            using var font = new Font("Segoe UI Semibold", 9.5f, FontStyle.Bold);
 
-            int badgeHeight = 24;
-            int badgeWidth = Math.Max(64, textSize.Width + 18);
-            badgeWidth = Math.Min(badgeWidth, e.CellBounds.Width - 16);
+            int leftPad = center ? 0 : 12;
+            var textRect = new Rectangle(
+                e.CellBounds.X + leftPad,
+                e.CellBounds.Y,
+                Math.Max(10, e.CellBounds.Width - leftPad - (center ? 0 : 8)),
+                e.CellBounds.Height);
 
-            int startX = center
-                ? e.CellBounds.X + Math.Max(4, (e.CellBounds.Width - badgeWidth) / 2)
-                : e.CellBounds.X + 12;
-            int startY = e.CellBounds.Y + (e.CellBounds.Height - badgeHeight) / 2;
+            var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
+            flags |= center ? TextFormatFlags.HorizontalCenter : TextFormatFlags.Left;
 
-            var badgeRect = new Rectangle(startX, startY, badgeWidth, badgeHeight);
-            int radius = badgeHeight / 2;
-
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-            using (var path = UiRadiusHelper.CreateRoundedPath(badgeRect, radius))
-            {
-                using (var fillBrush = new SolidBrush(bgColor))
-                {
-                    e.Graphics.FillPath(fillBrush, path);
-                }
-
-                using (var pen = new Pen(borderColor, 1f))
-                {
-                    e.Graphics.DrawPath(pen, path);
-                }
-            }
-
-            TextRenderer.DrawText(
-                e.Graphics,
-                displayText,
-                font,
-                badgeRect,
-                textColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            TextRenderer.DrawText(e.Graphics, displayText, font, textRect, textColor, flags);
 
             // Bottom grid line
             using (var linePen = new Pen(GridBorder, 1f))
@@ -279,11 +253,19 @@ namespace CRMS_Peguit.winforms.Models.Services
         }
 
         /// <summary>
-        /// Legacy status indicator alias: forwards to PaintStatusBadge to ensure APP-WIDE pill badge standard.
+        /// Status indicator alias: forwards to PaintStatusText to enforce APP-WIDE colored bold text standard.
+        /// </summary>
+        public static void PaintStatusBadge(DataGridView grid, DataGridViewCellPaintingEventArgs e, string rawStatus, bool center = false)
+        {
+            PaintStatusText(grid, e, rawStatus, center);
+        }
+
+        /// <summary>
+        /// Legacy status indicator alias: forwards to PaintStatusText to enforce APP-WIDE colored bold text standard.
         /// </summary>
         public static void PaintStatusIndicator(DataGridView grid, DataGridViewCellPaintingEventArgs e, string status, bool center = false)
         {
-            PaintStatusBadge(grid, e, status, center);
+            PaintStatusText(grid, e, status, center);
         }
 
         /// <summary>

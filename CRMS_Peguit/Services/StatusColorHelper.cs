@@ -113,12 +113,21 @@ namespace CRMS_Peguit.winforms.Models.Services
                 "INACTIVE" or "LOST" or "CLOSEDLOST" or "OVERDUE" or "URGENT" or "CRITICAL" or "HIGH"
                 or "REJECTED" or "CANCELLED" or "CANCELED" or "FAILED" or "NO" or "BREACHED" => (RedBg, RedFg, RedBorder),
 
-                // Blue (Info / New / Discovery)
-                "NEW" or "OPEN" or "PROSPECT" or "UPCOMING" => (BlueBg, BlueFg, BlueBorder),
+                // Blue / Info
+                "OPEN" or "PROSPECT" or "UPCOMING" => (BlueBg, BlueFg, BlueBorder),
 
-                // Gray / Neutral
+                // Gray / Neutral / New / Unstarted
+                "NEW" or "UNASSIGNED" or "UNSTARTED" or "DRAFT" or "ARCHIVED" or "UNKNOWN" or "-" => (GrayBg, GrayFg, GrayBorder),
                 _ => (GrayBg, GrayFg, GrayBorder)
             };
+        }
+
+        /// <summary>
+        /// Returns the single bold foreground text color for a status string.
+        /// </summary>
+        public static Color GetTextColor(string? status)
+        {
+            return GetColors(status).Text;
         }
 
         /// <summary>

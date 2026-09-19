@@ -28,6 +28,7 @@ namespace CRMS_Peguit.winforms.Controls
         private Color _accentBgColor;
         private KpiIconType _iconType = KpiIconType.None;
         private bool _isHovered;
+        private Action? _clickAction;
 
         private readonly ToolTip _toolTip = new ToolTip();
         private string _fullValueTooltip = string.Empty;
@@ -124,6 +125,24 @@ namespace CRMS_Peguit.winforms.Controls
             LayoutCard();
         }
 
+        public void SetTitle(string title)
+        {
+            _lblTitle.Text = (title ?? string.Empty).ToUpperInvariant();
+            UpdateTooltips();
+            LayoutCard();
+        }
+
+        public void SetAction(Action? action)
+        {
+            _clickAction = action;
+        }
+
+        protected override void OnClick(EventArgs e)
+        {
+            base.OnClick(e);
+            _clickAction?.Invoke();
+        }
+
         public void SetIcon(KpiIconType icon, Color? accentColor = null, Color? accentBgColor = null)
         {
             _iconType = icon;
@@ -153,6 +172,11 @@ namespace CRMS_Peguit.winforms.Controls
             string compactText = compact ? AppFormat.FormatCompactCurrency(amount) : AppFormat.FormatCurrency(amount);
             string fullText = AppFormat.FormatCurrency(amount);
             SetValue(compactText, fullText);
+        }
+
+        public void SetValueColor(Color color)
+        {
+            _lblValue.ForeColor = color;
         }
 
         private void UpdateTooltips()
